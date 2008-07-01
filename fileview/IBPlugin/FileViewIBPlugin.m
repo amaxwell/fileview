@@ -43,6 +43,8 @@
     return [NSArray arrayWithObject:@"FileViewIBPluginLibrary"];
 }
 
+- (NSString *)label { return @"FileView"; }
+
 - (NSArray *)requiredFrameworks {
     return [NSArray arrayWithObjects:[NSBundle bundleWithIdentifier:@"com.mac.amaxwell.fileview"], nil];
 }
