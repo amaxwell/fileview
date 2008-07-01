@@ -1,0 +1,19 @@
+{
+	Actions = {
+		// Define action descriptions here, for example
+		// "myAction:" = id;
+        "selectPreviousIcon:" = id;
+        "selectNextIcon:" = id;
+        "delete:" = id;
+        "changeFinderLabel:" = id;
+        "openSelectedURLs:" = id;
+	};
+	Outlets = {
+		// Define outlet descriptions here, for example
+		// myOutlet = NSView;
+        delegate = id;
+        dataSource = id;
+	};
+    ClassName = FileView; 
+    SuperClass = NSView; 
+}
