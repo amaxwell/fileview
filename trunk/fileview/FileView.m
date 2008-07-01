@@ -241,7 +241,17 @@ static CGColorRef _shadowColor = NULL;
 - (id)initWithCoder:(NSCoder *)coder {
     self = [super initWithCoder:coder];
     [self _commonInit];
+    NSColor *color = [NSKeyedUnarchiver unarchiveObjectWithData:[coder decodeObjectForKey:@"backgroundColor"]];
+    if (color) 
+        [self setBackgroundColor:color];
+    [self setEditable:[coder decodeBoolForKey:@"editable"]];
     return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder {
+    [super encodeWithCoder:coder];
+    [coder encodeObject:[NSKeyedArchiver archivedDataWithRootObject:[self backgroundColor]] forKey:@"backgroundColor"];
+    [coder encodeBool:[self isEditable] forKey:@"editable"];
 }
 
 - (void)dealloc
