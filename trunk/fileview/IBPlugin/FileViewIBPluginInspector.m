@@ -44,6 +44,8 @@
 	return @"FileViewIBPluginInspector";
 }
 
+- (NSString *)label { return @"FileView"; }
+
 - (void)refresh {
 	// Synchronize your inspector's content view with the currently selected objects.
 	[super refresh];
