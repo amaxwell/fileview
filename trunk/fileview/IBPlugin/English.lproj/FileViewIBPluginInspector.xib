@@ -48,9 +48,9 @@
 							</object>
 							<reference key="NSControlView" ref="728265392"/>
 							<double key="NSValue">2.200000e+01</double>
-							<double key="NSMaxValue">1.000000e+04</double>
-							<double key="NSIncrement">1.000000e+00</double>
-							<bool key="NSValueWraps">YES</bool>
+							<double key="NSMinValue">1.000000e-02</double>
+							<double key="NSMaxValue">9.900000e+01</double>
+							<double key="NSIncrement">1.000000e-01</double>
 							<bool key="NSAutorepeat">YES</bool>
 						</object>
 					</object>
@@ -183,9 +183,9 @@
 										<bool key="EncodedWithXMLCoder">YES</bool>
 										<string>allowsFloats</string>
 										<string>attributedStringForZero</string>
+										<string>decimalSeparator</string>
 										<string>formatterBehavior</string>
 										<string>groupingSeparator</string>
-										<string>locale</string>
 										<string>maximum</string>
 										<string>minimum</string>
 										<string>negativeFormat</string>
@@ -207,16 +207,14 @@
 												</object>
 											</object>
 										</object>
+										<string>.</string>
 										<integer value="1000" id="517535102"/>
 										<string>,</string>
-										<object class="NSLocale" id="1001290163">
-											<string key="NS.identifier"/>
-										</object>
-										<real value="1.000000e+04" id="667828742"/>
-										<real value="0.000000e+00" id="743034181"/>
+										<real value="9.900000e+01" id="656673104"/>
+										<real value="1.000000e-02" id="297106756"/>
 										<string>-0</string>
 										<string>0</string>
-										<reference ref="743034181"/>
+										<integer value="0" id="6"/>
 									</object>
 								</object>
 								<string key="NS.positiveformat">0</string>
@@ -231,13 +229,13 @@
 									<string key="NSString">NaN</string>
 									<reference key="NSAttributes" ref="1015838502"/>
 								</object>
-								<reference key="NS.min" ref="743034181"/>
-								<reference key="NS.max" ref="667828742"/>
+								<reference key="NS.min" ref="297106756"/>
+								<reference key="NS.max" ref="656673104"/>
 								<nil key="NS.rounding"/>
 								<string key="NS.decimal">.</string>
 								<string key="NS.thousand">,</string>
 								<bool key="NS.hasthousands">NO</bool>
-								<bool key="NS.localized">NO</bool>
+								<bool key="NS.localized">YES</bool>
 								<bool key="NS.allowsfloats">YES</bool>
 							</object>
 							<reference key="NSControlView" ref="385174481"/>
@@ -277,9 +275,9 @@
 										<bool key="EncodedWithXMLCoder">YES</bool>
 										<string>allowsFloats</string>
 										<string>attributedStringForZero</string>
+										<string>decimalSeparator</string>
 										<string>formatterBehavior</string>
 										<string>groupingSeparator</string>
-										<string>locale</string>
 										<string>maximum</string>
 										<string>minimum</string>
 										<string>negativeFormat</string>
@@ -293,14 +291,14 @@
 											<string key="NSString">0</string>
 											<reference key="NSAttributes" ref="1015838502"/>
 										</object>
+										<string>.</string>
 										<reference ref="517535102"/>
 										<string>,</string>
-										<reference ref="1001290163"/>
-										<reference ref="667828742"/>
-										<reference ref="743034181"/>
+										<real value="9.900000e+01" id="449928054"/>
+										<real value="1.000000e-02" id="729891042"/>
 										<string>-0</string>
 										<string>0</string>
-										<reference ref="743034181"/>
+										<reference ref="6"/>
 									</object>
 								</object>
 								<string key="NS.positiveformat">0</string>
@@ -315,13 +313,13 @@
 									<string key="NSString">NaN</string>
 									<reference key="NSAttributes" ref="1015838502"/>
 								</object>
-								<reference key="NS.min" ref="743034181"/>
-								<reference key="NS.max" ref="667828742"/>
+								<reference key="NS.min" ref="729891042"/>
+								<reference key="NS.max" ref="449928054"/>
 								<nil key="NS.rounding"/>
 								<string key="NS.decimal">.</string>
 								<string key="NS.thousand">,</string>
 								<bool key="NS.hasthousands">NO</bool>
-								<bool key="NS.localized">NO</bool>
+								<bool key="NS.localized">YES</bool>
 								<bool key="NS.allowsfloats">YES</bool>
 							</object>
 							<reference key="NSControlView" ref="629393840"/>
@@ -377,9 +375,9 @@
 							<reference key="NSSupport" ref="26"/>
 							<reference key="NSControlView" ref="322974345"/>
 							<double key="NSValue">2.200000e+01</double>
-							<double key="NSMaxValue">1.000000e+04</double>
-							<double key="NSIncrement">1.000000e+00</double>
-							<bool key="NSValueWraps">YES</bool>
+							<double key="NSMinValue">1.000000e-02</double>
+							<double key="NSMaxValue">9.900000e+01</double>
+							<double key="NSIncrement">1.000000e-01</double>
 							<bool key="NSAutorepeat">YES</bool>
 						</object>
 					</object>
@@ -433,6 +431,70 @@
 					</object>
 					<int key="connectionID">85</int>
 				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: inspectedObjectsController.selection.minIconScale</string>
+						<reference key="source" ref="385174481"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="385174481"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">value: inspectedObjectsController.selection.minIconScale</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.minIconScale</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">88</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: inspectedObjectsController.selection.maxIconScale</string>
+						<reference key="source" ref="629393840"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="629393840"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">value: inspectedObjectsController.selection.maxIconScale</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.maxIconScale</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">90</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: inspectedObjectsController.selection.minIconScale</string>
+						<reference key="source" ref="728265392"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="728265392"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">value: inspectedObjectsController.selection.minIconScale</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.minIconScale</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">91</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: inspectedObjectsController.selection.maxIconScale</string>
+						<reference key="source" ref="322974345"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="322974345"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">value: inspectedObjectsController.selection.maxIconScale</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.maxIconScale</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">92</int>
+				</object>
 			</object>
 			<object class="IBMutableOrderedSet" key="objectRecords">
 				<object class="NSArray" key="orderedObjects">
@@ -474,11 +536,11 @@
 							<reference ref="797092779"/>
 							<reference ref="385174481"/>
 							<reference ref="629393840"/>
-							<reference ref="322974345"/>
 							<reference ref="122393175"/>
 							<reference ref="1061406988"/>
 							<reference ref="536484495"/>
 							<reference ref="55259581"/>
+							<reference ref="322974345"/>
 						</object>
 						<reference key="parent" ref="1054652676"/>
 						<string key="objectName">Inspector View</string>
@@ -818,7 +880,7 @@
 				</object>
 			</object>
 			<nil key="sourceID"/>
-			<int key="maxID">87</int>
+			<int key="maxID">92</int>
 		</object>
 		<object class="IBClassDescriber" key="IBDocument.Classes">
 			<object class="NSMutableArray" key="referencedPartialClassDescriptions">

@@ -21,35 +21,35 @@
 			isa = PBXContainerItemProxy;
 			containerPortal = F9220EB10E19D0CB006B974D /* FileView.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = 8DC2EF5B0486A6940098B216 /* FileView.framework */;
+			remoteGlobalIDString = 8DC2EF5B0486A6940098B216;
 			remoteInfo = FileView;
 		};
 		F9220FC40E19FE57006B974D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F9220EB10E19D0CB006B974D /* FileView.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = F94692130CA56F4300AC2772 /* FileView-Leopard.bundle */;
+			remoteGlobalIDString = F94692130CA56F4300AC2772;
 			remoteInfo = "FileView-Leopard";
 		};
 		F9220FC60E19FE57006B974D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F9220EB10E19D0CB006B974D /* FileView.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = F94692510CA575F000AC2772 /* FileView Program.app */;
+			remoteGlobalIDString = F94692510CA575F000AC2772;
 			remoteInfo = "FileView Program";
 		};
 		F9220FC80E19FE57006B974D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F9220EB10E19D0CB006B974D /* FileView.xcodeproj */;
 			proxyType = 2;
-			remoteGlobalIDString = F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */;
+			remoteGlobalIDString = F9F255FE0E14A3430059A21A;
 			remoteInfo = FileViewIBPlugin;
 		};
 		F9220FCD0E19FEE0006B974D /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = F9220EB10E19D0CB006B974D /* FileView.xcodeproj */;
 			proxyType = 1;
-			remoteGlobalIDString = F9F04CE10CE260EB00F28ED2 /* Framework + Plugins */;
+			remoteGlobalIDString = F9F04CE10CE260EB00F28ED2;
 			remoteInfo = "Framework + Plugins";
 		};
 /* End PBXContainerItemProxy section */
