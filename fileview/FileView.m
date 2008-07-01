@@ -707,18 +707,16 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     if ([keyPath isEqualToString:@"selectionIndexes"]) {
         
         _FVBinding *selBinding = _selectionBinding;
+        BOOL updatePreviewer = NO;
         
         NSParameterAssert(context == self || context == selBinding);
+        
         if (selBinding && context == self) {
             // update the controller's selection; this call will cause a KVO notification that we'll also observe
             [selBinding->_observable setValue:_selectedIndexes forKeyPath:selBinding->_keyPath];
             
-            // since this will be called multiple times for a single event, we should only run the preview once
-            FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
-            if ([previewer isPreviewing] && NSNotFound != [_selectedIndexes firstIndex]) {
-                [previewer setWebViewContextMenuDelegate:[self delegate]];
-                [previewer previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[[previewer window] frame]];
-            }
+            // since this will be called multiple times for a single event, we should only run the preview if self == context
+            updatePreviewer = YES;
         }
         else if (selBinding && context == selBinding) {
             NSIndexSet *controllerSet = [selBinding->_observable valueForKeyPath:selBinding->_keyPath];
@@ -728,10 +726,18 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
                 [_selectedIndexes addIndexes:controllerSet];
             }
         }
-        else {
-            NSLog(@"*** error *** unhandled case in %@", NSStringFromSelector(_cmd));
+        else if (nil == selBinding) {
+            // no binding, so this should be a view-initiated change
+            NSParameterAssert(context == self);
+            updatePreviewer = YES;
         }
         [self setNeedsDisplay:YES];
+        
+        FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
+        if (updatePreviewer && [previewer isPreviewing] && NSNotFound != [_selectedIndexes firstIndex]) {
+            [previewer setWebViewContextMenuDelegate:[self delegate]];
+            [previewer previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[[previewer window] frame]];
+        }
     }
 }
 
