@@ -105,8 +105,9 @@ enum {
 // must be called if the URLs provided by a datasource change, either in number or content
 - (void)reloadIcons;
 
-// default is Mail's source list color
+// default is source list color
 - (void)setBackgroundColor:(NSColor *)aColor;
+- (NSColor *)backgroundColor;
 
 // actions that NSResponder doesn't declare
 - (IBAction)selectPreviousIcon:(id)sender;
