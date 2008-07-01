@@ -149,6 +149,8 @@ static CGColorRef _shadowColor = NULL;
     [self exposeBinding:@"content"];
     [self exposeBinding:@"selectionIndexes"];
     [self exposeBinding:@"backgroundColor"];
+    [self exposeBinding:@"maxIconScale"];
+    [self exposeBinding:@"minIconScale"];
 }
 
 + (NSColor *)defaultBackgroundColor
@@ -213,13 +215,16 @@ static CGColorRef _shadowColor = NULL;
     _leftArrowFrame = NSZeroRect;
     _rightArrowFrame = NSZeroRect;
     
+    _minScale = 0.5;
+    _maxScale = 10;
+    
     // don't waste memory on this for single-column case
     if ([self _showsSlider]) {
         _sliderWindow = [[FVSliderWindow alloc] init];
         FVSlider *slider = [_sliderWindow slider];
         // binding & unbinding is handled in viewWillMoveToSuperview:
-        [slider setMaxValue:15];
-        [slider setMinValue:1.0];
+        [slider setMaxValue:_maxScale];
+        [slider setMinValue:_minScale];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(handleSliderMouseExited:) name:FVSliderMouseExitedNotificationName object:slider];
     }
     // always initialize this to -1
@@ -241,17 +246,19 @@ static CGColorRef _shadowColor = NULL;
 - (id)initWithCoder:(NSCoder *)coder {
     self = [super initWithCoder:coder];
     [self _commonInit];
-    NSColor *color = [NSKeyedUnarchiver unarchiveObjectWithData:[coder decodeObjectForKey:@"backgroundColor"]];
-    if (color) 
-        [self setBackgroundColor:color];
+    [self setBackgroundColor:[coder decodeObjectForKey:@"backgroundColor"]];
     [self setEditable:[coder decodeBoolForKey:@"editable"]];
+    [self setMinIconScale:[coder decodeDoubleForKey:@"minIconScale"]];
+    [self setMaxIconScale:[coder decodeDoubleForKey:@"maxIconScale"]];
     return self;
 }
 
 - (void)encodeWithCoder:(NSCoder *)coder {
     [super encodeWithCoder:coder];
-    [coder encodeObject:[NSKeyedArchiver archivedDataWithRootObject:[self backgroundColor]] forKey:@"backgroundColor"];
+    [coder encodeObject:[self backgroundColor] forKey:@"backgroundColor"];
     [coder encodeBool:[self isEditable] forKey:@"editable"];
+    [coder encodeDouble:[self minIconScale] forKey:@"minIconScale"];
+    [coder encodeDouble:[self maxIconScale] forKey:@"maxIconScale"];
 }
 
 - (void)dealloc
@@ -418,6 +425,24 @@ static CGColorRef _shadowColor = NULL;
     } else {
         [self registerForDraggedTypes:nil];
     }
+}
+
+- (double)maxIconScale { return _maxScale; }
+
+- (void)setMaxIconScale:(double)scale { 
+    _maxScale = scale; 
+    [[_sliderWindow slider] setMaxValue:scale];
+    if ([self iconScale] > scale && scale > 0)
+        [self setIconScale:scale];
+}
+
+- (double)minIconScale { return _minScale; }
+
+- (void)setMinIconScale:(double)scale { 
+    _minScale = scale; 
+    [[_sliderWindow slider] setMinValue:scale];
+    if ([self iconScale] < scale && scale > 0)
+        [self setIconScale:scale];
 }
 
 - (void)awakeFromNib
@@ -2852,6 +2877,8 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     NSMutableArray *bindings = [NSMutableArray array];
     [bindings addObjectsFromArray:[super exposedBindings]];
     [bindings removeObject:@"iconScale"];
+    [bindings removeObject:@"maxIconScale"];
+    [bindings removeObject:@"minIconScale"];
     return bindings;
 }
 

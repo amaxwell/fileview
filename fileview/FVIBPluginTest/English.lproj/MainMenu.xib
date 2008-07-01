@@ -8,8 +8,7 @@
 		<string key="IBDocument.HIToolboxVersion">352.00</string>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
-			<integer value="371"/>
-			<integer value="56"/>
+			<integer value="454"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1139,6 +1138,18 @@
 											</object>
 											<string key="NSFrameSize">{480, 309}</string>
 											<reference key="NSSuperview" ref="1056723103"/>
+											<object class="NSColor" key="backgroundColor">
+												<int key="NSColorSpace">6</int>
+												<string key="NSCatalogName">System</string>
+												<string key="NSColorName">_sourceListBackgroundColor</string>
+												<object class="NSColor" key="NSColor">
+													<int key="NSColorSpace">1</int>
+													<bytes key="NSRGB">MC44MzkyMTU3IDAuODY2NjY2NjcgMC44OTgwMzkyMgA</bytes>
+												</object>
+											</object>
+											<bool key="editable">NO</bool>
+											<double key="minIconScale">0.000000e+00</double>
+											<double key="maxIconScale">0.000000e+00</double>
 										</object>
 									</object>
 									<string key="NSFrame">{{1, 1}, {480, 309}}</string>
@@ -1216,7 +1227,7 @@
 										<object class="NSMutableArray" key="dict.values">
 											<bool key="EncodedWithXMLCoder">YES</bool>
 											<integer value="1" id="9"/>
-											<integer value="1" id="5"/>
+											<reference ref="9"/>
 											<integer value="1040"/>
 											<real value="1.000000e+01" id="1061281861"/>
 											<integer value="2"/>
@@ -3405,7 +3416,7 @@
 					<string>{{217, 389}, {480, 361}}</string>
 					<reference ref="9"/>
 					<string>{{33, 99}, {480, 360}}</string>
-					<reference ref="5"/>
+					<reference ref="9"/>
 					<string>{3.40282e+38, 3.40282e+38}</string>
 					<string>{350, 150}</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>

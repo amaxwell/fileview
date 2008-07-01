@@ -68,6 +68,8 @@ enum {
     NSRect                  _dropRectForHighlight;
     NSSize                  _padding;
     NSSize                  _iconSize;
+    double                  _maxScale;
+    double                  _minScale;
     NSPoint                 _lastMouseDownLocInView;
     BOOL                    _isEditable;
     BOOL                    _isRescaling;
@@ -98,6 +100,10 @@ enum {
 // bind a slider or other control to this
 - (CGFloat)iconScale;
 - (void)setIconScale:(CGFloat)scale;
+- (double)maxIconScale;
+- (void)setMaxIconScale:(double)scale;
+- (double)minIconScale;
+- (void)setMinIconScale:(double)scale;
 
 - (NSUInteger)numberOfRows;
 - (NSUInteger)numberOfColumns;
