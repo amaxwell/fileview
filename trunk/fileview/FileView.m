@@ -830,6 +830,16 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     return info;
 }
 
+- (Class)valueClassForBinding:(NSString *)binding
+{
+    Class valueClass = Nil;
+    if ([binding isEqualToString:@"selectionIndexes"])
+        valueClass = [NSIndexSet class];
+    else
+        valueClass = [super valueClassForBinding:binding];
+    return valueClass;
+}
+
 - (void)viewWillMoveToSuperview:(NSView *)newSuperview
 {
     [super viewWillMoveToSuperview:newSuperview];
