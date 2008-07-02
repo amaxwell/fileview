@@ -14,8 +14,6 @@
 		F9220ED40E19D102006B974D /* Controller.m in Sources */ = {isa = PBXBuildFile; fileRef = F9220ED30E19D102006B974D /* Controller.m */; };
 		F9220FD20E19FF00006B974D /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9220FD10E19FF00006B974D /* FileView.framework */; };
 		F98218580E1B37D900660987 /* FileView.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = F9220FC30E19FE57006B974D /* FileView.framework */; };
-		F9B143430E1C081C00BA315D /* Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F9B143410E1C081C00BA315D /* Debug.xcconfig */; };
-		F9B143440E1C081C00BA315D /* Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F9B143420E1C081C00BA315D /* Release.xcconfig */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -272,8 +270,6 @@
 			files = (
 				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
 				1DDD58160DA1D0A300B32029 /* MainMenu.xib in Resources */,
-				F9B143430E1C081C00BA315D /* Debug.xcconfig in Resources */,
-				F9B143440E1C081C00BA315D /* Release.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
