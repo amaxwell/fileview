@@ -27,6 +27,8 @@
 /* Begin PBXBuildFile section */
 		8DC2EF530486A6940098B216 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C1666FE841158C02AAC07 /* InfoPlist.strings */; };
 		8DC2EF570486A6940098B216 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
+		F91A5BBE0E1C118500FC4E59 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
+		F91A5BC90E1C126E00FC4E59 /* InterfaceBuilderKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */; };
 		F926D0850D96C6DC00190DED /* FVCacheFile.h in Headers */ = {isa = PBXBuildFile; fileRef = F926D0830D96C6DC00190DED /* FVCacheFile.h */; };
 		F926D0860D96C6DC00190DED /* FVCacheFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = F926D0840D96C6DC00190DED /* FVCacheFile.mm */; };
 		F928C6B30E0D9147000C0548 /* FVThread.h in Headers */ = {isa = PBXBuildFile; fileRef = F928C6B10E0D9147000C0548 /* FVThread.h */; };
@@ -91,6 +93,7 @@
 		F9A2D4280CCBE6BA002F517B /* FVQuickLookIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D4270CCBE6BA002F517B /* FVQuickLookIcon.h */; };
 		F9AE7CB30D9B5534007FAF73 /* FVViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = F9AE7CB10D9B5534007FAF73 /* FVViewController.h */; };
 		F9AE7CB40D9B5534007FAF73 /* FVViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F9AE7CB20D9B5534007FAF73 /* FVViewController.m */; };
+		F9B1432A0E1C06CE00BA315D /* Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F9B143290E1C06CE00BA315D /* Release.xcconfig */; };
 		F9B152810D5ED9B900F6E755 /* FVIconOperation.h in Headers */ = {isa = PBXBuildFile; fileRef = F9B1527F0D5ED9B900F6E755 /* FVIconOperation.h */; };
 		F9B152820D5ED9B900F6E755 /* FVIconOperation.m in Sources */ = {isa = PBXBuildFile; fileRef = F9B152800D5ED9B900F6E755 /* FVIconOperation.m */; };
 		F9B152B80D5EE5E800F6E755 /* FVPriorityQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = F9B152B60D5EE5E800F6E755 /* FVPriorityQueue.h */; };
@@ -131,7 +134,6 @@
 		F9F04CEF0CE2618200F28ED2 /* FileView-Leopard.bundle in CopyFiles */ = {isa = PBXBuildFile; fileRef = F94692130CA56F4300AC2772 /* FileView-Leopard.bundle */; };
 		F9F22DE90CDAD53300A9D449 /* License in Resources */ = {isa = PBXBuildFile; fileRef = F9F22DE80CDAD53300A9D449 /* License */; };
 		F9F256240E14A4690059A21A /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DC2EF5B0486A6940098B216 /* FileView.framework */; };
-		F9F256280E14A4CE0059A21A /* InterfaceBuilderKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9F256270E14A4CE0059A21A /* InterfaceBuilderKit.framework */; };
 		F9F2563E0E14A6710059A21A /* FileViewIBPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = F9F256360E14A6710059A21A /* FileViewIBPlugin.m */; };
 		F9F2563F0E14A6710059A21A /* FileViewIBPluginInspector.m in Sources */ = {isa = PBXBuildFile; fileRef = F9F256380E14A6710059A21A /* FileViewIBPluginInspector.m */; };
 		F9F256400E14A6710059A21A /* FileViewIBPluginView.classdescription in Resources */ = {isa = PBXBuildFile; fileRef = F9F256390E14A6710059A21A /* FileViewIBPluginView.classdescription */; };
@@ -216,6 +218,7 @@
 		32DBCF5E0370ADEE00C91783 /* FileView_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileView_Prefix.pch; sourceTree = "<group>"; };
 		8DC2EF5A0486A6940098B216 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8DC2EF5B0486A6940098B216 /* FileView.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = FileView.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InterfaceBuilderKit.framework; path = Library/Frameworks/InterfaceBuilderKit.framework; sourceTree = DEVELOPER_DIR; };
 		F926D0830D96C6DC00190DED /* FVCacheFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCacheFile.h; sourceTree = "<group>"; };
 		F926D0840D96C6DC00190DED /* FVCacheFile.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FVCacheFile.mm; sourceTree = "<group>"; };
 		F928C6B10E0D9147000C0548 /* FVThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVThread.h; sourceTree = "<group>"; };
@@ -280,6 +283,8 @@
 		F9A2D4270CCBE6BA002F517B /* FVQuickLookIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVQuickLookIcon.h; sourceTree = "<group>"; };
 		F9AE7CB10D9B5534007FAF73 /* FVViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVViewController.h; sourceTree = "<group>"; };
 		F9AE7CB20D9B5534007FAF73 /* FVViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVViewController.m; sourceTree = "<group>"; };
+		F9B143260E1C069000BA315D /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Configurations/Debug.xcconfig; sourceTree = "<group>"; };
+		F9B143290E1C06CE00BA315D /* Release.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Configurations/Release.xcconfig; sourceTree = "<group>"; };
 		F9B1527F0D5ED9B900F6E755 /* FVIconOperation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVIconOperation.h; sourceTree = "<group>"; };
 		F9B152800D5ED9B900F6E755 /* FVIconOperation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVIconOperation.m; sourceTree = "<group>"; };
 		F9B152B60D5EE5E800F6E755 /* FVPriorityQueue.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVPriorityQueue.h; sourceTree = "<group>"; };
@@ -350,6 +355,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F91A5BBE0E1C118500FC4E59 /* Cocoa.framework in Frameworks */,
 				F94692370CA5712800AC2772 /* QuickLook.framework in Frameworks */,
 				F946921E0CA5701F00AC2772 /* FileView.framework in Frameworks */,
 			);
@@ -370,7 +376,7 @@
 			files = (
 				F9F256AB0E14AFC70059A21A /* Cocoa.framework in Frameworks */,
 				F9F256240E14A4690059A21A /* FileView.framework in Frameworks */,
-				F9F256280E14A4CE0059A21A /* InterfaceBuilderKit.framework in Frameworks */,
+				F91A5BC90E1C126E00FC4E59 /* InterfaceBuilderKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -391,6 +397,7 @@
 		0867D691FE84028FC02AAC07 /* FileView */ = {
 			isa = PBXGroup;
 			children = (
+				F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */,
 				F9F22DE80CDAD53300A9D449 /* License */,
 				F9F22E180CDAD9B900A9D449 /* Notes */,
 				08FB77AEFE84172EC02AAC07 /* Classes */,
@@ -401,6 +408,8 @@
 				F946927B0CA5777300AC2772 /* FileView Program */,
 				F9F2562F0E14A6710059A21A /* IBPlugin */,
 				F94692140CA56F4300AC2772 /* FileView-Leopard-Info.plist */,
+				F9B143260E1C069000BA315D /* Debug.xcconfig */,
+				F9B143290E1C06CE00BA315D /* Release.xcconfig */,
 			);
 			name = FileView;
 			sourceTree = "<group>";
@@ -817,6 +826,7 @@
 			files = (
 				F94692840CA5777300AC2772 /* InfoPlist.strings in Resources */,
 				F94692850CA5777300AC2772 /* MainMenu.nib in Resources */,
+				F9B1432A0E1C06CE00BA315D /* Release.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1026,45 +1036,37 @@
 /* Begin XCBuildConfiguration section */
 		1DEB91AE08733DA50010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_VERSION = A;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = FileView_Prefix.pch;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "@loader_path/../../../../../../../";
 				OTHER_LDFLAGS = "-header-pad_max_install_names";
 				PRODUCT_NAME = FileView;
-				WARNING_CFLAGS = "-Wall";
 				WRAPPER_EXTENSION = framework;
-				ZERO_LINK = NO;
 			};
 			name = Debug;
 		};
 		1DEB91AF08733DA50010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_VERSION = A;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = FileView_Prefix.pch;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "@loader_path/../../../../../../../";
 				OTHER_LDFLAGS = "-header-pad_max_install_names";
 				PRODUCT_NAME = FileView;
-				WARNING_CFLAGS = "-Wall";
 				WRAPPER_EXTENSION = framework;
-				ZERO_LINK = NO;
 			};
 			name = Release;
 		};
 		1DEB91B208733DA50010E9CD /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
 				ARCHS = "$(NATIVE_ARCH_32_BIT)";
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -1096,6 +1098,7 @@
 		};
 		1DEB91B308733DA50010E9CD /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
 				ARCHS = (
 					i386,
@@ -1125,37 +1128,20 @@
 		};
 		F94692150CA56F4600AC2772 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = FileView_Prefix.pch;
 				INFOPLIST_FILE = "FileView-Leopard-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
 				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				OTHER_LDFLAGS = (
-					"-framework",
-					Foundation,
-					"-framework",
-					AppKit,
-				);
-				PREBINDING = NO;
 				PRODUCT_NAME = "FileView-Leopard";
-				SDKROOT = macosx10.5;
 				WRAPPER_EXTENSION = bundle;
-				ZERO_LINK = YES;
 			};
 			name = Debug;
 		};
 		F94692160CA56F4600AC2772 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
-				COPY_PHASE_STRIP = YES;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
-				GCC_MODEL_TUNING = G5;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = FileView_Prefix.pch;
 				INFOPLIST_FILE = "FileView-Leopard-Info.plist";
@@ -1169,20 +1155,17 @@
 				);
 				PREBINDING = NO;
 				PRODUCT_NAME = "FileView-Leopard";
-				SDKROOT = macosx10.5;
 				WRAPPER_EXTENSION = bundle;
-				ZERO_LINK = NO;
 			};
 			name = Release;
 		};
 		F94692540CA575F100AC2772 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
 				COPY_PHASE_STRIP = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				INFOPLIST_FILE = "${SOURCE_ROOT}/FileView Program/FileView Program-Info.plist";
@@ -1196,16 +1179,13 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = "FileView Program";
 				WRAPPER_EXTENSION = app;
-				ZERO_LINK = NO;
 			};
 			name = Debug;
 		};
 		F94692550CA575F100AC2772 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
-				GCC_MODEL_TUNING = G5;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				INFOPLIST_FILE = "${SOURCE_ROOT}/FileView Program/FileView Program-Info.plist";
@@ -1219,7 +1199,6 @@
 				PREBINDING = NO;
 				PRODUCT_NAME = "FileView Program";
 				WRAPPER_EXTENSION = app;
-				ZERO_LINK = NO;
 			};
 			name = Release;
 		};
@@ -1246,28 +1225,15 @@
 		};
 		F9F256040E14A3440059A21A /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				COPY_PHASE_STRIP = NO;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(DEVELOPER_FRAMEWORKS_DIR)\"",
 				);
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				INFOPLIST_FILE = "IBPlugin/FileViewIBPlugin-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
-				OTHER_LDFLAGS = (
-					"-framework",
-					Foundation,
-					"-framework",
-					AppKit,
-				);
-				PREBINDING = NO;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				PRODUCT_NAME = FileViewIBPlugin;
 				WRAPPER_EXTENSION = ibplugin;
 			};
@@ -1275,30 +1241,18 @@
 		};
 		F9F256050E14A3440059A21A /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				COPY_PHASE_STRIP = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(DEVELOPER_FRAMEWORKS_DIR)\"",
 				);
-				GCC_ENABLE_FIX_AND_CONTINUE = NO;
-				GCC_MODEL_TUNING = G5;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREFIX_HEADER = "$(SYSTEM_LIBRARY_DIR)/Frameworks/AppKit.framework/Headers/AppKit.h";
 				INFOPLIST_FILE = "IBPlugin/FileViewIBPlugin-Info.plist";
 				INSTALL_PATH = "$(HOME)/Library/Bundles";
-				OTHER_LDFLAGS = (
-					"-framework",
-					Foundation,
-					"-framework",
-					AppKit,
-				);
-				PREBINDING = NO;
+				MACOSX_DEPLOYMENT_TARGET = 10.5;
 				PRODUCT_NAME = FileViewIBPlugin;
 				WRAPPER_EXTENSION = ibplugin;
-				ZERO_LINK = NO;
 			};
 			name = Release;
 		};
