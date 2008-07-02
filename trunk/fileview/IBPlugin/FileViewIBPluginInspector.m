@@ -38,6 +38,8 @@
 
 #import "FileViewIBPluginInspector.h"
 
+@class FileView;
+
 @implementation FileViewIBPluginInspector
 
 - (NSString *)viewNibName {
@@ -46,9 +48,23 @@
 
 - (NSString *)label { return @"FileView"; }
 
+- (IBAction)resetBackgroundColor:(id)sender;
+{
+    id selectedView = [self valueForKeyPath:@"inspectedObjectsController.selection.self"];
+    NSColor *defaultColor = [[[selectedView class] self] performSelector:@selector(defaultBackgroundColor)];
+    [selectedView setBackgroundColor:defaultColor];
+}
+
 - (void)refresh {
 	// Synchronize your inspector's content view with the currently selected objects.
 	[super refresh];
+    
+    id selectedView = [self valueForKeyPath:@"inspectedObjectsController.selection.self"];
+    if ([[[selectedView class] self] respondsToSelector:@selector(defaultBackgroundColor)] == NO) {
+        [resetColorButton setEnabled:NO];
+        NSLog(@"*** ERROR *** %@ no longer implements +defaultBackgroundColor and %@ needs it", [[selectedView class] self], [self class]);
+    }
 }
 
 @end
+
