@@ -98,8 +98,8 @@ enum {
 - (void)setSelectionIndexes:(NSIndexSet *)indexSet;
 
 // bind a slider or other control to this
-- (CGFloat)iconScale;
-- (void)setIconScale:(CGFloat)scale;
+- (double)iconScale;
+- (void)setIconScale:(double)scale;
 - (double)maxIconScale;
 - (void)setMaxIconScale:(double)scale;
 - (double)minIconScale;

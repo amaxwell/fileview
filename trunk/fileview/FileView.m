@@ -250,6 +250,7 @@ static CGColorRef _shadowColor = NULL;
     [self setEditable:[coder decodeBoolForKey:@"editable"]];
     [self setMinIconScale:[coder decodeDoubleForKey:@"minIconScale"]];
     [self setMaxIconScale:[coder decodeDoubleForKey:@"maxIconScale"]];
+    [self setIconScale:[coder decodeDoubleForKey:@"iconScale"]];
     return self;
 }
 
@@ -259,6 +260,7 @@ static CGColorRef _shadowColor = NULL;
     [coder encodeBool:[self isEditable] forKey:@"editable"];
     [coder encodeDouble:[self minIconScale] forKey:@"minIconScale"];
     [coder encodeDouble:[self maxIconScale] forKey:@"maxIconScale"];
+    [coder encodeDouble:[self iconScale] forKey:@"iconScale"];
 }
 
 - (void)dealloc
@@ -375,9 +377,11 @@ static CGColorRef _shadowColor = NULL;
     [self scrollPoint:desiredRect.origin];
 }
 
-- (void)setIconScale:(CGFloat)scale;
+- (void)setIconScale:(double)scale;
 {
-    FVAPIAssert(scale > 0, @"scale must be greater than zero");
+    // formerly asserted this, but it caused problems with archiving
+    if (scale <= 0) scale = 1.0;
+    
     _iconSize.width = DEFAULT_ICON_SIZE.width * scale;
     _iconSize.height = DEFAULT_ICON_SIZE.height * scale;
     
@@ -402,7 +406,7 @@ static CGColorRef _shadowColor = NULL;
     }
 }
 
-- (CGFloat)iconScale;
+- (double)iconScale;
 {
     return _iconSize.width / DEFAULT_ICON_SIZE.width;
 }
@@ -2931,12 +2935,12 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
         [self setFrame:frame];       
 } 
 
-- (void)setIconScale:(CGFloat)scale;
+- (void)setIconScale:(double)scale;
 {
-    FVAPIAssert(0, @"attempt to call setIconScale: on a view that automatically scales");
+    // may be called by initWithCoder:
 }
 
-- (CGFloat)iconScale;
+- (double)iconScale;
 {
     return _iconSize.width / DEFAULT_ICON_SIZE.width;
 }
