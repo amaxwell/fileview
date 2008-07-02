@@ -720,6 +720,102 @@
 					</object>
 					<int key="connectionID">120</int>
 				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+						<reference key="source" ref="784629877"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="784629877"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<string key="NSBinding">enabled</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">121</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+						<reference key="source" ref="448755180"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="448755180"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<string key="NSBinding">enabled</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">122</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+						<reference key="source" ref="385174481"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="385174481"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<string key="NSBinding">enabled</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">123</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+						<reference key="source" ref="728265392"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="728265392"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<string key="NSBinding">enabled</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">124</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+						<reference key="source" ref="629393840"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="629393840"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<string key="NSBinding">enabled</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">125</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+						<reference key="source" ref="322974345"/>
+						<reference key="destination" ref="893560672"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="322974345"/>
+							<reference key="NSDestination" ref="893560672"/>
+							<string key="NSLabel">enabled: inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<string key="NSBinding">enabled</string>
+							<string key="NSKeyPath">inspectedObjectsController.selection.fv_ibIsGridView</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">126</int>
+				</object>
 			</object>
 			<object class="IBMutableOrderedSet" key="objectRecords">
 				<object class="NSArray" key="orderedObjects">
@@ -1235,7 +1331,7 @@
 				</object>
 			</object>
 			<nil key="sourceID"/>
-			<int key="maxID">120</int>
+			<int key="maxID">126</int>
 		</object>
 		<object class="IBClassDescriber" key="IBDocument.Classes">
 			<object class="NSMutableArray" key="referencedPartialClassDescriptions">
