@@ -29,6 +29,7 @@
 		8DC2EF570486A6940098B216 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
 		F91A5BBE0E1C118500FC4E59 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
 		F91A5BC90E1C126E00FC4E59 /* InterfaceBuilderKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */; };
+		F91A5BF90E1C2CF700FC4E59 /* FVColumnView.classdescription in Resources */ = {isa = PBXBuildFile; fileRef = F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */; };
 		F926D0850D96C6DC00190DED /* FVCacheFile.h in Headers */ = {isa = PBXBuildFile; fileRef = F926D0830D96C6DC00190DED /* FVCacheFile.h */; };
 		F926D0860D96C6DC00190DED /* FVCacheFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = F926D0840D96C6DC00190DED /* FVCacheFile.mm */; };
 		F928C6B30E0D9147000C0548 /* FVThread.h in Headers */ = {isa = PBXBuildFile; fileRef = F928C6B10E0D9147000C0548 /* FVThread.h */; };
@@ -73,7 +74,6 @@
 		F963C2690E17FEA10066B20F /* FileViewIBPlugin.ibplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */; };
 		F963C3950E180FCB0066B20F /* FileViewIBPluginLibrary.nib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3940E180FCB0066B20F /* FileViewIBPluginLibrary.nib */; };
 		F963C3970E180FD70066B20F /* FileViewIBPluginInspector.xib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3960E180FD70066B20F /* FileViewIBPluginInspector.xib */; };
-		F976F7820E19AF3A00D67F1B /* FVColumnView.classdescription in Resources */ = {isa = PBXBuildFile; fileRef = F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */; };
 		F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F980F0920CCC3C2E0067C1DF /* libz.dylib */; };
 		F98D3A5E0D82EFD300ED9D22 /* FVCGImageUtilities.h in Headers */ = {isa = PBXBuildFile; fileRef = F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */; };
 		F98D3A5F0D82EFD300ED9D22 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */; };
@@ -93,7 +93,6 @@
 		F9A2D4280CCBE6BA002F517B /* FVQuickLookIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D4270CCBE6BA002F517B /* FVQuickLookIcon.h */; };
 		F9AE7CB30D9B5534007FAF73 /* FVViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = F9AE7CB10D9B5534007FAF73 /* FVViewController.h */; };
 		F9AE7CB40D9B5534007FAF73 /* FVViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F9AE7CB20D9B5534007FAF73 /* FVViewController.m */; };
-		F9B1432A0E1C06CE00BA315D /* Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F9B143290E1C06CE00BA315D /* Release.xcconfig */; };
 		F9B152810D5ED9B900F6E755 /* FVIconOperation.h in Headers */ = {isa = PBXBuildFile; fileRef = F9B1527F0D5ED9B900F6E755 /* FVIconOperation.h */; };
 		F9B152820D5ED9B900F6E755 /* FVIconOperation.m in Sources */ = {isa = PBXBuildFile; fileRef = F9B152800D5ED9B900F6E755 /* FVIconOperation.m */; };
 		F9B152B80D5EE5E800F6E755 /* FVPriorityQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = F9B152B60D5EE5E800F6E755 /* FVPriorityQueue.h */; };
@@ -397,9 +396,10 @@
 		0867D691FE84028FC02AAC07 /* FileView */ = {
 			isa = PBXGroup;
 			children = (
-				F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */,
 				F9F22DE80CDAD53300A9D449 /* License */,
 				F9F22E180CDAD9B900A9D449 /* Notes */,
+				F9B143260E1C069000BA315D /* Debug.xcconfig */,
+				F9B143290E1C06CE00BA315D /* Release.xcconfig */,
 				08FB77AEFE84172EC02AAC07 /* Classes */,
 				32C88DFF0371C24200C91783 /* Other Sources */,
 				089C1665FE841158C02AAC07 /* Resources */,
@@ -408,8 +408,6 @@
 				F946927B0CA5777300AC2772 /* FileView Program */,
 				F9F2562F0E14A6710059A21A /* IBPlugin */,
 				F94692140CA56F4300AC2772 /* FileView-Leopard-Info.plist */,
-				F9B143260E1C069000BA315D /* Debug.xcconfig */,
-				F9B143290E1C06CE00BA315D /* Release.xcconfig */,
 			);
 			name = FileView;
 			sourceTree = "<group>";
@@ -418,6 +416,7 @@
 			isa = PBXGroup;
 			children = (
 				F92CBB3F0D806B7C0009E371 /* Accelerate.framework */,
+				F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */,
 				F980F0920CCC3C2E0067C1DF /* libz.dylib */,
 				F946922D0CA5710500AC2772 /* QTKit.framework */,
 				F946922E0CA5710500AC2772 /* Quartz.framework */,
@@ -809,7 +808,6 @@
 				F9F22DE90CDAD53300A9D449 /* License in Resources */,
 				F9E469370CFF6D12003E6C0A /* FileView.strings in Resources */,
 				F9C3BD020D6E005800BDC3FF /* FVColorMenuView.nib in Resources */,
-				F976F7820E19AF3A00D67F1B /* FVColumnView.classdescription in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -826,7 +824,6 @@
 			files = (
 				F94692840CA5777300AC2772 /* InfoPlist.strings in Resources */,
 				F94692850CA5777300AC2772 /* MainMenu.nib in Resources */,
-				F9B1432A0E1C06CE00BA315D /* Release.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -837,6 +834,7 @@
 				F963C3970E180FD70066B20F /* FileViewIBPluginInspector.xib in Resources */,
 				F963C3950E180FCB0066B20F /* FileViewIBPluginLibrary.nib in Resources */,
 				F9F256400E14A6710059A21A /* FileViewIBPluginView.classdescription in Resources */,
+				F91A5BF90E1C2CF700FC4E59 /* FVColumnView.classdescription in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
