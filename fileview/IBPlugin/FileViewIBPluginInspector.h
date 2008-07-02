@@ -39,6 +39,7 @@
 #import <InterfaceBuilderKit/InterfaceBuilderKit.h>
 
 @interface FileViewIBPluginInspector : IBInspector {
-
+    IBOutlet NSButton *resetColorButton;
 }
+- (IBAction)resetBackgroundColor:(id)sender;
 @end

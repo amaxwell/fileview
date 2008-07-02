@@ -56,6 +56,8 @@
 - (void)ibDidAddToDesignableDocument:(IBDocument *)document; 
 {
     [super ibDidAddToDesignableDocument:document];
+    
+    // set a datasource so we display something
     if ([[self dataSource] isEqual:[FVIBPluginDataSource sharedDataSource]] == NO)
         [self setDataSource:[FVIBPluginDataSource sharedDataSource]];    
 }
@@ -91,7 +93,6 @@
 
 @end
 
-
 #pragma mark -
 
 @implementation FVIBPluginDataSource
@@ -110,7 +111,15 @@
     if (self) {
         _iconURLs = [NSMutableArray new];
         
+        NSURL *picturesURL = nil;
+        FSRef fileRef;
+        if (noErr == FSFindFolder(kOnSystemDisk, kDesktopPicturesFolderType, FALSE, &fileRef))
+            picturesURL = [(id)CFURLCreateFromFSRef(NULL, &fileRef) autorelease];
+        
         NSString *base = [@"~/Desktop" stringByStandardizingPath];
+        if (nil != picturesURL && [[NSFileManager defaultManager] fileExistsAtPath:[[picturesURL path] stringByAppendingPathComponent:@"Plants"] isDirectory:NULL])
+            base = [[picturesURL path] stringByAppendingPathComponent:@"Plants"];
+        
         NSMutableArray *files = [[[[NSFileManager defaultManager] directoryContentsAtPath:base] mutableCopy] autorelease];
         NSUInteger iMax, i = [files count];
         while (i--) {
@@ -142,7 +151,13 @@
     return [NSString stringWithFormat:@"Subtitle %d", anIndex];
 }
 
+// implement editing methods so we don't get an exception when clicking the "editable" checkbox
+- (void)fileView:(FileView *)aFileView insertURLs:(NSArray *)absoluteURLs atIndexes:(NSIndexSet *)aSet;
+{
+    
+}
+- (BOOL)fileView:(FileView *)aFileView replaceURLsAtIndexes:(NSIndexSet *)aSet withURLs:(NSArray *)newURLs; { return NO; }
+- (BOOL)fileView:(FileView *)aFileView moveURLsAtIndexes:(NSIndexSet *)aSet toIndex:(NSUInteger)anIndex; { return NO; }
+- (BOOL)fileView:(FileView *)aFileView deleteURLsAtIndexes:(NSIndexSet *)indexSet; { return NO; }
+
 @end
-
-
-

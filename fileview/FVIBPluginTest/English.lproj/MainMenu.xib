@@ -8,7 +8,7 @@
 		<string key="IBDocument.HIToolboxVersion">352.00</string>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
-			<integer value="454"/>
+			<integer value="457"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1148,8 +1148,8 @@
 												</object>
 											</object>
 											<bool key="editable">NO</bool>
-											<double key="minIconScale">0.000000e+00</double>
-											<double key="maxIconScale">0.000000e+00</double>
+											<double key="minIconScale">5.000000e-01</double>
+											<double key="maxIconScale">6.000000e+00</double>
 										</object>
 									</object>
 									<string key="NSFrame">{{1, 1}, {480, 309}}</string>
