@@ -937,7 +937,12 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     }
 
     NSParameterAssert(horizontalPadding > 0);    
-    _padding.width = horizontalPadding;
+    // truncate to avoid tolerance buildup (avoids horizontal scroller display)
+#if __LP64__
+    _padding.width = floor(horizontalPadding);
+#else
+    _padding.width = floorf(horizontalPadding);
+#endif    
     
     frame.size.width = MAX([self _columnWidth] * ncolumns + 2 * MARGIN_BASE, NSWidth(minFrame));
     frame.size.height = MAX([self _rowHeight] * nrows + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
