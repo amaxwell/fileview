@@ -14,6 +14,7 @@
 		F9220ED40E19D102006B974D /* Controller.m in Sources */ = {isa = PBXBuildFile; fileRef = F9220ED30E19D102006B974D /* Controller.m */; };
 		F9220FCC0E19FECB006B974D /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9220FC30E19FE57006B974D /* FileView.framework */; };
 		F9220FD20E19FF00006B974D /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9220FD10E19FF00006B974D /* FileView.framework */; };
+		F98218580E1B37D900660987 /* FileView.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = F9220FC30E19FE57006B974D /* FileView.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -53,6 +54,19 @@
 			remoteInfo = "Framework + Plugins";
 		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F982186C0E1B37F200660987 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				F98218580E1B37D900660987 /* FileView.framework in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		089C165DFE840E0CC02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
@@ -181,6 +195,7 @@
 				8D1107290486CEB800E47090 /* Resources */,
 				8D11072C0486CEB800E47090 /* Sources */,
 				8D11072E0486CEB800E47090 /* Frameworks */,
+				F982186C0E1B37F200660987 /* CopyFiles */,
 				F9220EAE0E19D09A006B974D /* ShellScript */,
 			);
 			buildRules = (
