@@ -79,6 +79,9 @@
     [classes addObject:[FileViewIBPluginInspector class]];
 }
 
+// for inspector controls
+- (BOOL)fv_ibIsGridView { return YES; }
+
 @end
 
 @implementation FVColumnView ( FileViewIBPluginView )
@@ -90,6 +93,9 @@
     [[keyPaths objectForKey:IBAttributeKeyPaths] removeObject:@"minIconScale"];
     [[keyPaths objectForKey:IBAttributeKeyPaths] removeObject:@"maxIconScale"];
 }
+
+// for inspector controls
+- (BOOL)fv_ibIsGridView { return NO; }
 
 @end
 
