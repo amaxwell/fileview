@@ -8,7 +8,7 @@
 		<string key="IBDocument.HIToolboxVersion">352.00</string>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
-			<integer value="457"/>
+			<integer value="454"/>
 		</object>
 		<object class="NSArray" key="IBDocument.PluginDependencies">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1150,6 +1150,7 @@
 											<bool key="editable">NO</bool>
 											<double key="minIconScale">5.000000e-01</double>
 											<double key="maxIconScale">6.000000e+00</double>
+											<double key="iconScale">1.000000e+00</double>
 										</object>
 									</object>
 									<string key="NSFrame">{{1, 1}, {480, 309}}</string>
@@ -1170,22 +1171,21 @@
 								<object class="NSScroller" id="839975909">
 									<reference key="NSNextResponder" ref="711706425"/>
 									<int key="NSvFlags">-2147483392</int>
-									<string key="NSFrame">{{948, 1}, {15, 722}}</string>
+									<string key="NSFrame">{{466, 1}, {15, 294}}</string>
 									<reference key="NSSuperview" ref="711706425"/>
 									<reference key="NSTarget" ref="711706425"/>
 									<string key="NSAction">_doScroller:</string>
-									<double key="NSCurValue">3.125000e-01</double>
-									<double key="NSPercent">8.185941e-01</double>
+									<double key="NSPercent">9.514563e-01</double>
 								</object>
 								<object class="NSScroller" id="563811955">
 									<reference key="NSNextResponder" ref="711706425"/>
 									<int key="NSvFlags">-2147483392</int>
-									<string key="NSFrame">{{1, 708}, {947, 15}}</string>
+									<string key="NSFrame">{{1, 295}, {465, 15}}</string>
 									<reference key="NSSuperview" ref="711706425"/>
 									<int key="NSsFlags">1</int>
 									<reference key="NSTarget" ref="711706425"/>
 									<string key="NSAction">_doScroller:</string>
-									<double key="NSPercent">9.385965e-01</double>
+									<double key="NSPercent">9.999999e-01</double>
 								</object>
 							</object>
 							<string key="NSFrame">{{-1, 51}, {482, 311}}</string>

@@ -16,7 +16,15 @@
     if (self) {
         _iconURLs = [NSMutableArray new];
         
+        NSURL *picturesURL = nil;
+        FSRef fileRef;
+        if (noErr == FSFindFolder(kOnSystemDisk, kDesktopPicturesFolderType, FALSE, &fileRef))
+            picturesURL = [(id)CFURLCreateFromFSRef(NULL, &fileRef) autorelease];
+        
         NSString *base = [@"~/Desktop" stringByStandardizingPath];
+        if (nil != picturesURL && [[NSFileManager defaultManager] fileExistsAtPath:[[picturesURL path] stringByAppendingPathComponent:@"Plants"] isDirectory:NULL])
+            base = [[picturesURL path] stringByAppendingPathComponent:@"Plants"];
+        
         NSMutableArray *files = [[[[NSFileManager defaultManager] directoryContentsAtPath:base] mutableCopy] autorelease];
         NSUInteger iMax, i = [files count];
         while (i--) {
@@ -29,8 +37,7 @@
         for (i = 0; i < iMax; i++) {
             path = [files objectAtIndex:i];
             [_iconURLs addObject:[NSURL fileURLWithPath:[base stringByAppendingPathComponent:path]]];
-        }      
-        
+        }              
     }
     return self;
 }
