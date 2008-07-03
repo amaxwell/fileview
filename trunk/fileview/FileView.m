@@ -815,6 +815,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         // keep a record of the observervable object for unbinding; this is strictly for observation, not a manual binding
         _contentBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
         [observable addObserver:self forKeyPath:@"content" options:0 context:_controller];
+        [_controller setBound:YES];
     }
     
     // ??? the IB inspector doesn't show values properly unless I call super for that case as well
@@ -837,6 +838,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [contentBinding->_observable removeObserver:self forKeyPath:@"content"];
         [_contentBinding release];
         _contentBinding = nil;
+        [_controller setBound:NO];
         
         [_controller setIconURLs:nil];
         // Calling -[super unbind:binding] after this may cause selection to be reset; this happens with the controller in the demo project, since it unbinds in the wrong order.  We should be resilient against that, so we unbind first.

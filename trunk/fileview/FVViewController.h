@@ -47,11 +47,11 @@
     NSMutableArray         *_orderedIcons;
     NSMutableArray         *_orderedURLs;
     NSMutableArray         *_orderedSubtitles;
-    NSArray                *_iconURLs;
     CFRunLoopTimerRef       _zombieTimer;
     NSMutableDictionary    *_iconCache;
     CFMutableDictionaryRef  _infoTable;
     FVOperationQueue       *_operationQueue;
+    BOOL                    _isBound;
     
     NSMutableArray         *_downloads;
     CFRunLoopTimerRef       _progressTimer;
@@ -60,13 +60,19 @@
 - (id)initWithView:(FileView *)view;
 - (void)setDataSource:(id)obj;
 
+// only for binding support; may contain NSNull values
 - (NSArray *)iconURLs;
 - (void)setIconURLs:(NSArray *)array;
+// set to YES when creating a content binding, and NO when removing the binding
+- (void)setBound:(BOOL)flag;
 
+// independent of cached state
 - (NSUInteger)numberOfIcons;
+- (NSURL *)URLAtIndex:(NSUInteger)anIndex;  // never returns NSNull
+
+// dependent on cached state
 - (FVIcon *)iconAtIndex:(NSUInteger)anIndex;
 - (NSArray *)iconsAtIndexes:(NSIndexSet *)indexes;
-- (NSURL *)URLAtIndex:(NSUInteger)anIndex;
 - (NSString *)subtitleAtIndex:(NSUInteger)anIndex;
 - (void)reload;
 
