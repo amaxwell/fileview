@@ -69,7 +69,8 @@
 - (void)dealloc
 {
     [_icon release];
-    [_view release];
+    // release is thread safe, but we don't want to trigger dealloc on this thread
+    [_view performSelectorOnMainThread:@selector(release) withObject:nil waitUntilDone:NO];
     [super dealloc];
 }
 
