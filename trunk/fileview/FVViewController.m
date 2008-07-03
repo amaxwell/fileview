@@ -159,13 +159,29 @@
     [self reload];
 }
 
-- (NSArray *)iconURLs { return _iconURLs; }
-- (FVIcon *)iconAtIndex:(NSUInteger)anIndex { return [_orderedIcons objectAtIndex:anIndex]; }
-- (NSURL *)URLAtIndex:(NSUInteger)anIndex { return [_orderedURLs objectAtIndex:anIndex]; }
-- (NSString *)subtitleAtIndex:(NSUInteger)anIndex { return [_orderedSubtitles objectAtIndex:anIndex]; }
+- (BOOL)_usingBoundArray { return nil != _iconURLs; }
 
-- (NSUInteger)numberOfIcons { return _iconURLs ? [_iconURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
-- (NSArray *)iconsAtIndexes:(NSIndexSet *)indexes { return [_orderedIcons objectsAtIndexes:indexes]; }
+- (NSArray *)iconURLs { return _iconURLs; }
+- (FVIcon *)iconAtIndex:(NSUInteger)anIndex { 
+    FVAPIAssert(anIndex < [_orderedIcons count], @"invalid icon index requested; likely missing a call to -reloadIcons");
+    return [_orderedIcons objectAtIndex:anIndex]; 
+}
+
+- (NSURL *)URLAtIndex:(NSUInteger)anIndex { 
+    FVAPIAssert(anIndex < [_orderedURLs count], @"invalid URL index requested; likely missing a call to -reloadIcons");
+    return [_orderedURLs objectAtIndex:anIndex]; 
+}
+
+- (NSString *)subtitleAtIndex:(NSUInteger)anIndex { 
+    FVAPIAssert(anIndex < [_orderedSubtitles count], @"invalid subtitle index requested; likely missing a call to -reloadIcons");
+    return [_orderedSubtitles objectAtIndex:anIndex]; 
+}
+
+- (NSUInteger)numberOfIcons { return [self _usingBoundArray] ? [_iconURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
+- (NSArray *)iconsAtIndexes:(NSIndexSet *)indexes { 
+    FVAPIAssert([indexes lastIndex] < [self numberOfIcons], @"invalid number of icons requested; likely missing a call to -reloadIcons");
+    return [_orderedIcons objectsAtIndexes:indexes]; 
+}
 
 - (void)reload;
 {
@@ -270,7 +286,7 @@
 - (NSURL *)_iconURLAtIndex:(NSUInteger)anIndex
 {
     NSParameterAssert(anIndex < [self numberOfIcons]);
-    NSURL *aURL = _iconURLs ? [_iconURLs objectAtIndex:anIndex] : [_dataSource fileView:_view URLAtIndex:anIndex];
+    NSURL *aURL = [self _usingBoundArray] ? [_iconURLs objectAtIndex:anIndex] : [_dataSource fileView:_view URLAtIndex:anIndex];
     if (nil == aURL || [NSNull null] == (id)aURL)
         aURL = [FVIcon missingFileURL];
     return aURL;
