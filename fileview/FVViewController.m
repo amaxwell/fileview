@@ -78,13 +78,13 @@
         
         // Arrays associate FVIcon <--> NSURL in view order.  This is primarily because NSURL is a slow and expensive key for NSDictionary since it copies strings to compute -hash instead of storing it inline; as a consequence, calling [_iconCache objectForKey:[_datasource URLAtIndex:]] is a memory and CPU hog.  We use parallel arrays instead of one array filled with NSDictionaries because there will only be two, and this is less memory and fewer calls.
         _orderedIcons = [NSMutableArray new];
-        _orderedURLs = [NSMutableArray new];
+        
+        // created lazily in case it's needed (only if using a datasource)
+        _orderedURLs = nil;
+        _isBound = NO;
         
         // only created when datasource is set
         _orderedSubtitles = nil;
-        
-        // only used for bindings support
-        _iconURLs = nil;
         
         // Icons keyed by URL; may contain icons that are no longer displayed.  Keeping this as primary storage means that rearranging/reloading is relatively cheap, since we don't recreate all FVIcon instances.
         _iconCache = [NSMutableDictionary new];
@@ -123,7 +123,6 @@
     [_orderedIcons release];
     [_orderedURLs release];
     [_orderedSubtitles release];
-    [_iconURLs release];
     CFRelease(_infoTable);
     [_operationQueue terminate];
     [_operationQueue release];
@@ -131,14 +130,24 @@
     [super dealloc];
 }
 
+- (void)setBound:(BOOL)flag;
+{
+    _isBound = flag;
+}
+
 - (void)setIconURLs:(NSArray *)array
 {
-    if (_iconURLs != array) {
-        [_iconURLs release];
+    if (_orderedURLs != array) {
+        [_orderedURLs release];
         
         // The array parameter will typically be an NSArrayController proxy object.  The view observes mutations to the collection and calls -reload, so we can retain instead of copying (which creates an NSCFArray).
-        _iconURLs = [array retain];
-    }
+        _orderedURLs = [array retain];
+    }    
+}
+
+- (NSArray *)iconURLs
+{
+    return _orderedURLs;
 }
 
 - (void)setDataSource:(id)obj
@@ -161,17 +170,9 @@
     [self reload];
 }
 
-- (BOOL)_usingBoundArray { return nil != _iconURLs; }
-
-- (NSArray *)iconURLs { return _iconURLs; }
 - (FVIcon *)iconAtIndex:(NSUInteger)anIndex { 
     FVAPIAssert(anIndex < [_orderedIcons count], @"invalid icon index requested; likely missing a call to -reloadIcons");
     return [_orderedIcons objectAtIndex:anIndex]; 
-}
-
-- (NSURL *)URLAtIndex:(NSUInteger)anIndex { 
-    FVAPIAssert(anIndex < [_orderedURLs count], @"invalid URL index requested; likely missing a call to -reloadIcons");
-    return [_orderedURLs objectAtIndex:anIndex]; 
 }
 
 - (NSString *)subtitleAtIndex:(NSUInteger)anIndex { 
@@ -179,15 +180,38 @@
     return [_orderedSubtitles objectAtIndex:anIndex]; 
 }
 
-- (NSUInteger)numberOfIcons { return [self _usingBoundArray] ? [_iconURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
 - (NSArray *)iconsAtIndexes:(NSIndexSet *)indexes { 
     FVAPIAssert([indexes lastIndex] < [self numberOfIcons], @"invalid number of icons requested; likely missing a call to -reloadIcons");
     return [_orderedIcons objectsAtIndexes:indexes]; 
 }
 
+#pragma mark -
+
+// Wraps datasource/bindings and returns [FVIcon missingFileURL] when the datasource or bound array returns nil or NSNull, or else we end up with exceptions everywhere
+
+// used by -reload; always returns a value independent of cached state
+- (NSURL *)URLAtIndex:(NSUInteger)anIndex { 
+    NSParameterAssert(anIndex < [self numberOfIcons]);
+    NSURL *aURL = _isBound ? [_orderedURLs objectAtIndex:anIndex] : [_dataSource fileView:_view URLAtIndex:anIndex];
+    if (nil == aURL || [NSNull null] == (id)aURL)
+        aURL = [FVIcon missingFileURL];
+    return aURL;
+}
+
+// used by -reload; always returns a value independent of cached state
+- (NSUInteger)numberOfIcons { return _isBound ? [_orderedURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
+
 - (void)reload;
 {
-    [_orderedURLs removeAllObjects];
+    // if we're using bindings, there's no need to cache all the URLs
+    if (NO == _isBound) {
+        
+        if (nil == _orderedURLs)
+            _orderedURLs = [NSMutableArray new];
+        else
+            [_orderedURLs removeAllObjects];
+    }
+    
     [_orderedIcons removeAllObjects];
     [_orderedSubtitles removeAllObjects];
     
@@ -197,9 +221,9 @@
     id (*cachedIcon)(id, SEL, id);
     cachedIcon = (id (*)(id, SEL, id))[self methodForSelector:@selector(_cachedIconForURL:)];
     
-    // -[FVViewController iconURLAtIndex:] guaranteed non-nil/non-NSNULL
-    id (*iconURLAtIndex)(id, SEL, NSUInteger);
-    iconURLAtIndex = (id (*)(id, SEL, NSUInteger))[self methodForSelector:@selector(_iconURLAtIndex:)];
+    // -[FVViewController URLAtIndex:] guaranteed non-nil/non-NSNULL
+    id (*URLAtIndex)(id, SEL, NSUInteger);
+    URLAtIndex = (id (*)(id, SEL, NSUInteger))[self methodForSelector:@selector(URLAtIndex:)];
     
     // -[NSCFArray insertObject:atIndex:] (do /not/ use +[NSMutableArray instanceMethodForSelector:]!)
     SEL insertSel = @selector(insertObject:atIndex:);
@@ -214,11 +238,12 @@
     NSUInteger i, iMax = [self numberOfIcons];
     
     for (i = 0; i < iMax; i++) {
-        NSURL *aURL = iconURLAtIndex(self, @selector(iconURLAtIndex:), i);
+        NSURL *aURL = URLAtIndex(self, @selector(URLAtIndex:), i);
         NSParameterAssert(nil != aURL && [NSNull null] != (id)aURL);
         FVIcon *icon = cachedIcon(self, @selector(_cachedIconForURL:), aURL);
         NSParameterAssert(nil != icon);
-        insertObjectAtIndex(_orderedURLs, insertSel, aURL, i);
+        if (NO == _isBound)
+            insertObjectAtIndex(_orderedURLs, insertSel, aURL, i);
         insertObjectAtIndex(_orderedIcons, insertSel, icon, i);
         if (_orderedSubtitles)
             insertObjectAtIndex(_orderedSubtitles, insertSel, subtitleAtIndex(_dataSource, subtitleSel, _view, i), i);
@@ -283,16 +308,6 @@
 }
 
 #pragma mark -
-
-// Wraps datasource/bindings and returns [FVIcon missingFileURL] when the datasource or bound array returns nil or NSNull, or else we end up with exceptions everywhere
-- (NSURL *)_iconURLAtIndex:(NSUInteger)anIndex
-{
-    NSParameterAssert(anIndex < [self numberOfIcons]);
-    NSURL *aURL = [self _usingBoundArray] ? [_iconURLs objectAtIndex:anIndex] : [_dataSource fileView:_view URLAtIndex:anIndex];
-    if (nil == aURL || [NSNull null] == (id)aURL)
-        aURL = [FVIcon missingFileURL];
-    return aURL;
-}
 
 // This method instantiates icons as needed
 - (FVIcon *)_cachedIconForURL:(NSURL *)aURL;
