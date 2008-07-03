@@ -246,6 +246,7 @@ static CGColorRef _shadowColor = NULL;
 
 - (id)initWithCoder:(NSCoder *)coder {
     self = [super initWithCoder:coder];
+    // initialize with default values, then override with settings from IB
     [self _commonInit];
     [self setBackgroundColor:[coder decodeObjectForKey:@"backgroundColor"]];
     [self setEditable:[coder decodeBoolForKey:@"editable"]];
@@ -451,20 +452,20 @@ static CGColorRef _shadowColor = NULL;
         [self setIconScale:scale];
 }
 
-- (void)awakeFromNib
-{
-    if ([[FileView superclass] instancesRespondToSelector:@selector(awakeFromNib)])
-        [super awakeFromNib];
-    // if the datasource connection is made in the nib, the drag type setup doesn't get done
-    [self _registerForDraggedTypes];
-}
-
 - (void)setDataSource:(id)obj;
 {
-    if (obj) {
-        FVAPIAssert1([obj respondsToSelector:@selector(numberOfIconsInFileView:)], @"datasource must implement %@", NSStringFromSelector(@selector(numberOfIconsInFileView:)));
-        FVAPIAssert1([obj respondsToSelector:@selector(fileView:URLAtIndex:)], @"datasource must implement %@", NSStringFromSelector(@selector(fileView:URLAtIndex:)));
+    // I was asserting these conditions, but that crashes the IB simulator if you set a datasource in IB.  Setting datasource to nil in case of failure avoids other exceptions later (notably in FVViewController).
+    BOOL failed = NO;
+    if (obj && [obj respondsToSelector:@selector(numberOfIconsInFileView:)] == NO) {
+        FVLog(@"*** ERROR *** datasource %@ must implement %@", obj, NSStringFromSelector(@selector(numberOfIconsInFileView:)));
+        failed = YES;
     }
+    if (obj && [obj respondsToSelector:@selector(fileView:URLAtIndex:)] == NO) {
+        FVLog(@"*** ERROR *** datasource %@ must implement %@", obj, NSStringFromSelector(@selector(fileView:URLAtIndex:)));
+        failed = YES;
+    }
+    if (failed) obj = nil;
+    
     _dataSource = obj;
     [_controller setDataSource:obj];
     
