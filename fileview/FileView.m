@@ -875,15 +875,28 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     return valueClass;
 }
 
+- (void)unbindExposedBindings
+{
+    NSEnumerator *bindingEnum = [[self exposedBindings] objectEnumerator];
+    NSString *binding;
+    while (binding = [bindingEnum nextObject]) {
+        
+        if (nil != [self infoForBinding:binding])
+            [self unbind:binding];
+    }
+}
+
 - (void)viewWillMoveToSuperview:(NSView *)newSuperview
 {
     [super viewWillMoveToSuperview:newSuperview];
     
-    // mmalc's example unbinds here for a nil superview, but that causes problems if you remove the view and add it back in later (and also can cause crashes as a side effect, if we're not careful with the datasource)
+    // Mmalc's example unbinds here for a nil superview, and that's the only way I see at present to unbind without having the client do it explicitly, for instance in a windowWillClose:.  Perhaps it would be better for register for that in the view?   Old comment: this causes problems if you remove the view and add it back in later (and also can cause crashes as a side effect, if we're not careful with the datasource).
     if (nil == newSuperview) {
-
+        
         if (_isObservingSelectionIndexes) 
             [self removeObserver:self forKeyPath:@"selectionIndexes"];
+        
+        [self unbindExposedBindings];
 
         [_controller cancelQueuedOperations];
         
