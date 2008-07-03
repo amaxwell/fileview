@@ -157,11 +157,10 @@
     
     [self cancelDownloads];
     
-    [_orderedSubtitles release];
-    _orderedSubtitles = nil;
-    
-    if ([obj respondsToSelector:@selector(fileView:subtitleAtIndex:)])
-        _orderedSubtitles = [NSMutableArray new];
+    if ([obj respondsToSelector:@selector(fileView:subtitleAtIndex:)] == NO) {
+        [_orderedSubtitles release];
+        _orderedSubtitles = nil;
+    }
     
     // convenient time to do this, although the timer would also handle it
     [_iconCache removeAllObjects];
@@ -176,7 +175,8 @@
 }
 
 - (NSString *)subtitleAtIndex:(NSUInteger)anIndex { 
-    FVAPIAssert(anIndex < [_orderedSubtitles count], @"invalid subtitle index requested; likely missing a call to -reloadIcons");
+    // _orderedSubtitles is nil if the datasource doesn't implement the optional method
+    if (_orderedSubtitles) FVAPIAssert(anIndex < [_orderedSubtitles count], @"invalid subtitle index requested; likely missing a call to -reloadIcons");
     return [_orderedSubtitles objectAtIndex:anIndex]; 
 }
 
