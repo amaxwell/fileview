@@ -513,9 +513,12 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
            __FVPDFIconLimitThumbnailSize(&_thumbnailSize);
         }
     }
-                    
-    // don't bother redrawing this if it already exists, since that's a big waste of time
 
+    // local ref for caching to disk
+    CGImageRef thumbnail = NULL;
+
+    // don't bother redrawing this if it already exists, since that's a big waste of time
+    
     if (NULL == _thumbnail) {
         
         CGContextRef ctxt = FVIconBitmapContextCreateWithSize(_thumbnailSize.width, _thumbnailSize.height);
@@ -539,11 +542,16 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         
         // okay to call cacheImage:forKey: even if the image is already cached
         if (1 == _currentPage && NULL != _thumbnail)
-            [FVIconCache cacheImage:_thumbnail forKey:_cacheKey];
+            thumbnail = CGImageRetain(_thumbnail);
         
         FVIconBitmapContextDispose(ctxt);
     }
     [self unlock];
+    
+    // okay to draw, but now cache to disk before allowing others to read from disk
+    if (thumbnail) [FVIconCache cacheImage:thumbnail forKey:_cacheKey];
+    CGImageRelease(thumbnail);
+
     [[self class] _stopRenderingForKey:_cacheKey];
 }
 

@@ -525,10 +525,8 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     CGImageRelease(_fullImage);
     _fullImage = [self _newImageWithAttributedString:attrString documentAttributes:documentAttributes];
     [attrString release];
-    
-    if (NULL != _fullImage) {
-        [FVIconCache cacheImage:_fullImage forKey:_cacheKey];
         
+    if (NULL != _fullImage) {        
         // reset size while we have the lock, since it may be different now that we've read the string
         _fullSize = FVCGImageSize(_fullImage);
     }
@@ -537,10 +535,11 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     if (NULL == _thumbnail)
         _thumbnail = FVCreateResampledThumbnail(_fullImage);
         
-    if (NULL != _thumbnail) {
+    // local copies for caching
+    CGImageRef fullImage = CGImageRetain(_fullImage), thumbnail = CGImageRetain(_thumbnail);
+
+    if (NULL != _thumbnail) 
         _thumbnailSize = FVCGImageSize(_thumbnail);
-        [FVIconCache cacheThumbnail:_thumbnail forKey:_cacheKey];
-    }
     
     // get rid of this to save memory if we aren't drawing it right away
     if (FVShouldDrawFullImageWithThumbnailSize(_desiredSize, _thumbnailSize) == NO) {
@@ -548,7 +547,15 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
         _fullImage = NULL;
     }
     
+    // can draw now
     [self unlock];    
+    
+    // cache and release
+    if (fullImage) [FVIconCache cacheImage:fullImage forKey:_cacheKey];
+    CGImageRelease(fullImage);
+    if (thumbnail) [FVIconCache cacheThumbnail:thumbnail forKey:_cacheKey];
+    CGImageRelease(thumbnail);
+
     [[self class] _stopRenderingForKey:_cacheKey];
 }
 

@@ -197,6 +197,9 @@ static CFDictionaryRef _imsrcOptions = NULL;
         CFRelease(imageData);
     }
     
+    // local references for disk caching so we can unlock and draw earlier
+    CGImageRef fullImage = NULL, thumbnail = NULL;
+    
     if (src && CGImageSourceGetCount(src) > 0) {
 
         // Now we have a thumbnail, create the full image so we have both of them in the cache.  Originally only the large image was cached to disk, and then only if it was actually resampled.  ImageIO is fast, in general, so FVIconCache doesn't really benefit us significantly.  The problem is FVMovieIcon, which hits the main thread to get image data.  To avoid hiccups in the subclass, then, we'll just cache both images for consistency.
@@ -204,12 +207,14 @@ static CFDictionaryRef _imsrcOptions = NULL;
         if (sourceImage) {
             // limit the size for better drawing/memory performance
             _fullImage = FVCreateResampledFullImage(sourceImage);
-            [FVIconCache cacheImage:_fullImage forKey:_cacheKey];
+            fullImage = CGImageRetain(_fullImage);
         }
         
         // resample the original image for better quality
-        if (NULL == _thumbnail)
+        if (NULL == _thumbnail) {
             _thumbnail = FVCreateResampledThumbnail(sourceImage);
+            thumbnail = CGImageRetain(_thumbnail);
+        }
         
         CGImageRelease(sourceImage);
         sourceImage = NULL;
@@ -217,7 +222,6 @@ static CFDictionaryRef _imsrcOptions = NULL;
         // always initialize sizes
         if (_thumbnail) {
             _thumbnailSize = FVCGImageSize(_thumbnail);
-            [FVIconCache cacheThumbnail:_thumbnail forKey:_cacheKey];
         }
         else {
             _thumbnailSize = NSZeroSize;
@@ -239,6 +243,14 @@ static CFDictionaryRef _imsrcOptions = NULL;
     }        
     
     [self unlock];
+    
+    // now cache to disk; we're still holding the lock that keeps any other instance from rendering these icons
+    if (fullImage) [FVIconCache cacheImage:fullImage forKey:_cacheKey];
+    CGImageRelease(fullImage);
+    
+    if (thumbnail) [FVIconCache cacheThumbnail:thumbnail forKey:_cacheKey];
+    CGImageRelease(thumbnail);
+
     [[self class] _stopRenderingForKey:_cacheKey];
 }    
 
