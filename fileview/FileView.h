@@ -85,13 +85,10 @@ enum {
     FVSliderWindow         *_sliderWindow;
     NSTrackingRectTag       _sliderTag;
     
+    id                      _contentBinding;
     id                      _selectionBinding;
     BOOL                    _isObservingSelectionIndexes;
 }
-
-// bindings compatibility, although this can be set directly
-- (void)setIconURLs:(NSArray *)anArray;
-- (NSArray *)iconURLs;
 
 // this is the only way to get selection information at present
 - (NSIndexSet *)selectionIndexes;

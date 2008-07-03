@@ -53,19 +53,19 @@
 - (void)windowWillClose:(NSNotification *)aNotification
 {
     [_slider unbind:@"value"];
-    [_fileView unbind:@"iconURLs"];
+    [_fileView unbind:@"content"];
     [_fileView unbind:@"selectionIndexes"];
     [_fileView setDataSource:nil];
     [_fileView setDelegate:nil];
     _fileView = nil;
     
-    [_columnView unbind:@"iconURLs"];
+    [_columnView unbind:@"content"];
     [_columnView unbind:@"selectionIndexes"];
     [_columnView setDataSource:nil];
     [_columnView setDelegate:nil];
     _columnView = nil;
     
-    [_fileViewLeft unbind:@"iconURLs"];
+    [_fileViewLeft unbind:@"content"];
     [_fileViewLeft unbind:@"selectionIndexes"];
     [_fileViewLeft setDataSource:nil];
     [_fileViewLeft setDelegate:nil];
@@ -107,7 +107,7 @@
     // nonexistent domain
     [arrayController insertObject:[NSURL URLWithString:@"http://bibdesk.sourceforge.tld/"] atArrangedObjectIndex:insertIndex++];
 
-    [_fileView bind:@"iconURLs" toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
+    [_fileView bind:@"content" toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
     [_fileView bind:@"selectionIndexes" toObject:arrayController withKeyPath:@"selectionIndexes" options:nil];
     
     // for optional datasource method
@@ -115,13 +115,13 @@
     [_fileView setEditable:YES];
     [_fileView setDelegate:self];
     
-    [_columnView bind:@"iconURLs" toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
+    [_columnView bind:@"content" toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
     [_columnView bind:@"selectionIndexes" toObject:arrayController withKeyPath:@"selectionIndexes" options:nil];
     [_columnView setDataSource:self];
     [_columnView setEditable:YES];
     [_columnView setDelegate:self];
     
-    [_fileViewLeft bind:@"iconURLs" toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
+    [_fileViewLeft bind:@"content" toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
     [_fileViewLeft bind:@"selectionIndexes" toObject:arrayController withKeyPath:@"selectionIndexes" options:nil];
     [_fileViewLeft setDataSource:self];
     [_fileViewLeft setEditable:YES];
