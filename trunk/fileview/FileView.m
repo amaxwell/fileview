@@ -230,6 +230,7 @@ static CGColorRef _shadowColor = NULL;
     // always initialize this to -1
     _sliderTag = -1;
     
+    _contentBinding = nil;
     _selectionBinding = nil;
     _isObservingSelectionIndexes = NO;
     
@@ -275,7 +276,8 @@ static CGColorRef _shadowColor = NULL;
     CFRelease(_trackingRectMap);
     _trackingRectMap = NULL;
     CGLayerRelease(_selectionOverlay);
-    FVAPIAssert2(nil == _selectionBinding, @"failed to remove unbind %@ from %@; leaking observation info", ((_FVBinding *)_selectionBinding)->_observable, self);
+    FVAPIAssert2(nil == _selectionBinding, @"failed to unbind %@ from %@; leaking observation info", ((_FVBinding *)_selectionBinding)->_observable, self);
+    FVAPIAssert2(nil == _contentBinding, @"failed to unbind %@ from %@; leaking observation info", ((_FVBinding *)_contentBinding)->_observable, self);
     [super dealloc];
 }
 
@@ -738,8 +740,19 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 #pragma mark Binding support
 
-- (void)setContent:(id)content { [self setIconURLs:content]; }
-- (id)content { return [self iconURLs]; }
+// should only be called when establishing a new binding
+- (void)setContent:(NSArray *)anArray;
+{
+    [_controller setIconURLs:anArray];
+    [self setSelectionIndexes:[NSIndexSet indexSet]];
+    // datasource methods all trigger a redisplay, so we have to do the same here
+    [self reloadIcons];
+}
+
+- (NSArray *)content;
+{
+    return [_controller iconURLs];
+}
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {
@@ -778,6 +791,10 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
             [previewer previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[[previewer window] frame]];
         }
     }
+    else if ([keyPath isEqualToString:@"content"] && _controller == context) {
+        // change to the number of icons or some rearrangement
+        [self reloadIcons];
+    }
 }
 
 - (void)bind:(NSString *)binding toObject:(id)observable withKeyPath:(NSString *)keyPath options:(NSDictionary *)options;
@@ -790,6 +807,14 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         // Create an object to handle the binding mechanics manually; it's deallocated when the client unbinds.
         _selectionBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
         [observable addObserver:self forKeyPath:keyPath options:0 context:_selectionBinding];
+    }
+    else if ([binding isEqualToString:@"content"]) {
+     
+        FVAPIAssert3(nil == _contentBinding, @"attempt to bind %@ to %@ when bound to %@", keyPath, observable, ((_FVBinding *)_contentBinding)->_observable);
+        
+        // keep a record of the observervable object for unbinding; this is strictly for observation, not a manual binding
+        _contentBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
+        [observable addObserver:self forKeyPath:@"content" options:0 context:_controller];
     }
     
     // ??? the IB inspector doesn't show values properly unless I call super for that case as well
@@ -805,7 +830,14 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [_selectionBinding release];
         _selectionBinding = nil;
     }
-    else if ([binding isEqualToString:@"iconURLs"]) {
+    else if ([binding isEqualToString:@"content"]) {
+        FVAPIAssert2(nil != _contentBinding, @"%@: attempt to unbind %@ when unbound", self, binding);
+        
+        _FVBinding *contentBinding = (_FVBinding *)_contentBinding;
+        [contentBinding->_observable removeObserver:self forKeyPath:@"content"];
+        [_contentBinding release];
+        _contentBinding = nil;
+        
         [_controller setIconURLs:nil];
         // Calling -[super unbind:binding] after this may cause selection to be reset; this happens with the controller in the demo project, since it unbinds in the wrong order.  We should be resilient against that, so we unbind first.
         [self setSelectionIndexes:[NSIndexSet indexSet]];
@@ -870,19 +902,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
                                                          name:FVSliderMouseExitedNotificationName 
                                                        object:slider];      
     }
-}
-
-- (void)setIconURLs:(NSArray *)anArray;
-{
-    [_controller setIconURLs:anArray];
-    [self setSelectionIndexes:[NSIndexSet indexSet]];
-    // datasource methods all trigger a redisplay, so we have to do the same here
-    [self reloadIcons];
-}
-
-- (NSArray *)iconURLs;
-{
-    return [_controller iconURLs];
 }
 
 - (void)setSelectionIndexes:(NSIndexSet *)indexSet;

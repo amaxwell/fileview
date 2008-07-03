@@ -135,7 +135,9 @@
 {
     if (_iconURLs != array) {
         [_iconURLs release];
-        _iconURLs = [array copy];
+        
+        // The array parameter will typically be an NSArrayController proxy object.  The view observes mutations to the collection and calls -reload, so we can retain instead of copying (which creates an NSCFArray).
+        _iconURLs = [array retain];
     }
 }
 
