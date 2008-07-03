@@ -79,7 +79,6 @@
 		F9220EB10E19D0CB006B974D /* FileView.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = FileView.xcodeproj; path = ../FileView.xcodeproj; sourceTree = SOURCE_ROOT; };
 		F9220ED20E19D102006B974D /* Controller.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Controller.h; sourceTree = "<group>"; };
 		F9220ED30E19D102006B974D /* Controller.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Controller.m; sourceTree = "<group>"; };
-		F9220FD10E19FF00006B974D /* FileView.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = FileView.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9B143410E1C081C00BA315D /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = ../Configurations/Debug.xcconfig; sourceTree = "<group>"; };
 		F9B143420E1C081C00BA315D /* Release.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = ../Configurations/Release.xcconfig; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -109,7 +108,6 @@
 		1058C7A0FEA54F0111CA2CBB /* Linked Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				F9220FD10E19FF00006B974D /* FileView.framework */,
 				1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */,
 			);
 			name = "Linked Frameworks";
