@@ -170,6 +170,10 @@ static NSURL *missingFileURL = nil;
     else if (UTTypeConformsTo(theUTI, kUTTypeImage) && dataPhysicalSize < maximumImageDataSize) {
         anIcon = [[FVImageIcon allocWithZone:[self zone]] initWithURL:representedURL];
     }
+    else if (UTTypeEqual(theUTI, CFSTR("com.microsoft.windows-media-wmv")) && Nil != FVQLIconClass) {
+        // Flip4Mac WMV plugin puts up a stupid progress bar and calls into WebCore, and it gives nothing if you uncheck "Open local files immediately" in its pref pane.  Bypass it entirely if we have Quick Look.  No idea if this is a QT bug or Flip4Mac bug, so I suppose I should file something...
+        anIcon = [[FVQLIconClass allocWithZone:[self zone]] initWithURL:representedURL];
+    }
     else if (UTTypeConformsTo(theUTI, kUTTypeMovie) && [FVMovieIcon canInitWithURL:representedURL]) {
         anIcon = [[FVMovieIcon allocWithZone:[self zone]] initWithURL:representedURL];
     }
