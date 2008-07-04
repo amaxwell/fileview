@@ -52,6 +52,25 @@ static BOOL FVQLIconDisabled = NO;
     FVQLIconDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"FVQLIconDisabled"];
 }
 
++ (void)_getBackgroundColor:(CGFloat [])color forURL:(NSURL *)aURL
+{
+    FSRef fileRef;
+    if (CFURLGetFSRef((CFURLRef)aURL, &fileRef)) {
+        
+        CFStringRef theUTI = NULL;
+        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+        
+        // just set pure alpha for now
+        if (theUTI && (UTTypeConformsTo(theUTI, kUTTypeMovie) || UTTypeConformsTo(theUTI, kUTTypeAudiovisualContent))) {
+            color[0] = 0;
+            color[1] = 0;
+            color[2] = 0;
+            color[3] = 0;
+        }
+        if (theUTI) CFRelease(theUTI);
+    }
+}
+
 - (id)initWithURL:(NSURL *)theURL;
 {
     if (FVQLIconDisabled) {
@@ -66,6 +85,11 @@ static BOOL FVQLIconDisabled = NO;
         _thumbnailSize = NSZeroSize;
         _desiredSize = NSZeroSize;
         _quickLookFailed = NO;
+        _backgroundColor[0] = 1;
+        _backgroundColor[1] = 1;
+        _backgroundColor[2] = 1;
+        _backgroundColor[3] = 1;
+        [[self class] _getBackgroundColor:_backgroundColor forURL:_fileURL];
         
         if (pthread_mutex_init(&_mutex, NULL) != 0)
             perror("pthread_mutex_init");
@@ -176,35 +200,46 @@ static inline bool __FVQLShouldDrawFullImageWithSize(NSSize desiredSize, NSSize 
     [self unlock];
 }    
 
+// doesn't touch ivars; caller acquires lock first
+- (void)_drawBackgroundAndImage:(CGImageRef)image inRect:(NSRect)dstRect ofContext:(CGContextRef)context
+{
+    CGRect drawRect = [self _drawingRectWithRect:dstRect];
+    // Apple's QL plugins for multiple page types (.pages, .plist, .xls etc) draw text right up to the margin of the icon, so we'll add a small margin.  The decoration option will do this for us, but it also draws with a dog-ear, and I don't want that because it's inconsistent with our other thumbnail classes.
+    CGContextSaveGState(context);
+    CGContextSetRGBFillColor(context, _backgroundColor[0], _backgroundColor[1], _backgroundColor[2], _backgroundColor[3]);
+    CGContextFillRect(context, drawRect);
+    // clear any shadow before drawing the image; clipping won't eliminate it
+    CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
+    drawRect = CGRectInset(drawRect, CGRectGetWidth(drawRect) / 20, CGRectGetHeight(drawRect) / 20);
+    CGContextClipToRect(context, drawRect);
+    CGContextDrawImage(context, drawRect, image);
+    CGContextRestoreGState(context);
+}
+
 - (void)drawInRect:(NSRect)dstRect ofContext:(CGContextRef)context;
 {
     BOOL didLock = ([self tryLock]);
     if (didLock && (NULL != _thumbnail || NULL != _fullImage)) {
-        
-        CGRect drawRect = [self _drawingRectWithRect:dstRect];
-            
+                    
         CGImageRef image;
         // always fall back on the thumbnail
         if (FVShouldDrawFullImageWithThumbnailSize(dstRect.size, _thumbnailSize) && _fullImage)
             image = _fullImage;
         else
             image = _thumbnail;
-        
-        // Apple's QL plugins for multiple page types (.pages, .plist, .xls etc) draw text right up to the margin of the icon, so we'll add a small whitespace margin.  The decoration option will do this for us, but it also draws with a dog-ear, and I don't want that because it's inconsistent with our other thumbnail classes.
-        CGContextSaveGState(context);
-        CGContextSetRGBFillColor(context, 1.0, 1.0, 1.0, 1.0);
-        CGContextFillRect(context, drawRect);
-        // clear the shadow; clipping won't quite eliminate it
-        CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
-        drawRect = CGRectInset(drawRect, CGRectGetWidth(drawRect) / 20, CGRectGetHeight(drawRect) / 20);
-        CGContextClipToRect(context, drawRect);
-        CGContextDrawImage(context, drawRect, image);
-        CGContextRestoreGState(context);
+
+        [self _drawBackgroundAndImage:image inRect:dstRect ofContext:context];
         
         if (_drawsLinkBadge)
             [self _badgeIconInRect:dstRect ofContext:context];
         
         [self unlock];
+    }
+    else if (NO == didLock && NULL != _thumbnail) {
+        // no lock for thumbnail; if it exists, it's never released
+        [self _drawBackgroundAndImage:_thumbnail inRect:dstRect ofContext:context];
+        if (_drawsLinkBadge)
+            [self _badgeIconInRect:dstRect ofContext:context];
     }
     else if (_quickLookFailed && nil != _fallbackIcon) {
         [_fallbackIcon drawInRect:dstRect ofContext:context];
