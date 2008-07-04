@@ -80,11 +80,26 @@ static NSInvocation *_movieInvocation = nil;
     
     // QTMovieResolveDataRefsAttribute = NO probably implies QTMovieAskUnresolvedDataRefsAttribute = NO ...
     [attributes setObject:[NSNumber numberWithBool:NO] forKey:QTMovieAskUnresolvedDataRefsAttribute];
+        
+    // failed atttempt to stop Flip4Mac from putting up a progress bar during loads
+    [attributes setObject:[NSNumber numberWithBool:YES] forKey:QTMovieDontInteractWithUserAttribute];
     
     QTMovie *movie = [[QTMovie alloc] initWithAttributes:attributes error:NULL];
     [attributes release];
     
-    NSData *data = [[[movie posterImage] TIFFRepresentation] copy];
+    // Is poster time something the movie producer sets?  Always zero on my tests, which is typically a black screen.  Quick Look uses some non-zero time, but it doesn't seem to be a fixed percentage.
+    QTTime movieTime = [[movie attributeForKey:QTMovieDurationAttribute] QTTimeValue];
+    NSValue *timeValue = [movie attributeForKey:QTMovieCurrentTimeAttribute];
+    if (nil == timeValue || QTTimeCompare(QTZeroTime, [timeValue QTTimeValue]) == NSOrderedSame)
+        timeValue = [movie attributeForKey:QTMoviePosterTimeAttribute];
+    
+    QTTime timeToGet = QTZeroTime;
+    if (timeValue && QTTimeCompare(QTZeroTime, [timeValue QTTimeValue]) == NSOrderedSame) {
+        // 4% or 10 seconds, whichever is smaller
+        NSTimeInterval frameTime = MIN((movieTime.timeValue / movieTime.timeScale) * 0.04, 10);
+        timeToGet = QTMakeTimeWithTimeInterval(frameTime);
+    }
+    NSData *data = [[[movie frameImageAtTime:timeToGet] TIFFRepresentation] copy];
     [movie release];    
     
     return data;
