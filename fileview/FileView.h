@@ -38,20 +38,30 @@
 
 #import <Cocoa/Cocoa.h>
 
+/** \file FileView.h */ 
+
 enum {
-    FVZoomInMenuItemTag      = 1001,
-    FVZoomOutMenuItemTag     = 1002,
-    FVQuickLookMenuItemTag   = 1003,
-    FVOpenMenuItemTag        = 1004,
+    FVZoomInMenuItemTag      = 1001, 
+    FVZoomOutMenuItemTag     = 1002, 
+    FVQuickLookMenuItemTag   = 1003, 
+    FVOpenMenuItemTag        = 1004, 
     FVRevealMenuItemTag      = 1005,
     FVChangeLabelMenuItemTag = 1006,
     FVDownloadMenuItemTag    = 1007,
     FVRemoveMenuItemTag      = 1008,
-    FVReloadMenuItemTag      = 1009
+    FVReloadMenuItemTag      = 1009 
 };
 
 @class FVSliderWindow;
 
+/**
+ FileView is the primary class in the framework.  
+ 
+ FileView is an NSView subclass that provides automatic layout of icons, and handles update queueing transparently.  The data source may be an NSArrayController (via the view's Content binding), or an object that implements the \link NSObject(FileViewDataSource) \endlink informal protocol.  If the view is to be a drag-and-drop destination, the datasource must implement the \link NSObject(FileViewDragDataSource) \endlink informal protocol.
+ 
+ @see \link NSObject(FileViewDataSource) \endlink
+ @see \link NSObject(FileViewDataSource) \endlink
+ */
 @interface FileView : NSView 
 {
 @protected
@@ -90,97 +100,274 @@ enum {
     BOOL                    _isObservingSelectionIndexes;
 }
 
-// this is the only way to get selection information at present
+/** Currently selected indexes.
+ 
+ This property is KVO-compliant and supports Cocoa bindings.  Indexes are numbered in ascending order order from left to right, top to bottom (row-major order).*/
 - (NSIndexSet *)selectionIndexes;
+
+/** Set current selection indexes.
+ 
+  This property is KVO-compliant and supports Cocoa bindings.  Indexes are numbered in ascending order order from left to right, top to bottom (row-major order).
+ 
+ @param indexSet Must not be nil.  Pass an empty NSIndexSet to clear selection.*/
 - (void)setSelectionIndexes:(NSIndexSet *)indexSet;
 
-// bind a slider or other control to this
+/** The current icon scale of the view.
+ 
+ This property has no physical analogue; it's proportional to internal constants which determine the cached sizes of icons.  Can be bound.*/
 - (double)iconScale;
+
+/** Set the current icon scale.
+ @param scale The new value of FileView::iconScale. */
 - (void)setIconScale:(double)scale;
+
+/** Maximum value of iconScale
+ 
+ Default value is 10.  Legitmate values are from 0.01 -- 100 in IB, but this is not enforced in the view (i.e. you can set anything programmatically).  Can be bound.*/
 - (double)maxIconScale;
+
+/** Set maximum value of iconScale
+ 
+ Legitmate values are from 0.01 -- 100 in IB, but this is not enforced in the view (i.e. you can set anything programmatically).  Can be bound.
+ @param scale The new value of FileView::maxIconScale. */
 - (void)setMaxIconScale:(double)scale;
+
+/** Minimum value of iconScale
+ 
+ Default value is 0.5.  Legitmate values are from 0.01 -- 100 in IB, but this is not enforced in the view (i.e. you can set anything programmatically).  Can be bound. */
 - (double)minIconScale;
+
+/** Set minimum value of iconScale
+
+ Legitmate values are from 0.01 -- 100 in IB, but this is not enforced in the view (i.e. you can set anything programmatically).  Can be bound.
+ @param scale The new value of FileView::minIconScale. */
 - (void)setMinIconScale:(double)scale;
 
+/** Current number of rows displayed.*/
 - (NSUInteger)numberOfRows;
+
+/** Current number of columns displayed.*/
 - (NSUInteger)numberOfColumns;
 
-// must be called if the URLs provided by a datasource change, either in number or content
+/** Invalidates all content and marks view for redisplay.
+ 
+ This must be called if the URLs provided by a datasource change, either in number or content, unless the Content binding is used.  May be fairly expensive if your datasource is slow, since it requests all values (unlike NSTableView).  Icon data such as bitmaps will be generated lazily as needed, however, and is also persistent for the life of the application.*/
 - (void)reloadIcons;
 
-// default is source list color
+/** Change the background color.
+ 
+ The default is NSOutlineView's source list color, or an approximation thereof on 10.4.  Can be bound.
+ @param aColor The new background color. */
 - (void)setBackgroundColor:(NSColor *)aColor;
+
+/** The current background color.
+ 
+ The default is NSOutlineView's source list color, or an approximation thereof on 10.4.  Can be bound. */
 - (NSColor *)backgroundColor;
 
-// actions that NSResponder doesn't declare
+/** Selects the previous icon in row-major order.*/
 - (IBAction)selectPreviousIcon:(id)sender;
+
+/** Selects the previous icon in row-major order.*/
 - (IBAction)selectNextIcon:(id)sender;
+
+/** Deletes the selected icon(s).
+ 
+ Requires implementation of the \link NSObject(FileViewDragDataSource) \endlink informal protocol.  If the view is editable, it sends  NSObject(FileViewDragDataSource)::fileView:deleteURLsAtIndexes: to the datasource object, which can then handle the action as needed.
+ 
+ @see \link NSObject(FileViewDragDataSource) \endlink
+ @see setEditable: */
 - (IBAction)delete:(id)sender;
 
-// invalidates existing cached data for icons and marks the view for redisplay
+/** Invalidates existing cached data.
+ 
+ Invalidates any cached bitmaps for the selected icons and marks the view for redisplay.*/
 - (void)reloadSelectedIcons:(id)sender;
 
-// sender must implement -tag to return a valid Finder label integer (0-7); non-file URLs are ignored
+/** Change Finder label color for selected icons.
+ 
+ Changes the Finder label color for the current selection.  Non-file: URLs and nonexistent files are ignored.
+ 
+ @param sender Must implement -tag to return a valid Finder label integer (0--7).  Typically an NSMenuItem.
+ */
 - (IBAction)changeFinderLabel:(id)sender;
+
+/** Opens the selected items using the default application.
+ 
+ Wraps -[NSWorkspace openURL:].*/
 - (IBAction)openSelectedURLs:(id)sender;
 
+/** Whether the view can be edited.
+ 
+ Can be bound.*/
 - (BOOL)isEditable;
+
+/** Change the view's editable property.
+ 
+ Default is NO for views created in code.  Can be bound.
+ 
+ @param flag If set to YES, requires the datasource to implement the \link NSObject(FileViewDragDataSource) \endlink informal protocol.  If set to NO, drop/paste/delete actions will be ignored, even if the protocol is implemented.  */
 - (void)setEditable:(BOOL)flag;
 
-// required for drag-and-drop support
+/** Receiver forFileViewDataSource and \link NSObject(FileViewDragDataSource) \endlink messages.
+ 
+ A non-nil datasource is required for drag-and-drop support.
+ 
+ @param obj Nonretained, and may be set to nil.
+ @see \link NSObject(FileViewDataSource) \endlink
+ @see \link NSObject(FileViewDragDataSource) \endlink */
 - (void)setDataSource:(id)obj;
+
+/** Current datasource or nil.*/
 - (id)dataSource;
 
+/** Set a delegate for the view.
+ 
+ The delegate may implement any or all of the methods in the \link NSObject(FileViewDelegate) \endlink informal protocol.
+ 
+ @param obj The object to set as delegate.  Not retained.*/
 - (void)setDelegate:(id)obj;
+
+/** Returns the current delegate or nil.*/
 - (id)delegate;
 
 @end
 
+/** Single-column view
+ 
+ FVColumnView is a direct subclass of FileView, and displays icons in a single column whose width varies according to the containing view.
+ 
+ */
 @interface FVColumnView : FileView
 @end
 
 
-// Datasource must conform to this protocol.  Results are cached internally on each call to -reloadIcons, so datasource methods don't need to be incredibly efficient (and as a consequence, you should avoid gratuitous calls to -reloadIcons).
+/** Informal protocol for datasources.
+ 
+ An object passed to FileView::setDataSource: must implement all required methods.  Results are cached internally on each call to FileView::reloadIcons, so datasource methods don't need to be incredibly efficient (so long as you avoid gratuitous calls to FileView::reloadIcons).  However, the view's internal cache requests all values when FileView::reloadIcons is called, not just visible rows/columns.  
+ */
 @interface NSObject (FileViewDataSource)
 
-// Required.
+/** Required.
+ 
+ Return the current number of icons provided by your datasource.
+ 
+ @param aFileView The view requesting information
+ */
 - (NSUInteger)numberOfIconsInFileView:(FileView *)aFileView;
-// Required.  The delegate must return an NSURL for each index < numberOfFiles.  NSNull or nil can be returned to represent a missing file.
+
+/** Required.
+ 
+ The datasource must return an NSURL for each index < numberOfFiles.
+ 
+ @param aFileView The view requesting information
+ @param anIndex The requested index (row-major ordered)
+ @return An NSURL instance or nil/NSNull for a missing file.
+ */
 - (NSURL *)fileView:(FileView *)aFileView URLAtIndex:(NSUInteger)anIndex;
 
-// Optional.  String displayed below the URL name.
+/** Optional.  
+ 
+ String displayed below the URL name.  If you're using bindings and need a subtitle, you need to implement this method (and add dummy implementations of the required methods).  Either way, values are cached.
+ 
+ @param aFileView The view requesting information
+ @param anIndex The requested index (row-major ordered)
+ @return NSString instance
+ */
 - (NSString *)fileView:(FileView *)aFileView subtitleAtIndex:(NSUInteger)anIndex;
 
 @end
 
-// datasource must implement all of these methods or dropping/rearranging will be disabled
+/** Informal protocol for datasources.
+ 
+ Datasource must implement all of these methods or dropping/rearranging will be disabled.  
+ */
 @interface NSObject (FileViewDragDataSource)
 
-// implement to do something (or nothing) with the dropped URLs
+/** Implement to do something (or nothing) with the dropped URLs
+ */
 - (void)fileView:(FileView *)aFileView insertURLs:(NSArray *)absoluteURLs atIndexes:(NSIndexSet *)aSet;
 
-// the datasource may replace the files at the given indexes
+/** The datasource may replace the files at the given indexes
+ @return YES if the replacement occurred.
+ */
 - (BOOL)fileView:(FileView *)aFileView replaceURLsAtIndexes:(NSIndexSet *)aSet withURLs:(NSArray *)newURLs;
 
-// rearranging files in the view
+/** Rearranging files in the view
+ @return YES if the rearrangement occurred.
+ */
 - (BOOL)fileView:(FileView *)aFileView moveURLsAtIndexes:(NSIndexSet *)aSet toIndex:(NSUInteger)anIndex;
 
-// does not delete the file from disk; this is the datasource's responsibility
+/** Does not delete the file from disk; this is the datasource's responsibility
+ @return YES if the deletion occurred.
+ */
 - (BOOL)fileView:(FileView *)aFileView deleteURLsAtIndexes:(NSIndexSet *)indexSet;
 
 @end
 
+/** Informal protocol for delegates.
+ 
+ The delegate object may implement any or all of these methods to modify the the view's default behavior.  In addition, the delegate can be sent the WebUIDelegate method webView:contextMenuItemsForElement:defaultMenuItems: if implemented.
+ */
 @interface NSObject (FileViewDelegate)
 
-// Called immediately before display; the delegate can safely modify the menu, as a new copy is presented each time.   The anIndex parameter will be NSNotFound if there is not a URL at the mouse event location.  If you remove all items, the menu will not be shown.
+/** Allows modification of the contextual menu.
+ 
+ Called immediately before display; the delegate can safely modify the menu, as a new copy is presented each time.   The anIndex parameter will be NSNotFound if there is not a URL at the mouse event location.  If you remove all items, the menu will not be shown.
+ 
+ @param aFileView The requesting view
+ @param aMenu The menu that will be displayed
+ @param anIndex The index of the selected item
+ */
 - (void)fileView:(FileView *)aFileView willPopUpMenu:(NSMenu *)aMenu onIconAtIndex:(NSUInteger)anIndex;
 
-// In addition, the delegate can be sent the WebUIDelegate method webView:contextMenuItemsForElement:defaultMenuItems: if implemented
-
-// If unimplemented or returns YES, fileview will open the URL using NSWorkspace
+/** Allows ignoring the default open handler.
+ 
+ If unimplemented or returns YES, fileview will open the URL using NSWorkspace.  You can return NO to open the URL yourself, for instance if you override the user's default application for a file type.
+ 
+ @param aFileView The requesting view
+ @param aURL The URL to open
+ @return YES to allow FileView to open the URL
+ */
 - (BOOL)fileView:(FileView *)aFileView shouldOpenURL:(NSURL *)aURL;
 
-// If unimplemented or returns nil, fileview will use a system temporary directory.  Used with FVDownloadMenuItemTag menu item.
+/** For download and replace of selection.
+ 
+ If unimplemented or returns nil, FileView will use a system temporary directory.  If a file currently exists at the returned URL, it may be overwritten.  Used with FileView::FVDownloadMenuItemTag context menu item.
+ 
+ @param aFileView The requesting view
+ @param filename The suggested filename, which may be incorporated into the returned URL
+ @return The URL to write the download data to, or nil to use a temporary file.
+ */
 - (NSURL *)fileView:(FileView *)aFileView downloadDestinationWithSuggestedFilename:(NSString *)filename;
 
 @end
+
+/** \var FVZoomInMenuItemTag 
+ Zoom in by \f$\sqrt 2\f$
+ */
+/** \var FVZoomOutMenuItemTag 
+ Zoom out by \f$\sqrt 2\f$
+ */
+/** \var FVQuickLookMenuItemTag 
+ Quick Look 
+ */
+/** \var FVOpenMenuItemTag 
+ Open in Finder 
+ */
+/** \var FVRevealMenuItemTag 
+ Reveal in Finder 
+ */
+/** \var FVChangeLabelMenuItemTag 
+ Change Finder label (color) 
+ */
+/** \var FVDownloadMenuItemTag 
+ Download and replace 
+ */
+/** \var FVRemoveMenuItemTag 
+ Delete from view 
+ */
+/** \var FVReloadMenuItemTag 
+ Recache the selected icon(s) 
+ */
+
