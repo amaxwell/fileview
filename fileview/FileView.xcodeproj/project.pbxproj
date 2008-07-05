@@ -313,6 +313,7 @@
 		F9C664270E04205100ED3EC1 /* FVCoreTextIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVCoreTextIcon.m; sourceTree = "<group>"; };
 		F9CADB8C0D6203C700B1EADE /* FVMIMEIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVMIMEIcon.h; sourceTree = "<group>"; };
 		F9CADB8D0D6203C700B1EADE /* FVMIMEIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVMIMEIcon.m; sourceTree = "<group>"; };
+		F9D514BD0E20357B005E4C58 /* doxygen.config */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = doxygen.config; sourceTree = "<group>"; };
 		F9D5A9390D8C9AE80005C75C /* FVImageBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVImageBuffer.h; sourceTree = "<group>"; };
 		F9D5A93A0D8C9AE80005C75C /* FVImageBuffer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVImageBuffer.m; sourceTree = "<group>"; };
 		F9E469360CFF6D12003E6C0A /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/FileView.strings; sourceTree = "<group>"; };
@@ -522,6 +523,7 @@
 		F99C0AB00E1F27D8003255C7 /* Configurations */ = {
 			isa = PBXGroup;
 			children = (
+				F9D514BD0E20357B005E4C58 /* doxygen.config */,
 				F9B143260E1C069000BA315D /* Debug.xcconfig */,
 				F9B143290E1C06CE00BA315D /* Release.xcconfig */,
 			);
