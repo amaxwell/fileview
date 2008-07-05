@@ -398,8 +398,6 @@
 			children = (
 				F9F22DE80CDAD53300A9D449 /* License */,
 				F9F22E180CDAD9B900A9D449 /* Notes */,
-				F9B143260E1C069000BA315D /* Debug.xcconfig */,
-				F9B143290E1C06CE00BA315D /* Release.xcconfig */,
 				08FB77AEFE84172EC02AAC07 /* Classes */,
 				32C88DFF0371C24200C91783 /* Other Sources */,
 				089C1665FE841158C02AAC07 /* Resources */,
@@ -407,6 +405,7 @@
 				034768DFFF38A50411DB9C8B /* Products */,
 				F946927B0CA5777300AC2772 /* FileView Program */,
 				F9F2562F0E14A6710059A21A /* IBPlugin */,
+				F99C0AB00E1F27D8003255C7 /* Configurations */,
 				F94692140CA56F4300AC2772 /* FileView-Leopard-Info.plist */,
 			);
 			name = FileView;
@@ -518,6 +517,15 @@
 				F94692820CA5777300AC2772 /* FileView Program-Info.plist */,
 			);
 			path = "FileView Program";
+			sourceTree = "<group>";
+		};
+		F99C0AB00E1F27D8003255C7 /* Configurations */ = {
+			isa = PBXGroup;
+			children = (
+				F9B143260E1C069000BA315D /* Debug.xcconfig */,
+				F9B143290E1C06CE00BA315D /* Release.xcconfig */,
+			);
+			name = Configurations;
 			sourceTree = "<group>";
 		};
 		F9B1527D0D5ED8FE00F6E755 /* Icons */ = {
@@ -709,6 +717,7 @@
 				8DC2EF520486A6940098B216 /* Resources */,
 				8DC2EF540486A6940098B216 /* Sources */,
 				8DC2EF560486A6940098B216 /* Frameworks */,
+				F99C0ABF0E1FE4B6003255C7 /* ShellScript */,
 			);
 			buildRules = (
 			);
@@ -853,6 +862,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "/usr/bin/install_name_tool -change \\\n'@loader_path/../../../../../../../FileView.framework/Versions/A/FileView' \\\n'@executable_path/../Frameworks/FileView.framework/Versions/A/FileView'   \\\n\"${BUILT_PRODUCTS_DIR}/${EXECUTABLE_PATH}\"";
+		};
+		F99C0ABF0E1FE4B6003255C7 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "#  Build the doxygen documentation for the project and load the docset into Xcode.\n\n#  Use the following to adjust the value of the $DOXYGEN_PATH User-Defined Setting:\n#    Binary install location: /Applications/Doxygen.app/Contents/Resources/doxygen\n#    Source build install location: /usr/local/bin/doxygen\n\nDOXYGEN_PATH=/Applications/Doxygen.app/Contents/Resources/doxygen\nif [ ! -x ${DOXYGEN_PATH} ]; then\n\techo \"warning: Doxygen not found at ${DOXYGEN_PATH}\" >&2\n\texit 0\nfi\n\nif [ -d \"/usr/texbin\" ]; then\n\texport PATH=$PATH:/usr/texbin:/usr/local/bin\nelse\n\techo \"warning: TeX processing disabled\" >&2\nfi\n\n#  If the config file doesn't exist, run 'doxygen -g $SOURCE_ROOT/doxygen.config' to \n#   a get default file.\n\nif ! [ -f $SOURCE_ROOT/doxygen.config ] \nthen \n  echo doxygen config file does not exist\n  $DOXYGEN_PATH -g $SOURCE_ROOT/doxygen.config\nfi\n\n#  Append the proper input/output directories and docset info to the config file.\n#  This works even though values are assigned higher up in the file. Easier than sed.\n\ncp $SOURCE_ROOT/doxygen.config $TEMP_DIR/doxygen.config\n\necho \"INPUT = $SOURCE_ROOT\" >> $TEMP_DIR/doxygen.config\necho \"OUTPUT_DIRECTORY = $SOURCE_ROOT/com.mac.amaxwell.fileview.docset\" >> $TEMP_DIR/doxygen.config\necho \"GENERATE_DOCSET        = YES\" >> $TEMP_DIR/doxygen.config\necho \"DOCSET_BUNDLE_ID       = com.mac.amaxwell.fileview\" >> $TEMP_DIR/doxygen.config\n\n#  Run doxygen on the updated config file.\n#  Note: doxygen creates a Makefile that does most of the heavy lifting.\n\n$DOXYGEN_PATH $TEMP_DIR/doxygen.config\n\n#  make will invoke docsetutil. Take a look at the Makefile to see how this is done.\n\nmake -C $SOURCE_ROOT/com.mac.amaxwell.fileview.docset/html install\n\n#  Construct a temporary applescript file to tell Xcode to load a docset.\n\nrm -f $TEMP_DIR/loadDocSet.scpt\n\necho \"tell application \\\"Xcode\\\"\" >> $TEMP_DIR/loadDocSet.scpt\necho \"load documentation set with path \\\"${USER_LIBRARY_DIR}/Developer/Shared/Documentation/DocSets/\\\"\" \n     >> $TEMP_DIR/loadDocSet.scpt\necho \"end tell\" >> $TEMP_DIR/loadDocSet.scpt\n\n#  Run the load-docset applescript command.\n\nosascript $TEMP_DIR/loadDocSet.scpt\n\nexit 0";
 		};
 		F9E469000CFF69CD003E6C0A /* ShellScript */ = {
 			isa = PBXShellScriptBuildPhase;
