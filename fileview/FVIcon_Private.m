@@ -214,6 +214,11 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
 
 #pragma mark Image sizing
 
+bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize)
+{
+    return (desiredSize.height > 1.2 * thumbnailSize.height || desiredSize.width > 1.2 * thumbnailSize.width);
+}
+
 // these are compromises based on memory constraints and readability at high magnification
 const size_t FVMaxThumbnailDimension = 200;
 const size_t FVMaxImageDimension     = 512;
