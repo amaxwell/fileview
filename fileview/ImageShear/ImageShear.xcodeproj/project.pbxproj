@@ -13,6 +13,8 @@
 		F9105FD50D8DE6D200AC32D1 /* FVImageBuffer.m in Sources */ = {isa = PBXBuildFile; fileRef = F9105FD40D8DE6D200AC32D1 /* FVImageBuffer.m */; };
 		F92AB6380DCCE6B100F82452 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = F92AB6360DCCE6B100F82452 /* MainMenu.xib */; };
 		F92ABB690DCE2D3100F82452 /* FVImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F92ABB680DCE2D3100F82452 /* FVImageView.m */; };
+		F99C0A950E1EC5E4003255C7 /* Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F99C0A930E1EC5E4003255C7 /* Debug.xcconfig */; };
+		F99C0A960E1EC5E4003255C7 /* Release.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F99C0A940E1EC5E4003255C7 /* Release.xcconfig */; };
 		F9A812AC0D862CBB000114B0 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9A812AB0D862CBB000114B0 /* Accelerate.framework */; };
 		F9A812B60D862CD1000114B0 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F9A812B50D862CD1000114B0 /* FVCGImageUtilities.mm */; };
 		F9A812B90D862CE6000114B0 /* Controller.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812B80D862CE6000114B0 /* Controller.m */; };
@@ -36,6 +38,8 @@
 		F92AB6370DCCE6B100F82452 /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		F92ABB670DCE2D3100F82452 /* FVImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVImageView.h; sourceTree = "<group>"; };
 		F92ABB680DCE2D3100F82452 /* FVImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVImageView.m; sourceTree = "<group>"; };
+		F99C0A930E1EC5E4003255C7 /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = ../Configurations/Debug.xcconfig; sourceTree = "<group>"; };
+		F99C0A940E1EC5E4003255C7 /* Release.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = ../Configurations/Release.xcconfig; sourceTree = "<group>"; };
 		F9A812AB0D862CBB000114B0 /* Accelerate.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Accelerate.framework; path = /System/Library/Frameworks/Accelerate.framework; sourceTree = "<absolute>"; };
 		F9A812B40D862CD1000114B0 /* FVCGImageUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVCGImageUtilities.h; path = ../FVCGImageUtilities.h; sourceTree = "<group>"; };
 		F9A812B50D862CD1000114B0 /* FVCGImageUtilities.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = FVCGImageUtilities.mm; path = ../FVCGImageUtilities.mm; sourceTree = "<group>"; };
@@ -103,6 +107,8 @@
 		29B97314FDCFA39411CA2CEA /* ImageShear */ = {
 			isa = PBXGroup;
 			children = (
+				F99C0A930E1EC5E4003255C7 /* Debug.xcconfig */,
+				F99C0A940E1EC5E4003255C7 /* Release.xcconfig */,
 				080E96DDFE201D6D7F000001 /* Classes */,
 				29B97315FDCFA39411CA2CEA /* Other Sources */,
 				29B97317FDCFA39411CA2CEA /* Resources */,
@@ -202,6 +208,8 @@
 			files = (
 				8D11072B0486CEB800E47090 /* InfoPlist.strings in Resources */,
 				F92AB6380DCCE6B100F82452 /* MainMenu.xib in Resources */,
+				F99C0A950E1EC5E4003255C7 /* Debug.xcconfig in Resources */,
+				F99C0A960E1EC5E4003255C7 /* Release.xcconfig in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -280,25 +288,19 @@
 		};
 		C01FCF4F08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F99C0A930E1EC5E4003255C7 /* Debug.xcconfig */;
 			buildSettings = {
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
+				GCC_PREFIX_HEADER = "${SOURCE_ROOT}/../FileView_Prefix.pch";
 				PREBINDING = NO;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.5.sdk";
 			};
 			name = Debug;
 		};
 		C01FCF5008A954540054247B /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F99C0A940E1EC5E4003255C7 /* Release.xcconfig */;
 			buildSettings = {
-				ARCHS = (
-					ppc,
-					i386,
-				);
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
+				GCC_PREFIX_HEADER = "${SOURCE_ROOT}/../FileView_Prefix.pch";
 				PREBINDING = NO;
-				SDKROOT = "$(DEVELOPER_SDK_DIR)/MacOSX10.5.sdk";
 			};
 			name = Release;
 		};
