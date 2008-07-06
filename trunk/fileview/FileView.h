@@ -114,7 +114,7 @@ enum {
 
 /** The current icon scale of the view.
  
- This property has no physical analogue; it's proportional to internal constants which determine the cached sizes of icons.  Can be bound.*/
+ This property has no physical meaning; it's proportional to internal constants which determine the cached sizes of icons.  Can be bound.*/
 - (double)iconScale;
 
 /** Set the current icon scale.
