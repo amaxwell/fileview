@@ -40,31 +40,54 @@
 
 @class FVOperation;
 
-// Can use this to run main queue operations in a blocking mode.
+/** @file FVOperationQueue.h */ 
+
+/** \var FVMainQueueRunLoopMode 
+ Can use this to run main queue operations in a blocking mode. */
 FV_PRIVATE_EXTERN NSString * const FVMainQueueRunLoopMode;
 
+/** Abstract operation queue.
+ 
+ This class declares the interface for an operation queue with similar semantics to NSOperationQueue.  Initializers return an instance of a concrete subclass, never of an FVOperationQueue itself.  FVOperationQueue is thread safe, and instances may be shared between threads with no additional locking, although the client is responsible for keeping a valid reference. */
 @interface FVOperationQueue : NSObject
 
-// Queue that executes -start on the main thread.  Adding operations to this queue is roughly equivalent to using +[NSObject cancelPreviousPerformRequestsWithTarget:selector:object:]/-[NSObject performSelector:withObject:afterDelay:inModes:] with kCFRunLoopCommonModes, but you can add operations from any thread.
+/** Main thread queue.
+ 
+ A shared instance of FVOperationQueue that executes FVOperation::start on the main thread.  Adding operations to this queue is roughly equivalent to using +[NSObject cancelPreviousPerformRequestsWithTarget:selector:object:]/-[NSObject performSelector:withObject:afterDelay:inModes:] with a zero delay and kCFRunLoopCommonModes, but you can add operations from any thread. */
 + (FVOperationQueue *)mainQueue;
 
-// Designated initializer.  Returns a queue set up with default parameters.  Call -terminate before releasing the last reference to the queue or else it will leak.
+/** Designated initializer.  
+ 
+ Returns a queue set up with default parameters.  Call FVOperationQueue::terminate before releasing the last reference to the queue or else it will leak. */
 - (id)init;
 
-// Operations are coalesced using -[FVOperation isEqual:].  If you want different behavior, override -hash and isEqual: in a subclass of FVOperation.
+/** Add operations to the queue.
+ 
+ Operations are coalesced using FVOperation::isEqual.  If you want different behavior, override FVOperation::hash and FVOperation::isEqual: in a subclass.
+ @param operations Array of FVOperation objects; order is ignored. */
 - (void)addOperations:(NSArray *)operations;
+
+/** Add a single operation to the queue 
+ 
+ Operations are coalesced using FVOperation::isEqual.  If you want different behavior, override FVOperation::hash and FVOperation::isEqual: in a subclass. 
+ @param operation An instance of an FVOperation subclass. */
 - (void)addOperation:(FVOperation *)operation;
 
-// Stops any pending or active operations.
+/** Stops any pending or active operations. */
 - (void)cancel;
 
-// The queue will be invalid after this call.
+/** The queue will be invalid after this call. */
 - (void)terminate;
 
-// Sent after each operation's -main method completes.
+/** Sent after each FVOperation::main completes. 
+ 
+ You will typically never call this directly unless you override FVOperation::finished. */
 - (void)finishedOperation:(FVOperation *)anOperation;
 
-// Sets the worker thread's priority using +[NSThread setThreadPriority:].  Mainly useful for a queue that will be running non-concurrent operations.
+/** Set the worker thread's priority.
+ 
+ Calls +[NSThread setThreadPriority:].  Mainly useful for a queue that will be running non-concurrent operations.
+ @param p Value between 0.0 and 1.0, where 1.0 is highest priority. */
 - (void)setThreadPriority:(double)p;
 
 @end
