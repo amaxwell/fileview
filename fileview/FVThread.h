@@ -40,7 +40,7 @@
 
 /** Framework private.
  
- Provides thread pooling.  Profiling with Shark indicated that a fair amount of time was wasted in pthread setup and teardown.  This is a significant hit when working with FVOperation:: subclasses that return YES for FVOperation::isConcurrent, since they create an ephemeral thread for icon rendering. 
+ Provides thread pooling.  Profiling with Shark indicated that a fair amount of time was wasted in pthread setup and teardown.  This is a significant hit when working with FVOperation subclasses that return YES for FVOperation::isConcurrent, since they create an ephemeral thread for icon rendering. 
  
  This class provides no benefit for threads that are long-lived, so you're better off using NSThread in that case.  If it's disturbing to see lots of threads blocking (or if you want a larger pool), use the FVThreadPoolCapacity user default to change the maximum number of threads available in the pool.  Currently the default is 14, but don't rely on that.  */
 @interface FVThread : NSObject
