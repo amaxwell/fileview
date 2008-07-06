@@ -38,19 +38,42 @@
 
 #import <Cocoa/Cocoa.h>
 
+/** Finder icon label interface.
+ 
+ Finder labels are stored as integers in the filesystem, and are restricted to values 0--7.  Each integer corresponds to a color and name, which can be set in Finder's preferences.  Pass a value of 0 to clear the label.
+ 
+ @warning Drawing methods should be considered private to the framework.  Methods for getting and setting name and label may be useful to clients, and should be relatively stable. */
 @interface FVFinderLabel : NSObject
 
+/** Framework private */
 + (void)drawFinderLabel:(NSUInteger)label inRect:(CGRect)rect ofContext:(CGContextRef)context flipped:(BOOL)isFlipped roundEnds:(BOOL)flag;
 
-// draws in the currently focused graphics context
+/** Framework private.
+ 
+ Draws in the currently focused graphics context. */
 + (void)drawFinderLabel:(NSUInteger)label inRect:(NSRect)rect roundEnds:(BOOL)flag;
 
+/** Localized Finder label name.
+ 
+ Returns the default label names, or attempts to read the hidden default com.apple.Labels if it exists. 
+ @param label A value from 0--7. 
+ @return the localized value of the label name. */
 + (NSString *)localizedNameForLabel:(NSInteger)label;
 
+/** Label index for a given URL.
+ 
+ @warning This should not resolve aliases, but presently resolves the last path component
+ 
+ @param aURL An absolute URL.  Non-file: URLs are ignored.
+ @return Integer value from 0--7. */
 + (NSUInteger)finderLabelForURL:(NSURL *)aURL;
 
-// valid range is 0--7 (pass 0 to clear the label)
-// non-file: URL and non-existent files are silently ignored
+/* Change the label for a given URL
+ 
+ This method raises an exception if an invalid label index is passed.
+ 
+ @param label The valid range is 0--7 (pass 0 to clear the label).  
+ @param aURL Non-file: URL and non-existent files are silently ignored. */
 + (void)setFinderLabel:(NSUInteger)label forURL:(NSURL *)aURL;
 
 @end

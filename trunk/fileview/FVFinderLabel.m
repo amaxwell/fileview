@@ -405,6 +405,7 @@ static void ClipContextToCircleCappedPathInRect(CGContextRef context, CGRect rec
     FSRef fileRef;
     NSUInteger label = 0;
     
+    // TODO: don't resolve aliases
     if ([aURL isFileURL] && CFURLGetFSRef((CFURLRef)aURL, &fileRef)) {
         
         FSCatalogInfo catalogInfo;    
