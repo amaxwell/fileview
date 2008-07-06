@@ -49,34 +49,62 @@
 #import "FVCGImageUtilities.h"
 #import "FVUtilities.h"
 
+/** @file FVIcon_Private.h */
+
+/** @internal 
+ 
+ @brief For FVIcon subclass usage only.
+ 
+ Most icon subclasses use these methods, but should not invoke locking methods or methods with a leading underscore on each other.
+ */
 @interface FVIcon (Private) <NSLocking>
 
-// called from +initialize
+/** @internal Called from FVIcon::initialize */
 + (void)_initializeCategory;
 
-// Call for classes that should avoid multiple render requests for the same icon; useful for multiple views, since the operation queue only ensures uniqueness of rendering requests per-view.  Requires synchronous caching to be effective, and must be called as [[self class] _startRenderingForKey:aKey] rather than [FVIcon _startRenderingForKey:aKey] in order to achieve proper granularity.  Each start must be matched by a stop, or bad things will happen.
+/** @internal
+ 
+ \warning Subclasses should never have a need to override this method.
+ 
+ Call FVIcon::_startRenderingForKey: for classes that should avoid multiple render requests for the same icon; useful for multiple views, since the operation queue only ensures uniqueness of rendering requests per-view.  Requires synchronous caching to be effective, and must be called as \code [[self class] _startRenderingForKey:aKey] \endcode rather than \code [FVIcon _startRenderingForKey:aKey] \endcode in order to achieve proper granularity.  Each FVIcon::_startRenderingForKey: must be matched by a FVIcon::_stopRenderingForKey:, or bad things will happen. */
 + (void)_startRenderingForKey:(id)aKey;
+/** @internal Call when bitmap caching to disk is complete */
 + (void)_stopRenderingForKey:(id)aKey;
 
-// returns YES if the file at aURL needs a badge, and always returns a copy of the correct target URL by reference (which makes it a simple initializer for most subclasses, which retain the URL anyway)
+/** @internal Determine if the file needs a badge.
+ Always returns a copy of the correct target URL by reference (which makes it a simple ivar initializer for most subclasses, which copy the URL anyway).
+ @param aURL The original URL as passed to FVIcon::iconWithURL: (which may be an alias or symlink).
+ @param linkTarget The URL that will be rendered (aliases/links will be fully resolved).
+ @return YES if the file at aURL needs a badge. */
 + (BOOL)_shouldDrawBadgeForURL:(NSURL *)aURL copyTargetURL:(NSURL **)linkTarget;
 
-// override in subclasses; do not call -[super initWithURL:] ([super init] is superclass initializer)
+/** @internal override in subclasses
+ For FVIcon::iconWithURL: usage.  Do not call -[super initWithURL:] ([super init] is superclass initializer).
+ @param aURL Any NSURL instance. */
 - (id)initWithURL:(NSURL *)aURL;
 
-// size should only be used for computing an aspect ratio; don't rely on it as a pixel size
+/** @internal
+ @return FVIcon::size should only be used for computing an aspect ratio; don't rely on it as a pixel size. */
 - (NSSize)size;
 
 - (CGRect)_drawingRectWithRect:(NSRect)iconRect;
 - (void)_drawPlaceholderInRect:(NSRect)dstRect ofContext:(CGContextRef)context;
 - (void)_badgeIconInRect:(NSRect)dstRect ofContext:(CGContextRef)context;
 
-// add to NSLocking; NSLocking is private to FVIcon instances themselves
+/** @internal Addition to NSLocking
+ Again, note that NSLocking is private to FVIcon instances themselves.  This call does not block.
+ @return YES if the lock was acquired. */
 - (BOOL)tryLock;
 
 @end
 
-// Desired size: should be the same size passed to -[FVIcon needsRenderForSize:] and -[FVIcon _drawingRectWithRect:], not the return value of _drawingRectWithRect:.  Thumbnail size: current size of the instance's thumbnail image, if it has one (and if not, it shouldn't be calling this).
+/** \fn static inline bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize)
+ 
+ @internal @brief Determine which image size should be drawn.
+ 
+ @param desiredSize Should be the same size passed to FVIcon::needsRenderForSize: and FVIcon::_drawingRectWithRect:, not the return value of FVIcon::_drawingRectWithRect:.  
+ @param thumbnailSize Current size of the instance's thumbnail image, if it has one (and if not, it shouldn't be calling this).
+ @return true if the full (largest) image representation should be drawn. */
 static inline bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize)
 {
     return (desiredSize.height > 1.2 * thumbnailSize.height || desiredSize.width > 1.2 * thumbnailSize.width);
