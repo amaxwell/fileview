@@ -39,19 +39,16 @@
 #import <Cocoa/Cocoa.h>
 #import "FVOperation.h"
 
+/** Semi-concrete implementation of FVOperation.
+ 
+ FVConcreteOperation provides storage for ivars and a default implementation of all required FVOperation methods except FVOperation::main, so it's a good starting point for subclasses.  FVConcreteOperation is thread safe.  
+ 
+ @warning  The NSThread detached in a concurrent operation retains the operation as well as the queue, so the operation could hypothetically outlive the queue.  Hence the operation retains all ivars in order to avoid messaging a garbage pointer, so you have to cancel or wait until the operation completes in order for the queue itself to be deallocated.  The queue itself handles this in FVOperationQueue::terminate. */
 @interface FVConcreteOperation : FVOperation
 {
 @private;
     id                _queue;
     struct FVOpFlags *_flags;
 }
-
-/* 
- 
- FVConcreteOperation provides a default implementation of everything except -main, so it's a good starting point for subclasses.
-
- FVConcreteOperation is thread safe, as all ivars are immutable and only set at init time.  Since the NSThread retains the operation as well as the queue, the operation may outlive the queue.  Hence the operation retains all ivars in order to avoid messaging a garbage pointer, so you have to cancel or wait until the operation completes in order for the queue itself to be deallocated.
- 
- */
 
 @end
