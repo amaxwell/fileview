@@ -68,6 +68,7 @@
  
  Call FVIcon::_startRenderingForKey: for classes that should avoid multiple render requests for the same icon; useful for multiple views, since the operation queue only ensures uniqueness of rendering requests per-view.  Requires synchronous caching to be effective, and must be called as \code [[self class] _startRenderingForKey:aKey] \endcode rather than \code [FVIcon _startRenderingForKey:aKey] \endcode in order to achieve proper granularity.  Each FVIcon::_startRenderingForKey: must be matched by a FVIcon::_stopRenderingForKey:, or bad things will happen. */
 + (void)_startRenderingForKey:(id)aKey;
+
 /** @internal Call when bitmap caching to disk is complete */
 + (void)_stopRenderingForKey:(id)aKey;
 
@@ -98,9 +99,7 @@
 
 @end
 
-/** \fn static inline bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize)
- 
- @internal @brief Determine which image size should be drawn.
+/** @internal @brief Determine which image size should be drawn.
  
  @param desiredSize Should be the same size passed to FVIcon::needsRenderForSize: and FVIcon::_drawingRectWithRect:, not the return value of FVIcon::_drawingRectWithRect:.  
  @param thumbnailSize Current size of the instance's thumbnail image, if it has one (and if not, it shouldn't be calling this).
@@ -111,15 +110,37 @@ static inline bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSi
 }
 
 // best not to use these at all, but FVMaxThumbnailDimension is exported for the QL icon bundle
+
+/** @var FVMaxThumbnailDimension
+ Maximum dimension of a thumbnail image. */
 extern const size_t FVMaxThumbnailDimension;
+
+/** @var FVMaxImageDimension
+ Maximum dimension of a full image. */
 FV_PRIVATE_EXTERN const size_t FVMaxImageDimension;
 
+/** @var FVDefaultPaperSize
+ Nominal paper size to avoid using NSPrintInfo. */
 FV_PRIVATE_EXTERN const NSSize FVDefaultPaperSize;
+
+/** @var FVTopMargin
+ Nominal top margin to avoid using NSPrintInfo. */
 FV_PRIVATE_EXTERN const CGFloat FVTopMargin;
+
+/** @var FVSideMargin
+ Nominal side margin to avoid using NSPrintInfo. */
 FV_PRIVATE_EXTERN const CGFloat FVSideMargin;
 
-// Returns true if the size pointer was modified; these are used by the resampling functions below.
+/** @internal 
+ Determine if a full image needs to be resampled.  Used by the resampling functions below.
+ @param size On input, current image size.  On return, the required size.
+ @return true if size pointer was modified. */
 FV_PRIVATE_EXTERN bool FVIconLimitFullImageSize(NSSize *size);
+
+/** @internal 
+ Determine if a thumbnail image needs to be resampled.  Used by the resampling functions below.
+ @param size On input, current image size.  On return, the required size.
+ @return true if size pointer was modified. */
 FV_PRIVATE_EXTERN bool FVIconLimitThumbnailSize(NSSize *size);
 
 // Create images using the predefined sizes for FVIcon.  Both functions will simply retain the argument and return it if possible.
