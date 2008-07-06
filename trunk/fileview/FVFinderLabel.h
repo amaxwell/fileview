@@ -42,15 +42,13 @@
  
  Finder labels are stored as integers in the filesystem, and are restricted to values 0--7.  Each integer corresponds to a color and name, which can be set in Finder's preferences.  Pass a value of 0 to clear the label.
  
- @warning Drawing methods should be considered private to the framework.  Methods for getting and setting name and label may be useful to clients, and should be relatively stable. */
+ @warning Drawing methods are private to the framework.  Methods for getting and setting name and label may be useful to clients, and should be relatively stable. */
 @interface FVFinderLabel : NSObject
 
-/** Framework private */
+/** @internal Draws a Finder label gradient in the specified context. */
 + (void)drawFinderLabel:(NSUInteger)label inRect:(CGRect)rect ofContext:(CGContextRef)context flipped:(BOOL)isFlipped roundEnds:(BOOL)flag;
 
-/** Framework private.
- 
- Draws in the currently focused graphics context. */
+/** @internal Draws a Finder label gradient in the currently focused graphics context. */
 + (void)drawFinderLabel:(NSUInteger)label inRect:(NSRect)rect roundEnds:(BOOL)flag;
 
 /** Localized Finder label name.

@@ -77,7 +77,9 @@
  @return NO if the icon already has a cached version for this size. */
 - (BOOL)needsRenderForSize:(NSSize)size;
 
-/** Draws the icon into an offscreen bitmap context.
+/** Primitive method.
+ 
+ Draws the icon into an offscreen bitmap context.  Subclasses must override this.
  
  This is typically the most expensive call for an FVIcon subclass.  In general it should be called from a dedicated thread after needsRenderForSize: has been called, unless you're planning to draw synchronously.  This is required for correct drawing, since a placeholder will typically be drawn if the bitmap is not available. */
 - (void)renderOffscreen;
@@ -107,7 +109,7 @@
 
 /** Purge bitmap caches.
  
- Get rid of any cached representations; next time the icon is redrawn, its data will be recreated in renderOffscreen. */
+ Optional override.  Get rid of any cached representations; next time the icon is redrawn, its data will be recreated in renderOffscreen. */
 - (void)recache;
 
 @end
