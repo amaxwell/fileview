@@ -99,35 +99,34 @@
 
 @end
 
-/** @internal @brief Determine which image size should be drawn.
- 
+/** @internal 
+ @warning Exported only for FVQuickLookIcon bundle linkage.
+ Determine which image should be drawn, based on the desired size and the thumbnail representation's size.
  @param desiredSize Should be the same size passed to FVIcon::needsRenderForSize: and FVIcon::_drawingRectWithRect:, not the return value of FVIcon::_drawingRectWithRect:.  
  @param thumbnailSize Current size of the instance's thumbnail image, if it has one (and if not, it shouldn't be calling this).
  @return true if the full (largest) image representation should be drawn. */
-static inline bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize)
-{
-    return (desiredSize.height > 1.2 * thumbnailSize.height || desiredSize.width > 1.2 * thumbnailSize.width);
-}
+FV_EXTERN bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize);
 
 // best not to use these at all, but FVMaxThumbnailDimension is exported for the QL icon bundle
 
-/** @var FVMaxThumbnailDimension
- Maximum dimension of a thumbnail image. */
+/** @internal @var FVMaxThumbnailDimension
+ Maximum dimension of a thumbnail image. 
+ @warning Exported only for FVQuickLookIcon bundle linkage. */
 extern const size_t FVMaxThumbnailDimension;
 
-/** @var FVMaxImageDimension
+/** @internal @var FVMaxImageDimension
  Maximum dimension of a full image. */
 FV_PRIVATE_EXTERN const size_t FVMaxImageDimension;
 
-/** @var FVDefaultPaperSize
+/** @internal @var FVDefaultPaperSize
  Nominal paper size to avoid using NSPrintInfo. */
 FV_PRIVATE_EXTERN const NSSize FVDefaultPaperSize;
 
-/** @var FVTopMargin
+/** @internal @var FVTopMargin
  Nominal top margin to avoid using NSPrintInfo. */
 FV_PRIVATE_EXTERN const CGFloat FVTopMargin;
 
-/** @var FVSideMargin
+/** @internal @var FVSideMargin
  Nominal side margin to avoid using NSPrintInfo. */
 FV_PRIVATE_EXTERN const CGFloat FVSideMargin;
 
@@ -143,6 +142,14 @@ FV_PRIVATE_EXTERN bool FVIconLimitFullImageSize(NSSize *size);
  @return true if size pointer was modified. */
 FV_PRIVATE_EXTERN bool FVIconLimitThumbnailSize(NSSize *size);
 
-// Create images using the predefined sizes for FVIcon.  Both functions will simply retain the argument and return it if possible.
+/** @internal
+ Create a thumbnail image with maximum dimension of FVIcon_Private.h::FVMaxThumbnailDimension.
+ @param image The image to scale.
+ @return Will simply retain the argument and return it if possible. */
 FV_PRIVATE_EXTERN CGImageRef FVCreateResampledThumbnail(CGImageRef image);
+
+/** @internal
+ Create a full size image with maximum dimension of FVIcon_Private.h::FVMaxImageDimension.  
+ @param image The image to scale.
+ @return Will simply retain the argument and return it if possible. */
 FV_PRIVATE_EXTERN CGImageRef FVCreateResampledFullImage(CGImageRef image);
