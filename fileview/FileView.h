@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** \file FileView.h */ 
+/** @file FileView.h */ 
 
 enum {
     FVZoomInMenuItemTag      = 1001, 
@@ -57,10 +57,10 @@ enum {
 /**
  FileView is the primary class in the framework.  
  
- FileView is an NSView subclass that provides automatic layout of icons, and handles update queueing transparently.  The data source may be an NSArrayController (via the view's Content binding), or an object that implements the \link NSObject(FileViewDataSource) \endlink informal protocol.  If the view is to be a drag-and-drop destination, the datasource must implement the \link NSObject(FileViewDragDataSource) \endlink informal protocol.
+ FileView is an NSView subclass that provides automatic layout of icons, and handles update queueing transparently.  The data source may be an NSArrayController (via the view's Content binding), or an object that implements the @link NSObject(FileViewDataSource) @endlink informal protocol.  If the view is to be a drag-and-drop destination, the datasource must implement the @link NSObject(FileViewDragDataSource) @endlink informal protocol.
  
- @see \link NSObject(FileViewDataSource) \endlink
- @see \link NSObject(FileViewDataSource) \endlink
+ @see @link NSObject(FileViewDataSource) @endlink
+ @see @link NSObject(FileViewDataSource) @endlink
  */
 @interface FileView : NSView 
 {
@@ -173,9 +173,9 @@ enum {
 
 /** Deletes the selected icon(s).
  
- Requires implementation of the \link NSObject(FileViewDragDataSource) \endlink informal protocol.  If the view is editable, it sends  NSObject(FileViewDragDataSource)::fileView:deleteURLsAtIndexes: to the datasource object, which can then handle the action as needed.
+ Requires implementation of the @link NSObject(FileViewDragDataSource) @endlink informal protocol.  If the view is editable, it sends  NSObject(FileViewDragDataSource)::fileView:deleteURLsAtIndexes: to the datasource object, which can then handle the action as needed.
  
- @see \link NSObject(FileViewDragDataSource) \endlink
+ @see @link NSObject(FileViewDragDataSource) @endlink
  @see setEditable: */
 - (IBAction)delete:(id)sender;
 
@@ -206,16 +206,16 @@ enum {
  
  Default is NO for views created in code.  Can be bound.
  
- @param flag If set to YES, requires the datasource to implement the \link NSObject(FileViewDragDataSource) \endlink informal protocol.  If set to NO, drop/paste/delete actions will be ignored, even if the protocol is implemented.  */
+ @param flag If set to YES, requires the datasource to implement the @link NSObject(FileViewDragDataSource) @endlink informal protocol.  If set to NO, drop/paste/delete actions will be ignored, even if the protocol is implemented.  */
 - (void)setEditable:(BOOL)flag;
 
-/** Receiver forFileViewDataSource and \link NSObject(FileViewDragDataSource) \endlink messages.
+/** Receiver forFileViewDataSource and @link NSObject(FileViewDragDataSource) @endlink messages.
  
  A non-nil datasource is required for drag-and-drop support.
  
  @param obj Nonretained, and may be set to nil.
- @see \link NSObject(FileViewDataSource) \endlink
- @see \link NSObject(FileViewDragDataSource) \endlink */
+ @see @link NSObject(FileViewDataSource) @endlink
+ @see @link NSObject(FileViewDragDataSource) @endlink */
 - (void)setDataSource:(id)obj;
 
 /** Current datasource or nil.*/
@@ -223,7 +223,7 @@ enum {
 
 /** Set a delegate for the view.
  
- The delegate may implement any or all of the methods in the \link NSObject(FileViewDelegate) \endlink informal protocol.
+ The delegate may implement any or all of the methods in the @link NSObject(FileViewDelegate) @endlink informal protocol.
  
  @param obj The object to set as delegate.  Not retained.*/
 - (void)setDelegate:(id)obj;
@@ -343,31 +343,31 @@ enum {
 
 @end
 
-/** \var FVZoomInMenuItemTag 
- Zoom in by \f$\sqrt 2\f$
+/** @var FVZoomInMenuItemTag 
+ Zoom in by @f$\sqrt 2@f$
  */
-/** \var FVZoomOutMenuItemTag 
- Zoom out by \f$\sqrt 2\f$
+/** @var FVZoomOutMenuItemTag 
+ Zoom out by @f$\sqrt 2@f$
  */
-/** \var FVQuickLookMenuItemTag 
+/** @var FVQuickLookMenuItemTag 
  Quick Look 
  */
-/** \var FVOpenMenuItemTag 
+/** @var FVOpenMenuItemTag 
  Open in Finder 
  */
-/** \var FVRevealMenuItemTag 
+/** @var FVRevealMenuItemTag 
  Reveal in Finder 
  */
-/** \var FVChangeLabelMenuItemTag 
+/** @var FVChangeLabelMenuItemTag 
  Change Finder label (color) 
  */
-/** \var FVDownloadMenuItemTag 
+/** @var FVDownloadMenuItemTag 
  Download and replace 
  */
-/** \var FVRemoveMenuItemTag 
+/** @var FVRemoveMenuItemTag 
  Delete from view 
  */
-/** \var FVReloadMenuItemTag 
+/** @var FVReloadMenuItemTag 
  Recache the selected icon(s) 
  */
 
