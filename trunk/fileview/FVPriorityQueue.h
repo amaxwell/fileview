@@ -38,13 +38,18 @@
 
 #import <Cocoa/Cocoa.h>
 
-/* 
- Objects are ordered in the queue by priority, as determined by the result of compare: as follows:
+/** @internal @brief Priority queue (ordered set) 
  
+ FVPriorityQueue is an ordered collection of unique objects.  Objects are ordered in the queue by priority, as determined by the result of compare: as follows:
+ @code
  if ([value1 compare:value2] == NSOrderedDescending), value1 has higher priority
  if ([value1 compare:value2] == NSOrderedAscending), value2 has higher priority
-  
+ @endcode
  A twist on usual queue behavior is that duplicate objects (as determined by -[NSObject isEqual:]) are not added to the queue in push:, but are silently ignored.  This allows easy maintenance of a unique set of objects in the priority queue.  Note that -hash must be implemented correctly for any objects that override -isEqual:, and the value of -hash for a given object must not change while the object is in the queue.
+ 
+ Enumeration via NSFastEnumeration or NSEnumerator is performed in queue order (high priority objects are returned before low priority objects).  Selectors invoked via FVPriorityQueue::makeObjectsPerformSelector: are performed in the same order (high priority first).
+ 
+ @warning FVPriorityQueue instances may be shared among threads, but must be protected by a mutex in order to avoid concurrent reads and/or writes.  This may be relaxed in future to allow simultaneous reads.
  
  Thanks to Mike Ash for demonstrating how to use std::make_heap.
  http://www.mikeash.com/?page=pyblog/using-evil-for-good.html
@@ -67,23 +72,36 @@
     BOOL             _sorted;
 }
 
+/** Designated intializer. */
 - (id)init;
 
-// returns the highest priority item; if several items have highest priority, returns any of those items
+/** Single-object access.
+ @return The highest priority item; if several items have highest priority, returns any of those items. */
 - (id)pop;
+
+/** Single-object insertion.
+ @param object The object to add. */
 - (void)push:(id)object;
 
-// semantically equivalent to for(object in objects){ [queue push:object]; }
+/** Multi-object insertion.
+ Semantically equivalent to @code for(object in objects){ [queue push:object]; } @endcode but more efficient and convenient.
+ @param objects The collection of objects to add.  Order is ignored. */
 - (void)pushMultiple:(NSArray *)objects;
 
-// returned in descending priority (high priority objects returned first)
+/** Enumeration.
+ Objects are returned in descending priority (high priority objects returned first).
+ @return An autoreleased enumerator. */
 - (NSEnumerator *)objectEnumerator;
 
-// performed in order of descending priority
+/** Operation on the collection.
+ The \a selector is invoked on each object in the queue in order of descending priority (high priority first).
+ @param selector Selector to invoke. */
 - (void)makeObjectsPerformSelector:(SEL)selector;
 
-// manipulate the elements directly
+/** Object count.
+ @return The number of objects in the queue. */ 
 - (NSUInteger)count;
+/** Remove all objects. */
 - (void)removeAllObjects;
 
 @end
