@@ -66,6 +66,11 @@
  @warning FVPreviewer may only be used on the main thread, due to usage of various Cocoa views. */
 + (id)sharedPreviewer;
 
+/** Display a preview for a single URL.
+ @deprecated Clients should use FVPreviewer::previewURL:forIconInRect: instead, passing NSZeroRect for @a screenRect.
+ @param absoluteURL Any URL that can be displayed (see FVPreviewer class notes). */
+- (void)previewURL:(NSURL *)absoluteURL DEPRECATED_ATTRIBUTE;
+
 /** Display a preview of multiple URLs.
  
  On 10.5, this uses Quick Look unconditionally to preview all items, so you get the cool slideshow features (but no copy-paste).  On 10.4, it just previews the first URL in the list.
@@ -93,7 +98,7 @@
  
  This is the primary interface for previewing a single URL.  It correctly (FSVO correctly) handles transitions between icon rects and view animations.  It also chooses the appropriate view for the given URL.
  @param absoluteURL Any URL that can be displayed (see FVPreviewer class notes).
- @param screenRect The rect of the icon to display, in screen coordinates. */
+ @param screenRect The rect of the icon to display, in screen coordinates.  Pass NSZeroRect to use the center of the main screen. */
 - (void)previewURL:(NSURL *)absoluteURL forIconInRect:(NSRect)screenRect;
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5
