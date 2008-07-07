@@ -522,20 +522,29 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 - (void)previewURL:(NSURL *)absoluteURL forIconInRect:(NSRect)screenRect
 {
     FVAPIParameterAssert(nil != absoluteURL);
-    if (NSHeight(screenRect) < 128 || NSWidth(screenRect) < 128) {
+    BOOL animate = YES;
+    
+    if (NSEqualRects(screenRect, NSZeroRect)) {
+        // set up a rect in the middle of the main screen for a default value
+        previousIconFrame = NSZeroRect;
+        screenRect.size = NSMakeSize(128, 128);
+        NSRect visibleFrame = [[NSScreen mainScreen] visibleFrame];
+        screenRect.origin = NSMakePoint(NSMidX(visibleFrame) - NSWidth(screenRect) / 2, NSMidY(visibleFrame) - NSHeight(screenRect) / 2);
+        animate = NO;
+    }
+    else if (NSHeight(screenRect) < 128 || NSWidth(screenRect) < 128) {
         screenRect.size.height = 128;
         screenRect.size.width = 128;
     }
     previousIconFrame = screenRect;
     [[self window] setFrame:screenRect display:NO];
-    [self _previewURL:absoluteURL animateFrame:YES];
+    [self _previewURL:absoluteURL animateFrame:animate];
 }
 
 - (void)previewURL:(NSURL *)absoluteURL;
 {
     FVAPIParameterAssert(nil != absoluteURL);
-    previousIconFrame = NSZeroRect;
-    [self _previewURL:absoluteURL animateFrame:NO];
+    [self previewURL:absoluteURL forIconInRect:NSZeroRect];
 }
 
 - (void)previewAction:(id)sender 
