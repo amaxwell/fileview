@@ -7,16 +7,16 @@
 #error do not include this file
 
 /** \mainpage Conceptual Documentation
- Last update: 06 July 2008
+ Last update: 07 July 2008
 
  \section sec_intro Introduction
  The FileView framework provides a gridded view with scaling and automatic layout of icons.  Each icon represents an NSURL instance, and drawing is handled per-URL.  Either Cocoa Bindings or a standard datasource paradigm may be used to provide the view with NSURL instances, and an optional delegate may be used to override some behavior.  
  
  Rearranging and editing in the view is supported via datasource methods.  Drag-and-drop is implemented using standard URL and filename pasteboard types.
  
- The framework is extensively multithreaded, and optimized for reduced memory usage.  Most perations in the view itself should not block.
- 
- \section sec_types Supported Types
+ The framework is extensively multithreaded, and optimized for reduced memory usage.  Most operations in the view itself should not block.
+  
+ \subsection sec_types Supported Types
  Many file and URL types are supported by default.  These include:
  
   @li PDF/PostScript?
@@ -30,13 +30,28 @@
  
  \section sec_design Design and Implementation
  
+ @li \ref page0
  @li \ref page1
  @li \ref page2
  @li \ref page3
  @li \ref page4
-
+ 
 */
 
+/** @page page0 FileView API
+ 
+ FileView has a limited API by design.  The framework itself is relatively immature, and a small API allows substantial internal revision without breaking any previous contracts or assumptions.  In particular, grid geometry, icons, caching, and drop targeting should be considered implementation details.  You can modify the FileView.h header to expose whatever you want, of course, but integrating future changes from upstream will be more difficult.
+ 
+ \section sec_internal Internal Classes
+ Many classes in the framework documentation are marked for internal use only.  This means that usage is only supported within the framework, and implementation details and API are subject to change.  You are free to make project headers into public headers in Xcode, but be advised that they are subject to change without warning.
+ 
+ \section sec_stable Stable Classes
+ Having said that, some of the classes should have stable API:  FVThread, FVOperationQueue, FVOperation, and FVPriorityQueue, so making them public is reasonably safe.  They are not exposed because they don't fit the purpose of the framework, and are not necessary to any of its API (i.e. NSOperationQueue and NSOperation could be used in future).  They could be factored out into a separate framework, but creating an umbrella framework would be tricky and I don't want to deal with the linkage problems.
+ 
+ \section sec_c_internal C Functions
+ Most C functions are only available exported to the framework itself, and exporting those globally would be a bad idea at any time.  FVCGImageUtilities.h is a possible exception to this rule, but FVUtilities, FVBitmapContextCache.h and FVImageBuffer (which are all included by FVCGImageUtilities.h) are implementation details that should remain internal.
+
+ */
 
 /** @page page1 FVIcon Discussion
  
