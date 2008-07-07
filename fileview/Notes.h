@@ -9,8 +9,26 @@
 /** \mainpage Conceptual Documentation
  Last update: 06 July 2008
 
- \section sec_DesignNotes Design Notes
-The primary file type the view was intended for is PDF, so much of the caching strategy and design is oriented towards that.   NSImage and NSBitmapImageRep are not used because performance was inadequate in earlier trials (excessive memory consumption).  Of the two, NSBitmapImageRep had better drawing quality, particularly in view of the need to scale from small (< 48x48) to large (> 512x512) image sizes.  NSImage is too clever for its own good.
+ \section sec_intro Introduction
+ The FileView framework provides a gridded view with scaling and automatic layout of icons.  Each icon represents an NSURL instance, and drawing is handled per-URL.  Either Cocoa Bindings or a standard datasource paradigm may be used to provide the view with NSURL instances, and an optional delegate may be used to override some behavior.  
+ 
+ Rearranging and editing in the view is supported via datasource methods.  Drag-and-drop is implemented using standard URL and filename pasteboard types.
+ 
+ The framework is extensively multithreaded, and optimized for reduced memory usage.  Most perations in the view itself should not block.
+ 
+ \section sec_types Supported Types
+ Many file and URL types are supported by default.  These include:
+ 
+  @li PDF/PostScript?
+  @li <a href="http://skim-app.sourceforge.net/">Skim</a> PDFD
+  @li Anything NSAttributedString can read
+  @li http/ftp URLs and local HTML files using WebView
+  @li QuickTime movies
+  @li Anything <a href="http://developer.apple.com/documentation/GraphicsImaging/Conceptual/ImageIOGuide/imageio_intro/chapter_1_section_1.html">ImageIO</a> can read
+  @li Quick Look thumbnails (on 10.5)
+  @li Icon Services as a last resort
+ 
+ \section sec_design Design and Implementation
  
  @li \ref page1
  @li \ref page2
@@ -22,6 +40,9 @@ The primary file type the view was intended for is PDF, so much of the caching s
 
 /** @page page1 FVIcon Discussion
  
+ \section sec_DesignNotes Design Notes
+The primary file type the view was intended for is PDF, so much of the caching strategy and design is oriented towards that.   NSImage and NSBitmapImageRep are not used because performance was inadequate in earlier trials (excessive memory consumption).  Of the two, NSBitmapImageRep had better drawing quality, particularly in view of the need to scale from small (< 48x48) to large (> 512x512) image sizes.  NSImage is too clever for its own good.
+
  \section sec_Purpose Purpose
 For drawing, I created the FVIcon abstract class, with a variety of concrete subclasses (all private to the framework), initialized based on UTI or sniffing.  FVIcon is designed to be fairly lightweight, and typically uses a fallback of a Quick Look or Finder icon, depending on the platform.  The FVIcon has some provision for caching and explicitly flushing a cache; it's lazy about creating high-resolution images in order to keep memory requirements down.  In the simplest case, it's basically a wrapper around an NSURL instance and a CGImageRef.  I'm using CGImage instead of NSBitmapImageRep for consistency, since ImageIO and QuickLook return CGImage instances directly.
  
