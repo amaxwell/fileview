@@ -652,7 +652,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     for (NSUInteger j = 0; j < regionColumnIndex; j++) {
         imageBuffer = [[FVImageBuffer alloc] initWithWidth:(regions[j].w * ceil(scale)) height:(regions[j].h * ceil(scale)) bytesPerSample:4];
         [currentRegionRow addObject:imageBuffer];
-        [imageBuffer release];
+        [imageBuffer dispose];
     }
     
     // reset to zero so we can use this as index into currentRegionRow
@@ -763,7 +763,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     [currentRegionRow release];
     
     // could probably cache a few of these
-    [regionBuffer release];
+    [regionBuffer dispose];
     
 #if FV_LIMIT_TILEMEMORY_USAGE
     pthread_mutex_lock(&_memoryMutex);
@@ -788,7 +788,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     CGColorSpaceRelease(cspace);
     
     // we need to release this one, since its memory is now transferred to NSData (and it's too big to cache)
-    [interleavedImageBuffer release];
+    [interleavedImageBuffer dispose];
     
     return image; 
 }
