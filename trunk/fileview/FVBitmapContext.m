@@ -36,7 +36,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "FVBitmapContextCache.h"
+#import "FVBitmapContext.h"
 #import "FVCGImageUtilities.h"
 #import <mach/mach.h>
 #import <mach/vm_map.h>

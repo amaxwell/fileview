@@ -38,7 +38,7 @@
 
 #import <vector>
 #import "FVCGImageUtilities.h"
-#import "FVBitmapContextCache.h"
+#import "FVBitmapContext.h"
 #import "FVUtilities.h" /* for FVLog */
 #import <Accelerate/Accelerate.h>
 #import "FVImageBuffer.h"
