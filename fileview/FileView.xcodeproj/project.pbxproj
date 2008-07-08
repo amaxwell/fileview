@@ -79,8 +79,8 @@
 		F98D3A5F0D82EFD300ED9D22 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */; };
 		F9A2D39D0CCBB3B5002F517B /* FVIconCache.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D39B0CCBB3B5002F517B /* FVIconCache.h */; };
 		F9A2D39E0CCBB3B5002F517B /* FVIconCache.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D39C0CCBB3B5002F517B /* FVIconCache.m */; };
-		F9A2D3DA0CCBDDDF002F517B /* FVBitmapContextCache.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3D80CCBDDDF002F517B /* FVBitmapContextCache.h */; };
-		F9A2D3DB0CCBDDDF002F517B /* FVBitmapContextCache.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D3D90CCBDDDF002F517B /* FVBitmapContextCache.m */; };
+		F9A2D3DA0CCBDDDF002F517B /* FVBitmapContext.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */; };
+		F9A2D3DB0CCBDDDF002F517B /* FVBitmapContext.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D3D90CCBDDDF002F517B /* FVBitmapContext.m */; };
 		F9A2D3E80CCBE12B002F517B /* FVImageIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3E60CCBE12B002F517B /* FVImageIcon.h */; };
 		F9A2D3E90CCBE12B002F517B /* FVImageIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D3E70CCBE12B002F517B /* FVImageIcon.m */; };
 		F9A2D3EC0CCBE13F002F517B /* FVFinderIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3EA0CCBE13F002F517B /* FVFinderIcon.h */; };
@@ -268,8 +268,8 @@
 		F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FVCGImageUtilities.mm; sourceTree = "<group>"; };
 		F9A2D39B0CCBB3B5002F517B /* FVIconCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVIconCache.h; sourceTree = "<group>"; };
 		F9A2D39C0CCBB3B5002F517B /* FVIconCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVIconCache.m; sourceTree = "<group>"; };
-		F9A2D3D80CCBDDDF002F517B /* FVBitmapContextCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVBitmapContextCache.h; sourceTree = "<group>"; };
-		F9A2D3D90CCBDDDF002F517B /* FVBitmapContextCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVBitmapContextCache.m; sourceTree = "<group>"; };
+		F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVBitmapContext.h; sourceTree = "<group>"; };
+		F9A2D3D90CCBDDDF002F517B /* FVBitmapContext.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVBitmapContext.m; sourceTree = "<group>"; };
 		F9A2D3E60CCBE12B002F517B /* FVImageIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVImageIcon.h; sourceTree = "<group>"; };
 		F9A2D3E70CCBE12B002F517B /* FVImageIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVImageIcon.m; sourceTree = "<group>"; };
 		F9A2D3EA0CCBE13F002F517B /* FVFinderIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVFinderIcon.h; sourceTree = "<group>"; };
@@ -484,8 +484,8 @@
 		F92ABB120DCE1AA600F82452 /* Scaling */ = {
 			isa = PBXGroup;
 			children = (
-				F9A2D3D80CCBDDDF002F517B /* FVBitmapContextCache.h */,
-				F9A2D3D90CCBDDDF002F517B /* FVBitmapContextCache.m */,
+				F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */,
+				F9A2D3D90CCBDDDF002F517B /* FVBitmapContext.m */,
 				F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */,
 				F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */,
 				F9D5A9390D8C9AE80005C75C /* FVImageBuffer.h */,
@@ -671,7 +671,7 @@
 				F946920A0CA56EC500AC2772 /* FVPreviewer.h in Headers */,
 				F94694500CA59AF100AC2772 /* FVScaledImageView.h in Headers */,
 				F9A2D39D0CCBB3B5002F517B /* FVIconCache.h in Headers */,
-				F9A2D3DA0CCBDDDF002F517B /* FVBitmapContextCache.h in Headers */,
+				F9A2D3DA0CCBDDDF002F517B /* FVBitmapContext.h in Headers */,
 				F9A2D3E80CCBE12B002F517B /* FVImageIcon.h in Headers */,
 				F9A2D3EC0CCBE13F002F517B /* FVFinderIcon.h in Headers */,
 				F9A2D3F00CCBE14E002F517B /* FVPDFIcon.h in Headers */,
@@ -798,7 +798,7 @@
 			mainGroup = 0867D691FE84028FC02AAC07 /* FileView */;
 			productRefGroup = 034768DFFF38A50411DB9C8B /* Products */;
 			projectDirPath = "";
-			projectRoot = ../../..;
+			projectRoot = "";
 			targets = (
 				8DC2EF4F0486A6940098B216 /* FileView */,
 				F94692120CA56F4300AC2772 /* FileView-Leopard */,
@@ -905,7 +905,7 @@
 				F946920B0CA56EC500AC2772 /* FVPreviewer.m in Sources */,
 				F94694510CA59AF100AC2772 /* FVScaledImageView.m in Sources */,
 				F9A2D39E0CCBB3B5002F517B /* FVIconCache.m in Sources */,
-				F9A2D3DB0CCBDDDF002F517B /* FVBitmapContextCache.m in Sources */,
+				F9A2D3DB0CCBDDDF002F517B /* FVBitmapContext.m in Sources */,
 				F9A2D3E90CCBE12B002F517B /* FVImageIcon.m in Sources */,
 				F9A2D3ED0CCBE13F002F517B /* FVFinderIcon.m in Sources */,
 				F9A2D3F10CCBE14E002F517B /* FVPDFIcon.m in Sources */,

@@ -38,8 +38,25 @@
 
 #import <Cocoa/Cocoa.h>
 
+/** @file FVBitmapContext.h */
+
+/** @internal @brief Bitmap context creation.
+ 
+ Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using FVIconBitmapContextDispose.
+ @param width Width in pixels.
+ @param height Height in pixels. 
+ @return A new CGBitmapContext or NULL if it could not be created. */
 FV_PRIVATE_EXTERN CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height);
+
+/** @internal @brief Bitmap context disposal.
+ 
+ Destroys a CGBitmapContext created using FVIconBitmapContextCreateWithSize.  @warning This deallocates the bitmap data associated with the context, rather than decrementing a reference count.
+ @arg ctxt The context to release. */
 FV_PRIVATE_EXTERN void FVIconBitmapContextDispose(CGContextRef ctxt);
 
-// checks to see if an image is compatible with caching assumptions
+/** @internal @brief See if an image is compatible with caching assumptions.
+ 
+ If this returns false, the image should be redrawn into a bitmap context created with FVIconBitmapContextCreateWithSize, and CGBitmapContextCreateImage() should be used to create a new CGImage that can be cached.
+ @return true if the image does not need to be redrawn. 
+ @todo Move this elsewhere. */
 FV_PRIVATE_EXTERN bool FVImageIsIncompatible(CGImageRef image);
