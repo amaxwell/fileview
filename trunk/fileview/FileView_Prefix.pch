@@ -16,8 +16,6 @@ do { if ([aClass self] != self) return; } while(0)
 #if !defined(NS_BLOCK_ASSERTIONS) || !NS_BLOCK_ASSERTIONS
 #define NS_BLOCK_ASSERTIONS 1
 #endif /* NS_BLOCK_ASSERTIONS */
-#else
-#warning Assertions enabled
 #endif /* DEBUG */
 
 #if !defined(_FVAPIAssertBody)
