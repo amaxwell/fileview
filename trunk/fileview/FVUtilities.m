@@ -161,7 +161,8 @@ NSArray *FVURLSFromPasteboard(NSPasteboard *pboard)
     ItemCount itemCount, itemIndex;
     if (noErr == err)
         err = PasteboardGetItemCount(carbonPboard, &itemCount);
-    else
+    
+    if (noErr != err)
         itemCount = 0;
     
     NSMutableArray *toReturn = [NSMutableArray arrayWithCapacity:itemCount];

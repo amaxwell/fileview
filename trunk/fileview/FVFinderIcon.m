@@ -160,11 +160,14 @@ static CFStringRef _savedSearchUTI = NULL;
                 
         // see if this is a plain folder; we don't want to show FVGenericFolderIcon for a package/app/custom icon
         CFStringRef targetUTI = NULL;
-        err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&targetUTI);
+        if (noErr == err)
+            err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&targetUTI);
                 
         FSCatalogInfo catInfo;
         HFSUniStr255 name;
-        err = FSGetCatalogInfo(&fileRef, kIconServicesCatalogInfoMask, &catInfo, &name, NULL, NULL);
+        if (noErr == err)
+            err = FSGetCatalogInfo(&fileRef, kIconServicesCatalogInfoMask, &catInfo, &name, NULL, NULL);
+        
         if (NO == _drawsLinkBadge && noErr == err && targetUTI && UTTypeEqual(targetUTI, kUTTypeFolder) && (((FolderInfo *)&catInfo.finderInfo)->finderFlags & kHasCustomIcon) == 0) {            
             [self release];
             self = [[FVGenericFolderIcon sharedIcon] retain];
