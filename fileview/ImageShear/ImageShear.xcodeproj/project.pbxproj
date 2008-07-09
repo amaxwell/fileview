@@ -18,7 +18,7 @@
 		F9A812AC0D862CBB000114B0 /* Accelerate.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9A812AB0D862CBB000114B0 /* Accelerate.framework */; };
 		F9A812B60D862CD1000114B0 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F9A812B50D862CD1000114B0 /* FVCGImageUtilities.mm */; };
 		F9A812B90D862CE6000114B0 /* Controller.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812B80D862CE6000114B0 /* Controller.m */; };
-		F9A812E70D863113000114B0 /* FVBitmapContextCache.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812E40D863113000114B0 /* FVBitmapContextCache.m */; };
+		F9A812E70D863113000114B0 /* FVBitmapContext.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812E40D863113000114B0 /* FVBitmapContext.m */; };
 		F9A812E80D863113000114B0 /* FVUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812E60D863113000114B0 /* FVUtilities.m */; };
 		F9A812EF0D863140000114B0 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9A812EE0D863140000114B0 /* libz.dylib */; };
 /* End PBXBuildFile section */
@@ -45,8 +45,8 @@
 		F9A812B50D862CD1000114B0 /* FVCGImageUtilities.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = FVCGImageUtilities.mm; path = ../FVCGImageUtilities.mm; sourceTree = "<group>"; };
 		F9A812B70D862CE6000114B0 /* Controller.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Controller.h; sourceTree = "<group>"; };
 		F9A812B80D862CE6000114B0 /* Controller.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Controller.m; sourceTree = "<group>"; };
-		F9A812E30D863113000114B0 /* FVBitmapContextCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVBitmapContextCache.h; path = ../FVBitmapContextCache.h; sourceTree = "<group>"; };
-		F9A812E40D863113000114B0 /* FVBitmapContextCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVBitmapContextCache.m; path = ../FVBitmapContextCache.m; sourceTree = "<group>"; };
+		F9A812E30D863113000114B0 /* FVBitmapContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVBitmapContext.h; path = ../FVBitmapContext.h; sourceTree = "<group>"; };
+		F9A812E40D863113000114B0 /* FVBitmapContext.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVBitmapContext.m; path = ../FVBitmapContext.m; sourceTree = "<group>"; };
 		F9A812E50D863113000114B0 /* FVUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVUtilities.h; path = ../FVUtilities.h; sourceTree = "<group>"; };
 		F9A812E60D863113000114B0 /* FVUtilities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVUtilities.m; path = ../FVUtilities.m; sourceTree = "<group>"; };
 		F9A812EE0D863140000114B0 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
@@ -153,8 +153,8 @@
 			children = (
 				F9105FD30D8DE6D200AC32D1 /* FVImageBuffer.h */,
 				F9105FD40D8DE6D200AC32D1 /* FVImageBuffer.m */,
-				F9A812E30D863113000114B0 /* FVBitmapContextCache.h */,
-				F9A812E40D863113000114B0 /* FVBitmapContextCache.m */,
+				F9A812E30D863113000114B0 /* FVBitmapContext.h */,
+				F9A812E40D863113000114B0 /* FVBitmapContext.m */,
 				F9A812E50D863113000114B0 /* FVUtilities.h */,
 				F9A812E60D863113000114B0 /* FVUtilities.m */,
 				F9A812B40D862CD1000114B0 /* FVCGImageUtilities.h */,
@@ -194,7 +194,7 @@
 			hasScannedForEncodings = 1;
 			mainGroup = 29B97314FDCFA39411CA2CEA /* ImageShear */;
 			projectDirPath = "";
-			projectRoot = "";
+			projectRoot = ..;
 			targets = (
 				8D1107260486CEB800E47090 /* ImageShear */,
 			);
@@ -223,7 +223,7 @@
 				8D11072D0486CEB800E47090 /* main.m in Sources */,
 				F9A812B60D862CD1000114B0 /* FVCGImageUtilities.mm in Sources */,
 				F9A812B90D862CE6000114B0 /* Controller.m in Sources */,
-				F9A812E70D863113000114B0 /* FVBitmapContextCache.m in Sources */,
+				F9A812E70D863113000114B0 /* FVBitmapContext.m in Sources */,
 				F9A812E80D863113000114B0 /* FVUtilities.m in Sources */,
 				F9105FD50D8DE6D200AC32D1 /* FVImageBuffer.m in Sources */,
 				F92ABB690DCE2D3100F82452 /* FVImageView.m in Sources */,
