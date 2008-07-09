@@ -55,7 +55,7 @@ static const NSUInteger _sizes[] = { 32, 64, 128, 256, 512 };
     OSStatus err;
     err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kAliasBadgeIcon, &linkBadge);
     
-    for (i = 0; i < iMax; i++) {
+    for (i = 0; i < iMax && noErr == err; i++) {
         
         CGRect dstRect = CGRectMake(0, 0, _sizes[i], _sizes[i]);
         

@@ -122,8 +122,9 @@ static NSURL *missingFileURL = nil;
     
     // kLSItemContentType returns a CFStringRef, according to the header
     CFStringRef theUTI = NULL;
+    // theUTI will be NULL if this fails
     if (noErr == err)
-        err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
     
     // For a link/alias, get the target's UTI in order to determine which concrete subclass to create.  Subclasses that are file-based need to check the URL to see if it should be badged using _shouldDrawBadgeForURL, and then call _resolvedURLWithURL in order to actually load the file's content.
     
@@ -135,7 +136,8 @@ static NSURL *missingFileURL = nil;
         if (noErr == err) {
             CFRelease(theUTI);
             theUTI = NULL;
-            err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+            // theUTI will be NULL if this fails
+            LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
         }
     }
     

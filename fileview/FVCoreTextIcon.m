@@ -94,12 +94,12 @@ static CGRect _textRect;
         [nsColor getRed:&backgroundComps[0] green:&backgroundComps[1] blue:&backgroundComps[2] alpha:&backgroundComps[3]];
     }
     
-    if (nil == attrString) {
+    if (NULL == cfAttrString) {
         // display a mildly unhelpful error message
         NSBundle *bundle = [NSBundle bundleForClass:[FVCoreTextIcon class]];
         
         NSString *err = [NSLocalizedStringFromTableInBundle(@"Unable to read text file ", @"FileView", bundle, @"error message with single trailing space") stringByAppendingString:[_fileURL path]];
-        attrString = [[[NSMutableAttributedString alloc] initWithString:err] autorelease];
+        cfAttrString = (CFMutableAttributedStringRef)[[[NSMutableAttributedString alloc] initWithString:err] autorelease];
     }  
     
     CGContextSetTextMatrix(ctxt, CGAffineTransformIdentity);
