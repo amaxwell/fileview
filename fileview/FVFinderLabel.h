@@ -59,9 +59,7 @@
 + (NSString *)localizedNameForLabel:(NSInteger)label;
 
 /** Label index for a given URL.
- 
- @warning This should not resolve aliases, but presently resolves the last path component
- 
+  
  @param aURL An absolute URL.  Non-file: URLs are ignored.
  @return Integer value from 0--7. */
 + (NSUInteger)finderLabelForURL:(NSURL *)aURL;
