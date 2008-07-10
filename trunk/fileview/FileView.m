@@ -2807,7 +2807,9 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     for (i = 0; i < iMax; i++) {
         [FVFinderLabel setFinderLabel:label forURL:[selectedURLs objectAtIndex:i]];
     }
-    [self setNeedsDisplay:YES];
+    
+    // FVViewController label cache needs to be rebuilt
+    [self reloadIcons];
     
     // we have to close the menu manually; FVColorMenuCell returns its control view's menu item
     if ([sender respondsToSelector:@selector(enclosingMenuItem)] && [[[sender enclosingMenuItem] menu] respondsToSelector:@selector(cancelTracking)])
