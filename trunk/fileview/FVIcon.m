@@ -113,7 +113,7 @@ static NSURL *missingFileURL = nil;
     FSRef fileRef;
     
     // convert to an FSRef without resolving symlinks, to get the UTI of the actual URL
-    const UInt8 *fsPath = (void *)[[representedURL path] UTF8String];
+    const UInt8 *fsPath = (void *)[[representedURL path] fileSystemRepresentation];
     err = FSPathMakeRefWithOptions(fsPath, kFSPathMakeRefDoNotFollowLeafSymlink, &fileRef, NULL);
     
     // return missing file icon if we can't convert the path to an FSRef
