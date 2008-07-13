@@ -138,8 +138,10 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
     
     // kLSItemContentType returns a CFStringRef, according to the header
     CFStringRef theUTI = NULL;
+    
+    // theUTI will be NULL on error
     if (noErr == err)
-        err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
     
     BOOL drawBadge = (NULL != theUTI && UTTypeConformsTo(theUTI, kUTTypeResolvable));
     
@@ -281,6 +283,14 @@ CGImageRef FVCreateResampledFullImage(CGImageRef image)
         pthread_cond_init(&_keyCondition, NULL);
     }
     return self;
+}
+
+- (void)dealloc
+{
+    pthread_mutex_destroy(&_keyLock);
+    pthread_cond_destroy(&_keyCondition);
+    [_keys release];
+    [super dealloc];
 }
 
 - (void)startRenderingForKey:(id)aKey
