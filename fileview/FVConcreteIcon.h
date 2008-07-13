@@ -1,10 +1,10 @@
 //
-//  FVWebViewIcon.h
+//  FVConcreteIcon.h
 //  FileView
 //
-//  Created by Adam Maxwell on 12/30/07.
+//  Created by Adam Maxwell on 7/12/08.
 /*
- This software is Copyright (c) 2007-2008
+ This software is Copyright (c) 2008
  Adam Maxwell. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
@@ -40,23 +40,24 @@
 #import "FVIcon.h"
 #import "FVIcon_Private.h"
 
-@class FVFinderIcon;
-@class WebView;
-
-@interface FVWebViewIcon : FVIcon <NSLocking>
+/** @brief Base implementation.
+ 
+ This provides a base implementation for several subclasses and allows removal of some interface details from the abstract class (e.g. FVFinderIcon does not need to implement NSLocking).  It also uses inline refcounting since icons are long-lived (generally) and are retained/released frequently. */
+@interface FVConcreteIcon : FVIcon <NSLocking>
 {
+@private
     uint32_t         _rc;
-    CGImageRef       _viewImage;
-    CGImageRef       _fullImage;
-    NSSize           _fullImageSize;
-    CGImageRef       _thumbnail;
-    NSSize           _thumbnailSize;
-    FVIcon          *_fallbackIcon;
-    NSURL           *_httpURL;
-    NSSize           _desiredSize;
-    WebView         *_webView;
+    pthread_mutex_t  _mutex;
+@protected
+    NSURL           *_fileURL;
     id               _cacheKey;
-    NSConditionLock *_condLock;
+    BOOL             _drawsLinkBadge;
 }
+
+/** @brief Addition to NSLocking.
+ 
+ Returns immediately without blocking.
+ @return YES if the lock was taken. */
+- (BOOL)tryLock;
 
 @end

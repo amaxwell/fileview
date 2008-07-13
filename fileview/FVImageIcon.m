@@ -54,39 +54,27 @@ static CFDictionaryRef _imsrcOptions = NULL;
 
 - (id)initWithURL:(NSURL *)aURL
 {
-    self = [super init];
+    self = [super initWithURL:aURL];
     if (self) {
         
-        _drawsLinkBadge = [[self class] _shouldDrawBadgeForURL:aURL copyTargetURL:&_fileURL];        
         _fullImage = NULL;
         _thumbnail = NULL;
-        _cacheKey = [FVIconCache newKeyForURL:_fileURL];
         _thumbnailSize = NSZeroSize;
         
         // QTMovie fails regularly, and I've also seen a few images that ImageIO won't load; this avoids looping trying to render them
         _fallbackIcon = nil;
-        _loadFailed = NO;
-        
-        if (pthread_mutex_init(&_mutex, NULL) != 0)
-            perror("pthread_mutex_init");             
+        _loadFailed = NO;      
     }
     return self;
 }
 
 - (void)dealloc
 {
-    pthread_mutex_destroy(&_mutex);
-    [_fileURL release];
     CGImageRelease(_thumbnail);
     CGImageRelease(_fullImage);
     [_fallbackIcon release];
-    [_cacheKey release];
     [super dealloc];
 }
-
-- (BOOL)tryLock { return pthread_mutex_trylock(&_mutex) == 0; }
-- (void)lock { pthread_mutex_lock(&_mutex); }
-- (void)unlock { pthread_mutex_unlock(&_mutex); }
 
 - (BOOL)canReleaseResources;
 {

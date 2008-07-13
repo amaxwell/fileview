@@ -37,21 +37,16 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "FVIcon.h"
-#import "FVIcon_Private.h"
+#import "FVConcreteIcon.h"
 
-@interface FVImageIcon : FVIcon
+@interface FVImageIcon : FVConcreteIcon
 {
 @protected
-    NSURL          *_fileURL;
     CGImageRef      _thumbnail;
     NSSize          _thumbnailSize;
     CGImageRef      _fullImage;
     NSSize          _desiredSize;
-    BOOL            _drawsLinkBadge;
     BOOL            _loadFailed;
     FVIcon         *_fallbackIcon;
-    id              _cacheKey;
-    pthread_mutex_t _mutex;
 }
 @end

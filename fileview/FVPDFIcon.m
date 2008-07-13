@@ -284,17 +284,14 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
 - (id)initWithURL:(NSURL *)aURL;
 {
     NSParameterAssert([aURL isFileURL]);
-    self = [super init];
+    self = [super initWithURL:aURL];
     if (self) {
         
-        _drawsLinkBadge = [[self class] _shouldDrawBadgeForURL:aURL copyTargetURL:&_fileURL];        
-
         // PDF sucks because we have to read the file and parse it to find out the page size, even if we're not going to draw it.  Since that's not very efficient, don't even open the file until we have to draw it.
         
         // Set default sizes so we can draw a blank page on the first pass; this will use a common aspect ratio.
         _fullSize = FVDefaultPaperSize;
         _thumbnailSize = _fullSize;
-        _cacheKey = [FVIconCache newKeyForURL:_fileURL];
 
         _pdfDoc = NULL;
         _pdfPage = NULL;
@@ -305,29 +302,19 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
         _currentPage = 1;
         
         // initialize to zero so we know whether to load the PDF document
-        _pageCount = 0;
-        
-        if (pthread_mutex_init(&_mutex, NULL))
-            perror("pthread_mutex_init");
+        _pageCount = 0;        
     }
     return self;
 }
 
 - (void)dealloc
 {
-    pthread_mutex_destroy(&_mutex);
     [[self class] _removeIconForMappedRelease:self];
     if (_pdfDoc) [[self class] _removeProviderReferenceForURL:_fileURL];
-    [_fileURL release];
     CGImageRelease(_thumbnail);
     CGPDFDocumentRelease(_pdfDoc);
-    [_cacheKey release];
     [super dealloc];
 }
-
-- (BOOL)tryLock { return pthread_mutex_trylock(&_mutex) == 0; }
-- (void)lock { pthread_mutex_lock(&_mutex); }
-- (void)unlock { pthread_mutex_unlock(&_mutex); }
 
 - (NSSize)size { return _fullSize; }
 

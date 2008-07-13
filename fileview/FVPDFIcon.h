@@ -37,24 +37,19 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "FVIcon.h"
-#import "FVIcon_Private.h"
+#import "FVConcreteIcon.h"
 
-@interface FVPDFIcon : FVIcon
+@interface FVPDFIcon : FVConcreteIcon
 {
 @private
-    NSURL            *_fileURL;
     CGPDFDocumentRef  _pdfDoc;
     CGPDFPageRef      _pdfPage;
     NSSize            _fullSize;
     CGImageRef        _thumbnail;
     NSSize            _thumbnailSize;
     NSSize            _desiredSize;
-    pthread_mutex_t   _mutex;
     NSUInteger        _currentPage;
     NSUInteger        _pageCount;
-    BOOL              _drawsLinkBadge;
-    id                _cacheKey;
 }
 @end
 
