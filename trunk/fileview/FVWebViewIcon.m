@@ -40,6 +40,7 @@
 #import "FVFinderIcon.h"
 #import "FVMIMEIcon.h"
 #import <WebKit/WebKit.h>
+#import <Foundation/NSDebug.h>
 
 @interface WebView (FVExtensions)
 - (BOOL)fv_isLoading;
@@ -62,12 +63,13 @@
 @implementation FVWebViewIcon
 
 // webview pool variables to keep memory usage down; pool size is tunable
-static NSInteger _maxWebViews = 5;
+static NSInteger       _maxWebViews = 5;
 static NSMutableArray *_availableWebViews = nil;
 static NSMutableArray *_activeWebViews = nil;
-static NSInteger _numberOfWebViews = 0;
+static NSInteger       _numberOfWebViews = 0;
 static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconWebViewAvailableNotificationName";
-static NSSet *_webViewSchemes = nil;
+
+static NSSet          *_webViewSchemes = nil;
 
 // size of the view frame; large enough to fit a reasonably sized page
 static const NSSize _webViewSize = { 1000, 900 };
@@ -132,6 +134,7 @@ static const NSSize _webViewSize = { 1000, 900 };
         self = [[FVFinderIcon allocWithZone:zone] initWithURL:aURL];
     }
     else if ((self = [super init])) {
+        _rc = 1;
         _httpURL = [aURL copy];
         _fullImage = NULL;
         _thumbnail = NULL;
@@ -170,8 +173,8 @@ static const NSSize _webViewSize = { 1000, 900 };
 
 - (void)dealloc
 {
-    // it's very unlikely that we'll see this on a non-main thread, but just in case...
-    [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
+    // should always be on the main thread here
+    [self _releaseWebView];
     [_condLock release];
     CGImageRelease(_viewImage);
     CGImageRelease(_fullImage);
@@ -181,6 +184,25 @@ static const NSSize _webViewSize = { 1000, 900 };
     [_cacheKey release];
     [super dealloc];
 }
+
+- (oneway void)release 
+{
+    do {
+
+        if (1 == _rc) [self dealloc];
+        
+    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
+    NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
+}
+
+- (id)retain
+{
+    OSAtomicIncrement32Barrier((int32_t *)&_rc);
+    NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
+    return self;
+}
+
+- (NSUInteger)retainCount { return _rc; }
 
 - (BOOL)canReleaseResources;
 {

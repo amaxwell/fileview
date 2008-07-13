@@ -37,10 +37,9 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "FVIcon.h"
-#import "FVIcon_Private.h"
+#import "FVConcreteIcon.h"
 
-@interface FVTextIcon : FVIcon
+@interface FVTextIcon : FVConcreteIcon
 {
 @protected
     CGImageRef      _fullImage;
@@ -48,11 +47,7 @@
     CGImageRef      _thumbnail;
     NSSize          _thumbnailSize;
     NSSize          _desiredSize;
-    NSURL          *_fileURL;
-    BOOL            _drawsLinkBadge;
     BOOL            _isPlainText;
-    id              _cacheKey;
-    pthread_mutex_t _mutex;
 }
 
 + (BOOL)canInitWithUTI:(NSString *)aUTI;

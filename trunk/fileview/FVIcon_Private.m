@@ -164,9 +164,6 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
 }
 
 - (id)initWithURL:(NSURL *)aURL { [self doesNotRecognizeSelector:_cmd]; return nil; }
-- (BOOL)tryLock { [self doesNotRecognizeSelector:_cmd]; return NO; }
-- (void)lock { [self doesNotRecognizeSelector:_cmd]; }
-- (void)unlock { [self doesNotRecognizeSelector:_cmd]; }
 
 - (NSSize)size { [self doesNotRecognizeSelector:_cmd]; return NSZeroSize; }
 
@@ -179,7 +176,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
 - (CGRect)_drawingRectWithRect:(NSRect)iconRect;
 {
     // lockless classes return NO specifically to avoid hitting this assertion
-    NSAssert1([self tryLock] == NO, @"%@ failed to acquire lock before calling -size", [self class]);
+    NSAssert1(NO == [self respondsToSelector:@selector(tryLock)] || [(id)self tryLock] == NO, @"%@ failed to acquire lock before calling -size", [self class]);
     NSSize s = [self size];
     
     NSParameterAssert(s.width > 0);

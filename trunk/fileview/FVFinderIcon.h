@@ -42,6 +42,8 @@
 
 @interface FVFinderIcon : FVIcon
 {
+@private
+    uint32_t        _rc;
 @protected
     IconRef         _icon;
     BOOL            _drawsLinkBadge;

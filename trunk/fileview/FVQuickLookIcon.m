@@ -73,14 +73,14 @@ static BOOL FVQLIconDisabled = NO;
 
 - (id)initWithURL:(NSURL *)theURL;
 {
+    NSURL *originalURL = [theURL retain];
     if (FVQLIconDisabled) {
         [self release];
         self = nil;
     }
-    else if ((self = [super init])) {
+    else if ((self = [super initWithURL:theURL])) {
         // QL seems to fail a large percentage of the time on my system, and it's also pretty slow.  Since FVFinderIcon is now fast and relatively low overhead, preallocate the fallback icon to avoid waiting for QL to return NULL.
-        _fallbackIcon = [[FVFinderIcon allocWithZone:[self zone]] initWithURL:theURL];
-        _drawsLinkBadge = [[self class] _shouldDrawBadgeForURL:theURL copyTargetURL:&_fileURL];                
+        _fallbackIcon = [[FVFinderIcon allocWithZone:[self zone]] initWithURL:originalURL];
         _fullImage = NULL;
         _thumbnailSize = NSZeroSize;
         _desiredSize = NSZeroSize;
@@ -90,26 +90,18 @@ static BOOL FVQLIconDisabled = NO;
         _backgroundColor[2] = 1;
         _backgroundColor[3] = 1;
         [[self class] _getBackgroundColor:_backgroundColor forURL:_fileURL];
-        
-        if (pthread_mutex_init(&_mutex, NULL) != 0)
-            perror("pthread_mutex_init");
     }
+    [originalURL release];
     return self;
 }
 
 - (void)dealloc
 {
-    pthread_mutex_destroy(&_mutex);
-    [_fileURL release];
     CGImageRelease(_fullImage);
     CGImageRelease(_thumbnail);
     [_fallbackIcon release];
     [super dealloc];
 }
-
-- (BOOL)tryLock { return pthread_mutex_trylock(&_mutex) == 0; }
-- (void)lock { pthread_mutex_lock(&_mutex); }
-- (void)unlock { pthread_mutex_unlock(&_mutex); }
 
 - (BOOL)canReleaseResources;
 {

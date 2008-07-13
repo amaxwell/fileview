@@ -195,9 +195,8 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 - (id)_initWithURL:(NSURL *)aURL isPlainText:(BOOL)isPlainText
 {
-    self = [super init];
+    self = [super initWithURL:aURL];
     if (self) {
-        _drawsLinkBadge = [[self class] _shouldDrawBadgeForURL:aURL copyTargetURL:&_fileURL];                
         _fullSize = _paperSize;
         _thumbnailSize = _paperSize;
         // first approximation
@@ -205,12 +204,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
         _desiredSize = NSZeroSize;
         _fullImage = NULL;
         _thumbnail = NULL;
-        _cacheKey = [FVIconCache newKeyForURL:_fileURL];
         _isPlainText = isPlainText;
-        
-        NSInteger rc = pthread_mutex_init(&_mutex, NULL);
-        if (rc)
-            perror("pthread_mutex_init");
     }
     return self;
 }
@@ -238,17 +232,10 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 - (void)dealloc
 {
-    pthread_mutex_destroy(&_mutex);
-    [_fileURL release];
     CGImageRelease(_fullImage);
     CGImageRelease(_thumbnail);
-    [_cacheKey release];
     [super dealloc];
 }
-
-- (BOOL)tryLock { return pthread_mutex_trylock(&_mutex) == 0; }
-- (void)lock { pthread_mutex_lock(&_mutex); }
-- (void)unlock { pthread_mutex_unlock(&_mutex); }
 
 - (NSSize)size { return _fullSize; }
 

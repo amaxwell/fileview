@@ -1,10 +1,10 @@
 //
-//  FVWebViewIcon.h
+//  FVConcreteIcon.m
 //  FileView
 //
-//  Created by Adam Maxwell on 12/30/07.
+//  Created by Adam Maxwell on 7/12/08.
 /*
- This software is Copyright (c) 2007-2008
+ This software is Copyright (c) 2008
  Adam Maxwell. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
@@ -36,27 +36,60 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Cocoa/Cocoa.h>
-#import "FVIcon.h"
+#import "FVConcreteIcon.h"
+#import <Foundation/NSDebug.h>
 #import "FVIcon_Private.h"
 
-@class FVFinderIcon;
-@class WebView;
+@implementation FVConcreteIcon
 
-@interface FVWebViewIcon : FVIcon <NSLocking>
+- (id)init
 {
-    uint32_t         _rc;
-    CGImageRef       _viewImage;
-    CGImageRef       _fullImage;
-    NSSize           _fullImageSize;
-    CGImageRef       _thumbnail;
-    NSSize           _thumbnailSize;
-    FVIcon          *_fallbackIcon;
-    NSURL           *_httpURL;
-    NSSize           _desiredSize;
-    WebView         *_webView;
-    id               _cacheKey;
-    NSConditionLock *_condLock;
+    self = [super init];
+    if (self) _rc = 1;
+    return self;
 }
+
+- (id)initWithURL:(NSURL *)aURL
+{
+    self = [self init];
+    if (self) {
+        _drawsLinkBadge = [[self class] _shouldDrawBadgeForURL:aURL copyTargetURL:&_fileURL];     
+        _cacheKey = [FVIconCache newKeyForURL:_fileURL];
+        pthread_mutex_init(&_mutex, NULL);
+    }
+    return self;
+}
+
+- (oneway void)release 
+{
+    do {
+        
+        if (1 == _rc) [self dealloc];
+        
+    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
+    NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
+}
+
+- (id)retain
+{
+    OSAtomicIncrement32Barrier((int32_t *)&_rc);
+    NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
+    return self;
+}
+
+- (NSUInteger)retainCount { return _rc; }
+
+- (void)dealloc
+{
+    pthread_mutex_destroy(&_mutex);
+    [_fileURL release];
+    [_cacheKey release];
+    [super dealloc];
+}
+
+- (BOOL)tryLock { return pthread_mutex_trylock(&_mutex) == 0; }
+- (void)lock { pthread_mutex_lock(&_mutex); }
+- (void)unlock { pthread_mutex_unlock(&_mutex); }
+
 
 @end

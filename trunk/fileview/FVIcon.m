@@ -215,17 +215,6 @@ static NSURL *missingFileURL = nil;
 - (void)drawInRect:(NSRect)dstRect ofContext:(CGContextRef)context { [self doesNotRecognizeSelector:_cmd]; }
 - (void)renderOffscreen { [self doesNotRecognizeSelector:_cmd]; }
 
-// trivial description
-- (NSString *)description
-{
-    NSMutableString *desc = [[super description] mutableCopy];
-    if ([self tryLock]) {
-        [desc appendFormat:@" \"%@\"", NSStringFromSize([self size])];
-        [self unlock];
-    }
-    return [desc autorelease];
-}
-
 // not all subclasses can release resources, and others may not be fully initialized
 - (BOOL)canReleaseResources { return NO; }
 
