@@ -49,7 +49,7 @@
  
  Enumeration via NSFastEnumeration or NSEnumerator is performed in queue order (high priority objects are returned before low priority objects).  Selectors invoked via FVPriorityQueue::makeObjectsPerformSelector: are performed in the same order (high priority first).
  
- @warning FVPriorityQueue instances may be shared among threads, but must be protected by a mutex in order to avoid concurrent reads and/or writes.  This may be relaxed in future to allow simultaneous reads.
+ @warning FVPriorityQueue instances may be shared among threads, but must be protected by a mutex in order to avoid concurrent reads and/or writes (including enumeration).  This may be relaxed in future to allow simultaneous reads.
  
  Thanks to Mike Ash for demonstrating how to use std::make_heap.
  http://www.mikeash.com/?page=pyblog/using-evil-for-good.html
@@ -67,7 +67,7 @@
     id              *_values;
     NSUInteger       _count;
     NSUInteger       _capacity;
-    long unsigned    _mutations;
+    unsigned long    _mutations;
     BOOL             _madeHeap;
     BOOL             _sorted;
 }
