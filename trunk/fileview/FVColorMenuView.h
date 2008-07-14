@@ -40,6 +40,24 @@
 
 @class FVColorMenuMatrix;
 
+/** @internal @brief Finder label menu view.
+ 
+ FVColorMenuView provides an NSView subclass that is a close approximation of the Finder label color control.  Presently it's only available directly in code, but is easy to set up in code:
+ @code
+ NSMenuItem *anItem = [[NSMenuItem allocWithZone:[NSMenu menuZone]] initWithTitle:@"Finder Label" 
+                                                                           action:@selector(changeFinderLabel:)
+                                                                    keyEquivalent:@""];
+ FVColorMenuView *menuView = [FVColorMenuView menuView];
+ // target will be first responder
+ [menuView setTarget:nil]; 
+ [menuView setAction:@selector(changeFinderLabel:)];
+ [anItem setView:menuView];
+ // add anItem to a menu
+ @endcode
+ 
+ Although this class is marked for internal use only, it should be useful elsewhere.  It's dependent on the FVColorMenuView.nib, so make sure to copy that if you use this class.
+ 
+ */
 @interface FVColorMenuView : NSControl
 {
     IBOutlet FVColorMenuMatrix *_matrix;
@@ -49,22 +67,40 @@
     id                          _target;
 }
 
-// returns a new instance of the view
+/** @brief Returns a new, autoreleased instance.
+ 
+ This is the primary interface for returning a new menu view.  It handles loading UI elements from the nib and setting up connections.
+ @warning Do not use initWithFrame: to create a new instance. */
 + (FVColorMenuView *)menuView;
 
-// select a given Finder label
+/** @brief Select a given Finder label.
+ 
+ For programmatic selection changes.
+ @param label An index between 0 and 7. */
 - (void)selectLabel:(NSUInteger)label;
 
-// implements -tag to return the selected Finder label
-
-- (id)target;
+/** @brief Target for control action.
+ 
+ Target must implement @code -(NSInteger)tag @endcode to return the selected Finder label.
+ @param target The receiver of the view's action selector. */
 - (void)setTarget:(id)target;
+/** The control's target. */
+- (id)target;
 
+/** Action for selection changes. */
 - (SEL)action;
+/** Sets the action for selection changes.
+ 
+ @param action Action will be sent to the control's target. */
 - (void)setAction:(SEL)action;
 
 @end
 
+/*
+ 
+ The following undocumented classes are only declared for IB.  Do not rely on them or use them outside the FVColorMenuView implementation.
+
+ */
 @interface FVColorMenuCell : NSButtonCell
 @end
 
