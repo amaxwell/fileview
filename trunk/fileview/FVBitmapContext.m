@@ -54,6 +54,19 @@ bool FVImageIsIncompatible(CGImageRef image)
     return __FVColorSpaceIsIncompatible(image) || CGImageGetBitsPerComponent(image) != 8;
 }
 
+size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide)
+{
+    size_t destRowBytes = bytesPerSample * pixelsWide;
+    // Widen bytesPerRow out to a integer multiple of 64 bytes
+    destRowBytes = (destRowBytes + 63) & ~63;
+    
+    // Make sure we are not an even power of 2 wide.
+    // Will loop a few times for destRowBytes <= 64
+    while (0 == (destRowBytes & (destRowBytes - 1)))
+        destRowBytes += 64;
+    return destRowBytes;
+}
+
 __attribute__ ((constructor))
 static void __WorkaroundNSRoundUpToMultipleOfPageSize()
 {

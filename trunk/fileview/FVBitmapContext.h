@@ -40,6 +40,14 @@
 
 /** @file FVBitmapContext.h */
 
+/** @internal @brief Row bytes for pixel width.
+ 
+ Computes the appropriate number of bytes per row for 64-byte alignment.  Algorithm borrowed from Apple's sample code.
+ @param bytesPerSample Bytes per pixel (4 for an 8-bit ARGB image).
+ @param pixelsWide Width of the image in pixels.
+ @return Number of bytes to allocate per row. */
+FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide);
+
 /** @internal @brief Bitmap context creation.
  
  Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using FVIconBitmapContextDispose.

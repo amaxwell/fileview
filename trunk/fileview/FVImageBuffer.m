@@ -40,6 +40,7 @@
 #import "FVUtilities.h"
 #import "FVCGImageUtilities.h"
 #import <libkern/OSAtomic.h>
+#import "FVBitmapContext.h"
 
 static NSMutableSet *_availableBuffers = nil;
 static NSMutableSet *_workingBuffers = nil;

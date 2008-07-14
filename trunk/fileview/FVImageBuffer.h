@@ -109,7 +109,7 @@
 - (id)initWithWidth:(size_t)w height:(size_t)h rowBytes:(size_t)r;
 
 /** @internal @brief Convenience initializer.
- Computes row bytes using FVCGImageUtilities.h::FVPaddedRowBytesForWidth(@a bps, @a w).
+ Computes row bytes using FVBitmapContext.h::FVPaddedRowBytesForWidth(@a bps, @a w).
  @param w Width in pixels.
  @param h Height in pixels.
  @param bps Bytes per sample (4 for an 8-bit ARGB image).
