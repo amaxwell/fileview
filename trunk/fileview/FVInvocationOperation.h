@@ -40,6 +40,9 @@
 #import "FVConcreteOperation.h"
 #import <libkern/OSAtomic.h>
 
+/** @internal @brief FVOperation subclass wraps NSInvocation
+ 
+ FVInvocationOperation is designed to be similar in usage to NSInvocationOperation.  It can be created with any invocation, but the invocation should not be modified after the operation has been enqueued.  FVInvocationOperation is capable of returning a value; non-objects are wrapped in an NSValue. */
 @interface FVInvocationOperation : FVConcreteOperation
 {
 @private;
@@ -49,11 +52,30 @@
     OSSpinLock    _lock;
 }
 
-// designated initializer
+/** Designated initializer. */
 - (id)initWithInvocation:(NSInvocation *)inv;
-// convenience cover; still creates an invocation, though, so there's no performance win
+/** Convenience initializer.
+ 
+ This method still creates an NSInvocation, so there's no performance win.
+ @param target The target of @a sel.
+ @param sel The selector which will be invoked.
+ @param arg An optional argument of @a sel.  May be nil.
+ @return An initialized operation. */
 - (id)initWithTarget:(id)target selector:(SEL)sel object:(id)arg;
+
+/** @return The operation's invocation. */
 - (NSInvocation *)invocation;
+
+/** @brief Get the return value.
+ 
+ FVInvocationOperation can be used in a blocking mode if you poll the runloop until FVOperation::isFinished returns YES.  Use @a FVMainQueueRunLoopMode for the main thread queue, or @a NSDefaultRunLoopMode for most other queues:
+ @code 
+ [[FVOperationQueue mainQueue] addOperation:operation];
+ while (NO == [operation isFinished])
+    [[NSRunLoop currentRunLoop] runMode:FVMainQueueRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+ @endcode
+ @warning This has only undergone limited testing, but is known to work for object and NSRect types.  Test it yourself for others.
+ @return The return value of the invocation.  If this is not an object, it will be wrapped in an NSValue. */
 - (id)result;
 
 @end
