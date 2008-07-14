@@ -43,6 +43,9 @@
 
 @class FVOperation, FVPriorityQueue;
 
+/** @internal @brief Implementation of FVOperationQueue.
+ 
+  FVConcreteOperationQueue is only used and instantiated by the FVOperationQueue abstract class.  It must never be used directly, although you could copy its implementation for another subclass of FVOperationQueue.  FVConcreteOperationQueue runs a dedicated thread and uses a version 1 CFRunLoopSource and mach port to signal the thread to wake up and process queue entries.  FVConcreteOperationQueue is thread-safe. */
 @interface FVConcreteOperationQueue : FVOperationQueue
 {
 @private
