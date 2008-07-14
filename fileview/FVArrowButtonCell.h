@@ -38,10 +38,36 @@
 
 #import <Cocoa/Cocoa.h>
 
-enum { FVArrowRight, FVArrowLeft };
+/** @file FVArrowButtonCell.h */
 
+enum { 
+    FVArrowRight = 0, 
+    FVArrowLeft  = 1
+};
+typedef NSUInteger FVArrowDirection;
+
+/** @internal @brief Circular arrow button.
+ 
+ FVArrowButtonCell is a circle with an arrow inside, used as a page change button.  Modeled after the page change button that Finder shows for PDF files on 10.5 in column mode preview.  */
 @interface FVArrowButtonCell : NSButtonCell {
-    NSUInteger arrowDirection;
+    FVArrowDirection _arrowDirection;
 }
-- (id)initWithArrowDirection:(NSUInteger)anArrowDirection;
+
+/** Designated initializer.
+ 
+ @param anArrowDirection Whether the arrow points left or right.
+ @return An initialized cell. */
+- (id)initWithArrowDirection:(FVArrowDirection)anArrowDirection;
 @end
+
+/** @typedef NSUInteger FVArrowDirection 
+ FVArrowButtonCell direction.
+ */
+
+/** @var FVArrowRight 
+ Right-pointing arrow.
+ */
+/** @var FVArrowLeft 
+ Left-pointing arrow.
+ */
+
