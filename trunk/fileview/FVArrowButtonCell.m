@@ -47,14 +47,14 @@
     return [self initWithArrowDirection:FVArrowRight];
 }
 
-- (id)initWithArrowDirection:(NSUInteger)anArrowDirection {
+- (id)initWithArrowDirection:(FVArrowDirection)anArrowDirection {
     self = [super initImageCell:nil];
     if (self) {
         [self setHighlightsBy:NSNoCellMask];
         [self setImagePosition:NSImageOnly];
         [self setBezelStyle:NSRegularSquareBezelStyle];
         [self setBordered:NO];
-        arrowDirection = anArrowDirection;
+        _arrowDirection = anArrowDirection;
     }
     return self;
 }
@@ -62,8 +62,8 @@
 - (NSBezierPath *)arrowBezierPathWithSize:(NSSize)size;
 {
     CGFloat w = size.width / 16.0, h = size.height / 16.0;
-    CGFloat tip = arrowDirection == FVArrowRight ? 14.0*w : 2.0*w;
-    CGFloat base = arrowDirection == FVArrowRight ? 3.0*w : 13.0*w;
+    CGFloat tip = _arrowDirection == FVArrowRight ? 14.0*w : 2.0*w;
+    CGFloat base = _arrowDirection == FVArrowRight ? 3.0*w : 13.0*w;
     NSBezierPath *arrow = [NSBezierPath bezierPath];
     
     [arrow moveToPoint:NSMakePoint(base, 6.0*h)];
