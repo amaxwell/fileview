@@ -42,6 +42,11 @@
 
 @class FVOperation, FVPriorityQueue;
 
+/** @internal @brief Implementation of FVOperationQueue.
+ 
+ @warning FVMainThreadOperationQueue must never be instantiated directly.  It is only used and instantiated by the FVOperationQueue abstract class.  
+ 
+ The following notes may be of interest to FVOperationQueue subclass implementors:  FVMainThreadOperationQueue attaches a CFRunLoopObserver to the main thread for processing queue entries.  Operations are processed while the main thread's runloop is running in the @a FVMainQueueRunLoopMode or any of the modes associated with @a kCFRunLoopCommonModes, and are processed in the @a kCFRunLoopEntry and @a kCFRunLoopBeforeWaiting runloop entry points.  FVMainThreadOperationQueue is thread-safe. */
 @interface FVMainThreadOperationQueue : FVOperationQueue
 {
 @private
