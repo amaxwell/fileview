@@ -81,6 +81,14 @@ static pthread_cond_t _memoryCond = PTHREAD_COND_INITIALIZER;
 
 static NSLock *_copyLock = [NSLock new];
 
+NSSize FVCGImageSize(CGImageRef image)
+{
+    NSSize s;
+    s.width = CGImageGetWidth(image);
+    s.height = CGImageGetHeight(image);
+    return s;
+}
+
 size_t __FVMaximumTileWidth(void) { return MAX_TILE_WIDTH; }
 size_t __FVMaximumTileHeight(void) { return MAX_TILE_HEIGHT; }
 

@@ -38,43 +38,62 @@
 
 #import <Cocoa/Cocoa.h>
 
-static inline NSSize FVCGImageSize(CGImageRef image)
-{
-    NSSize s;
-    s.width = CGImageGetWidth(image);
-    s.height = CGImageGetHeight(image);
-    return s;
-}
+/** @file FVCGImageUtilities.h */
 
-// algorithm borrowed from Apple sample code
-static inline size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide)
-{
-    size_t destRowBytes = bytesPerSample * pixelsWide;
-    // Widen bytesPerRow out to a integer multiple of 64 bytes
-    destRowBytes = (destRowBytes + 63) & ~63;
-    
-    // Make sure we are not an even power of 2 wide.
-    // Will loop a few times for destRowBytes <= 64
-    while (0 == (destRowBytes & (destRowBytes - 1)))
-        destRowBytes += 64;
-    return destRowBytes;
-}
+/** @internal @brief Get image size in pixels.
+ @return CGImage size in pixels. */
+FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image);
 
-// only exported for FVImageBuffer; do not use
+/** @internal @brief Maximum width of tiles.
+ 
+ Returns the maximum width of tiles that will be created in scaling using vImage.
+ @warning Only exported for FVImageBuffer; do not use. 
+ @return Tile width in pixels. */
 FV_PRIVATE_EXTERN size_t __FVMaximumTileWidth(void);
+
+/** @internal @brief Maximum height of tiles.
+ 
+ Returns the maximum height of tiles that will be created in scaling using vImage.
+ @warning Only exported for FVImageBuffer; do not use. 
+ @return Tile height in pixels. */
 FV_PRIVATE_EXTERN size_t __FVMaximumTileHeight(void);
 
-// use for resampling CGImages or converting an image to be compatible with cache limitations
+/** @internal @brief Resample an image.
+ 
+ This function is used for resampling CGImages or converting an image to be compatible with cache limitations (if it uses the wrong colorspace, for instance).  Tiling and scaling are performed using vImage, which may give unacceptable results at very small scale levels due to limitations in the tiling scheme.  However, it should be more memory-efficient than using FVCGCreateResampledImageOfSize.  Images returned are always host-order 8-bit with alpha channel.
+ @param image The CGImage to scale (source image).
+ @param desiredSize The final size in pixels.
+ @return A new CGImage or NULL if it could not be scaled. */
 FV_PRIVATE_EXTERN CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize);
 
-// redraws the image into a new CGBitmapContext
+/** @internal @brief Resample an image.
+ 
+ This function is used for resampling CGImages or converting an image to be compatible with cache limitations (if it uses the wrong colorspace, for instance).  The image is redrawn into a new CGBitmapContext, and any scaling is performed by CoreGraphics.  Images returned are always host-order 8-bit with alpha channel.
+ @warning This function can be memory-intensive.
+ @param image The CGImage to scale (source image).
+ @param desiredSize The final size in pixels.
+ @return A new CGImage or NULL if it could not be scaled. */
 FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize);
 
-// this uses CG SPI, and may return NULL at any time; use CGDataProviderCopyData as a fallback
+/** @internal @brief Return pointer to bitmap storage.
+ 
+ @todo What length is returned for float32 or uint16_t images?
+ 
+ @warning This uses CoreGraphics SPI, and may return NULL at any time; use CGDataProviderCopyData as a fallback, or don't use it at all unless you absolutely need the memory performance. 
+ @param image The image whose bitmap data you want to access.
+ @param len Returns the length of the bitmap pointer by reference.
+ @return A pointer to the data, or NULL on failure. */
 FV_PRIVATE_EXTERN const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len);
 
-// this is a hack on 10.4 and earlier
+/** @internal @brief Get the CGColorSpaceModel of a color space.
+ 
+ @warning This is a hack on 10.4 and earlier.
+ @param colorSpace The color space to query.
+ @return A CGColorspaceModel value.  May be kCGColorSpaceModelUnknown. */
 FV_PRIVATE_EXTERN CGColorSpaceModel __FVGetColorSpaceModelOfColorSpace(CGColorSpaceRef colorSpace);
 
-// the ImageShear test project uses this
+/** @internal @brief List of tile rects.
+ 
+ The ImageShear test project uses this to draw tiles for diagnostic purposes.  It has no other useful function.
+ @return An array of NSRect structures.  The caller is responsible for freeing this list with NSZoneFree. */
 FV_PRIVATE_EXTERN NSRect * FVCopyRectListForImageWithScaledSize(CGImageRef image, const NSSize desiredSize, NSUInteger *rectCount);
