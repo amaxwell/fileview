@@ -141,7 +141,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
 - (void)dealloc
 {
     [[self class] _removeIconForMappedRelease:self];
-    if (_pdfDoc && _isMapped) [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
+    if (_pdfDoc && _isMapped) [_FVMappedDataProvider releaseProviderForURL:_fileURL];
     CGImageRelease(_thumbnail);
     CGPDFDocumentRelease(_pdfDoc);
     [super dealloc];
@@ -160,7 +160,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
     
         if (NULL != _pdfDoc) {
             _pdfPage = NULL;
-            if (_isMapped) [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
+            if (_isMapped) [_FVMappedDataProvider releaseProviderForURL:_fileURL];
             CGPDFDocumentRelease(_pdfDoc);
             _pdfDoc = NULL;
         }
@@ -236,7 +236,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 {
     if (FVCanMapFileAtURL(_fileURL)) {
         _isMapped = YES;
-        return CGPDFDocumentCreateWithProvider([_FVMappedDataProvider dataProviderForURL:_fileURL]);
+        return CGPDFDocumentCreateWithProvider([_FVMappedDataProvider newDataProviderForURL:_fileURL]);
     }
     else {
         _isMapped = NO;
