@@ -153,10 +153,8 @@ NSArray *FVURLSFromPasteboard(NSPasteboard *pboard)
     PasteboardRef carbonPboard;
     err = PasteboardCreate((CFStringRef)[pboard name], &carbonPboard);
     
-    PasteboardSyncFlags syncFlags;
-#pragma unused(syncFlags)
     if (noErr == err)
-        syncFlags = PasteboardSynchronize(carbonPboard);
+        (void)PasteboardSynchronize(carbonPboard);
     
     ItemCount itemCount, itemIndex;
     if (noErr == err)
@@ -298,10 +296,8 @@ BOOL FVWriteURLsToPasteboard(NSArray *URLs, NSPasteboard *pboard)
     if (noErr == err)
         err = PasteboardClear(carbonPboard);
     
-    PasteboardSyncFlags syncFlags;
-#pragma unused(syncFlags)
     if (noErr == err)
-        syncFlags = PasteboardSynchronize(carbonPboard);
+        (void)PasteboardSynchronize(carbonPboard);
     
     NSUInteger i, iMax = [URLs count];
     
