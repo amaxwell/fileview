@@ -38,131 +38,9 @@
 
 #import "FVPDFIcon.h"
 #import <libkern/OSAtomic.h>
-#import <sys/mman.h>
-#import <sys/stat.h>
+#import "_FVMappedDataProvider.h"
+#import "_FVSplitSet.h"
 
-typedef struct _FVMappedRegion {
-    NSZone *zone;
-    char   *path;
-    void   *mapregion;
-    off_t   length;
-} FVMappedRegion;
-
-static int32_t _mappedDataSizeKB = 0;
-#define MAX_MAPPED_SIZE_KB 400000
-
-static const void *__FVGetMappedRegion(void *info)
-{
-    FVMappedRegion *mapInfo = info;
-    if (NULL == mapInfo->mapregion) {
-        int fd = open(mapInfo->path, O_RDONLY);
-        if (-1 == fd) {
-            perror("failed to open PDF file");
-        }
-        else {
-            mapInfo->mapregion = mmap(0, mapInfo->length, PROT_READ, MAP_SHARED, fd, 0);
-            if (mapInfo->mapregion == (void *)-1) {
-                perror("failed to mmap file");
-                mapInfo->mapregion = NULL;
-            }
-            else {
-                bool swap;
-                do {
-                    int32_t newSize = _mappedDataSizeKB + (mapInfo->length) / 1024;
-                    swap = OSAtomicCompareAndSwap32Barrier(_mappedDataSizeKB, newSize, &_mappedDataSizeKB);
-                } while (false == swap);
-            }
-            close(fd);
-        }
-    }
-    return mapInfo->mapregion;
-}
-
-static void __FVReleaseMappedRegion(void *info)
-{
-    FVMappedRegion *mapInfo = info;
-    NSZoneFree(mapInfo->zone, mapInfo->path);
-    if (mapInfo->mapregion) munmap(mapInfo->mapregion, mapInfo->length);
-    bool swap;
-    do {
-        int32_t newSize = _mappedDataSizeKB - (mapInfo->length) / 1024;
-        swap = OSAtomicCompareAndSwap32Barrier(_mappedDataSizeKB, newSize, &_mappedDataSizeKB);
-    } while (false == swap);
-    NSZoneFree(mapInfo->zone, info);
-}
-
-const CGDataProviderDirectAccessCallbacks FVMappedDataProviderCallBacks = { __FVGetMappedRegion, NULL, NULL, __FVReleaseMappedRegion };
-
-
-@interface _FVProviderInfo : NSObject
-{
-@public;
-    CGDataProviderRef _provider;
-    NSUInteger        _refCount;
-}
-@end
-@implementation _FVProviderInfo
-@end
-
-@interface _FVSplitSet : NSObject
-{
-    CFMutableSetRef _old;
-    CFMutableSetRef _new;
-    NSUInteger      _split;
-}
-@end
-
-@implementation _FVSplitSet
-
-- (id)initWithSplit:(NSUInteger)split
-{
-    self = [super init];
-    if (self) {
-        _old = CFSetCreateMutable(CFAllocatorGetDefault(), 0, NULL);
-        _new = CFSetCreateMutable(CFAllocatorGetDefault(), split, NULL);
-        _split = split;
-    }
-    return self;
-}
-
-- (id)init { return [self initWithSplit:100]; }
-
-- (void)dealloc
-{
-    CFRelease(_old);
-    CFRelease(_new);
-    [super dealloc];
-}
-
-- (NSUInteger)split { return _split; }
-
-- (void)addObject:(id)obj
-{
-    if ((NSUInteger)CFSetGetCount(_new) < _split) {
-        CFSetAddValue(_new, obj);
-    }
-    else {
-        [(NSMutableSet *)_old unionSet:(NSSet *)_new];
-        CFSetRemoveAllValues(_new);
-    }
-}
-
-- (void)removeObject:(id)obj
-{
-    CFSetRemoveValue(_new, obj);
-    CFSetRemoveValue(_old, obj);
-}
-
-- (void)removeOldObjects { CFSetRemoveAllValues(_old); }
-
-- (NSSet *)copyOldObjects { return (NSSet *)CFSetCreateCopy(CFGetAllocator(_old), _old); }
-
-- (NSUInteger)count { return CFSetGetCount(_old) + CFSetGetCount(_new); }
-
-@end
-
-static CFMutableDictionaryRef _dataProviders = NULL;
-static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
 static OSSpinLock _releaseLock = OS_SPINLOCK_INIT;
 static _FVSplitSet *_releaseableIcons = nil;
 
@@ -187,7 +65,6 @@ static OSSpinLock _descriptionLock = OS_SPINLOCK_INIT;
     FVINITIALIZE(FVPDFIcon);
     FVAPIParameterAssert(pthread_main_np() != 0);
     
-    _dataProviders = CFDictionaryCreateMutable(NULL, 0, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
     _releaseableIcons = [_FVSplitSet new];
     _descriptionTable = [NSMutableDictionary new];
 }
@@ -208,59 +85,12 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
     OSSpinLockUnlock(&_descriptionLock);
 }
 
-+ (CGDataProviderRef)_dataProviderForURL:(NSURL *)aURL
-{
-    pthread_mutex_lock(&_providerLock);
-    _FVProviderInfo *pInfo = (id)CFDictionaryGetValue(_dataProviders, (CFURLRef)aURL);
-    if (nil == pInfo) {
-        pInfo = [_FVProviderInfo new];
-        pInfo->_refCount = 0;
-        pInfo->_provider = NULL;
-        
-        const char *path = [[aURL path] fileSystemRepresentation];
-        struct stat sb;
-        if (-1 != stat(path, &sb)) {
-            
-            // don't mmap network/firewire/usb filesystems
-            NSParameterAssert(FVCanMapFileAtURL(aURL));
-            
-            NSZone *zone = [self zone];
-            FVMappedRegion *mapInfo = NSZoneMalloc(zone, sizeof(FVMappedRegion));
-            mapInfo->zone = zone;
-            mapInfo->path = NSZoneCalloc(zone, strlen(path) + 1, sizeof(char));
-            strcpy(mapInfo->path, path);
-            mapInfo->length = sb.st_size;                
-            mapInfo->mapregion = NULL;
-            pInfo->_provider = CGDataProviderCreateDirectAccess(mapInfo, mapInfo->length, &FVMappedDataProviderCallBacks);
-        }
-        CFDictionarySetValue(_dataProviders, (CFURLRef)aURL, pInfo);
-        [pInfo release];
-    }
-    if (pInfo) pInfo->_refCount++;
-    pthread_mutex_unlock(&_providerLock);
-    return pInfo ? pInfo->_provider : NULL;
-}
-
-+ (void)_removeProviderReferenceForURL:(NSURL *)aURL
-{
-    pthread_mutex_lock(&_providerLock);
-    _FVProviderInfo *pInfo = (id)CFDictionaryGetValue(_dataProviders, (CFURLRef)aURL);
-    if (pInfo) {
-        pInfo->_refCount--;
-        if (pInfo->_refCount == 0) {
-            CGDataProviderRelease(pInfo->_provider);
-            CFDictionaryRemoveValue(_dataProviders, aURL);
-        }
-    }
-    pthread_mutex_unlock(&_providerLock);
-}
-
 + (void)_addIconForMappedRelease:(FVPDFIcon *)anIcon;
 {
     OSSpinLockLock(&_releaseLock);
     [_releaseableIcons addObject:anIcon];
     NSSet *oldObjects = nil;
-    if (_mappedDataSizeKB > MAX_MAPPED_SIZE_KB || [_releaseableIcons count] >= [_releaseableIcons split] * 2) {
+    if ([_FVMappedDataProvider maxSizeExceeded] || [_releaseableIcons count] >= [_releaseableIcons split] * 2) {
         // copy inside the lock, then perform the slower makeObjectsPerformSelector: operation outside of it
         oldObjects = [_releaseableIcons copyOldObjects];
         // remove the first 100 objects, since the recently added ones are more likely to be needed again (scrolling up and down)
@@ -310,7 +140,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
 - (void)dealloc
 {
     [[self class] _removeIconForMappedRelease:self];
-    if (_pdfDoc) [[self class] _removeProviderReferenceForURL:_fileURL];
+    if (_pdfDoc) [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
     CGImageRelease(_thumbnail);
     CGPDFDocumentRelease(_pdfDoc);
     [super dealloc];
@@ -329,7 +159,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
     
         if (NULL != _pdfDoc) {
             _pdfPage = NULL;
-            [[self class] _removeProviderReferenceForURL:_fileURL];
+            [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
             CGPDFDocumentRelease(_pdfDoc);
             _pdfDoc = NULL;
         }
@@ -404,7 +234,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 - (CGPDFDocumentRef)_newPDFDocument
 {
     if (FVCanMapFileAtURL(_fileURL))
-        return CGPDFDocumentCreateWithProvider([[self class] _dataProviderForURL:_fileURL]);
+        return CGPDFDocumentCreateWithProvider([_FVMappedDataProvider dataProviderForURL:_fileURL]);
     else
         return CGPDFDocumentCreateWithURL((CFURLRef)_fileURL);
 }
