@@ -79,6 +79,10 @@
 		F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F980F0920CCC3C2E0067C1DF /* libz.dylib */; };
 		F98D3A5E0D82EFD300ED9D22 /* FVCGImageUtilities.h in Headers */ = {isa = PBXBuildFile; fileRef = F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */; };
 		F98D3A5F0D82EFD300ED9D22 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */; };
+		F991B8680E2C5D4F0046000A /* _FVMappedDataProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = F991B8660E2C5D4F0046000A /* _FVMappedDataProvider.h */; };
+		F991B8690E2C5D4F0046000A /* _FVMappedDataProvider.m in Sources */ = {isa = PBXBuildFile; fileRef = F991B8670E2C5D4F0046000A /* _FVMappedDataProvider.m */; };
+		F991B8B70E2C657B0046000A /* _FVSplitSet.h in Headers */ = {isa = PBXBuildFile; fileRef = F991B8B50E2C657B0046000A /* _FVSplitSet.h */; };
+		F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */ = {isa = PBXBuildFile; fileRef = F991B8B60E2C657B0046000A /* _FVSplitSet.m */; };
 		F9A2D39D0CCBB3B5002F517B /* FVIconCache.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D39B0CCBB3B5002F517B /* FVIconCache.h */; };
 		F9A2D39E0CCBB3B5002F517B /* FVIconCache.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D39C0CCBB3B5002F517B /* FVIconCache.m */; };
 		F9A2D3DA0CCBDDDF002F517B /* FVBitmapContext.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */; };
@@ -270,6 +274,10 @@
 		F980F0920CCC3C2E0067C1DF /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
 		F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCGImageUtilities.h; sourceTree = "<group>"; };
 		F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FVCGImageUtilities.mm; sourceTree = "<group>"; };
+		F991B8660E2C5D4F0046000A /* _FVMappedDataProvider.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _FVMappedDataProvider.h; sourceTree = "<group>"; };
+		F991B8670E2C5D4F0046000A /* _FVMappedDataProvider.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = _FVMappedDataProvider.m; sourceTree = "<group>"; };
+		F991B8B50E2C657B0046000A /* _FVSplitSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _FVSplitSet.h; sourceTree = "<group>"; };
+		F991B8B60E2C657B0046000A /* _FVSplitSet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = _FVSplitSet.m; sourceTree = "<group>"; };
 		F9A2D39B0CCBB3B5002F517B /* FVIconCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVIconCache.h; sourceTree = "<group>"; };
 		F9A2D39C0CCBB3B5002F517B /* FVIconCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVIconCache.m; sourceTree = "<group>"; };
 		F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVBitmapContext.h; sourceTree = "<group>"; };
@@ -633,6 +641,10 @@
 				F926D0840D96C6DC00190DED /* FVCacheFile.mm */,
 				F931CBF80D97626900D90EDD /* FVCGColorSpaceDescription.h */,
 				F931CBF90D97626900D90EDD /* FVCGColorSpaceDescription.m */,
+				F991B8660E2C5D4F0046000A /* _FVMappedDataProvider.h */,
+				F991B8670E2C5D4F0046000A /* _FVMappedDataProvider.m */,
+				F991B8B50E2C657B0046000A /* _FVSplitSet.h */,
+				F991B8B60E2C657B0046000A /* _FVSplitSet.m */,
 			);
 			name = Caching;
 			sourceTree = "<group>";
@@ -711,6 +723,8 @@
 				F9C664280E04205100ED3EC1 /* FVCoreTextIcon.h in Headers */,
 				F928C6B30E0D9147000C0548 /* FVThread.h in Headers */,
 				F923B78D0E296DAE007F6E7B /* FVConcreteIcon.h in Headers */,
+				F991B8680E2C5D4F0046000A /* _FVMappedDataProvider.h in Headers */,
+				F991B8B70E2C657B0046000A /* _FVSplitSet.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -945,6 +959,8 @@
 				F9C664290E04205100ED3EC1 /* FVCoreTextIcon.m in Sources */,
 				F928C6B40E0D9147000C0548 /* FVThread.m in Sources */,
 				F923B78E0E296DB0007F6E7B /* FVConcreteIcon.m in Sources */,
+				F991B8690E2C5D4F0046000A /* _FVMappedDataProvider.m in Sources */,
+				F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
