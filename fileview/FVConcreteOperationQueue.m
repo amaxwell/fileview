@@ -350,6 +350,7 @@ static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef alloc
     __FVPortFree(port);
 
     [_threadLock unlockWithCondition:QUEUE_TERMINATED];
+    [pool release];
 }
 
 @end
