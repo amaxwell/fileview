@@ -7,7 +7,7 @@
 #error do not include this file
 
 /** \mainpage Conceptual Documentation
- Last update: 13 July 2008
+ Last update: __DATE__
 
  \section sec_intro Introduction
  The FileView framework provides a gridded view with scaling and automatic layout of icons.  Each icon represents an NSURL instance, and drawing is handled per-URL.  Either Cocoa Bindings or a standard datasource paradigm may be used to provide the view with NSURL instances, and an optional delegate may be used to override some behavior.  
