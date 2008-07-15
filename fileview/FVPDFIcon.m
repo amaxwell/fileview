@@ -38,51 +38,20 @@
 
 #import "FVPDFIcon.h"
 #import <libkern/OSAtomic.h>
+
 #import "_FVMappedDataProvider.h"
 #import "_FVSplitSet.h"
+#import "_FVDocumentDescription.h"
 
 static OSSpinLock _releaseLock = OS_SPINLOCK_INIT;
 static _FVSplitSet *_releaseableIcons = nil;
-
-static NSMutableDictionary *_descriptionTable = nil;
-static OSSpinLock _descriptionLock = OS_SPINLOCK_INIT;
-
-// enables instantation entirely from pre-cached objects, so no longer necessary to load the PDF/PS document
-@interface _FVPDFDescription : NSObject
-{
-@public;
-    size_t pageCount;
-    NSSize fullSize;
-}
-@end
-@implementation _FVPDFDescription
-@end
 
 @implementation FVPDFIcon
 
 + (void)initialize
 {
     FVINITIALIZE(FVPDFIcon);
-    FVAPIParameterAssert(pthread_main_np() != 0);
-    
     _releaseableIcons = [_FVSplitSet new];
-    _descriptionTable = [NSMutableDictionary new];
-}
-
-static _FVPDFDescription * __FVPDFIconGetDescriptionForKey(id aKey)
-{
-    _FVPDFDescription *desc;
-    OSSpinLockLock(&_descriptionLock);
-    desc = [_descriptionTable objectForKey:aKey];
-    OSSpinLockUnlock(&_descriptionLock);
-    return desc;
-}
-
-static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
-{
-    OSSpinLockLock(&_descriptionLock);
-    [_descriptionTable setObject:desc forKey:aKey];
-    OSSpinLockUnlock(&_descriptionLock);
 }
 
 + (void)_addIconForMappedRelease:(FVPDFIcon *)anIcon;
@@ -117,9 +86,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
     self = [super initWithURL:aURL];
     if (self) {
         
-        // PDF sucks because we have to read the file and parse it to find out the page size, even if we're not going to draw it.  Since that's not very efficient, don't even open the file until we have to draw it.
-        
-        // Set default sizes so we can draw a blank page on the first pass; this will use a common aspect ratio.
+        // Set default sizes to a typical aspect ratio.
         _fullSize = FVDefaultPaperSize;
         _thumbnailSize = _fullSize;
 
@@ -284,11 +251,13 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         
         if (NULL != _thumbnail) {
             _thumbnailSize = FVCGImageSize(_thumbnail);
-            _FVPDFDescription *desc = __FVPDFIconGetDescriptionForKey(_cacheKey);
+            // retain since there's a possible race here if another thread inserts a description (although multiple instances shouldn't be rendering for the same cache key)
+            _FVDocumentDescription *desc = [[_FVDocumentDescription descriptionForKey:_cacheKey] retain];
             if (desc) {
-                _pageCount = desc->pageCount;
-                _fullSize = desc->fullSize;
+                _pageCount = desc->_pageCount;
+                _fullSize = desc->_fullSize;
             }
+            [desc release];
             NSParameterAssert(_thumbnailSize.width > 0 && _thumbnailSize.height > 0);
             exitEarly = NO == FVShouldDrawFullImageWithThumbnailSize(_desiredSize, _thumbnailSize) && _pageCount > 0;
         }
@@ -322,10 +291,10 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             else
                 _fullSize = NSMakeSize(pageRect.size.height, pageRect.size.width);
             
-            _FVPDFDescription *desc = [_FVPDFDescription new];
-            desc->pageCount = _pageCount;
-            desc->fullSize = _fullSize;
-            __FVPDFIconSetDescriptionForKey(desc, _cacheKey);
+            _FVDocumentDescription *desc = [_FVDocumentDescription new];
+            desc->_pageCount = _pageCount;
+            desc->_fullSize = _fullSize;
+            [_FVDocumentDescription setDescription:desc forKey:_cacheKey];
             [desc release];
             
             // scale appropriately; small PDF images, for instance, don't need scaling
