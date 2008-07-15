@@ -57,6 +57,8 @@ static int32_t _mappedDataSizeKB = 0;
 static const void *__FVGetMappedRegion(void *info);
 static void __FVReleaseMappedRegion(void *info);
 const CGDataProviderDirectAccessCallbacks _FVMappedDataProviderCallBacks = { __FVGetMappedRegion, NULL, NULL, __FVReleaseMappedRegion };
+// 10.5 and later
+const CGDataProviderDirectCallbacks _FVMappedDataProviderDirectCallBacks = { 0, __FVGetMappedRegion, NULL, NULL, __FVReleaseMappedRegion };
 
 static CFMutableDictionaryRef _dataProviders = NULL;
 static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
@@ -82,7 +84,7 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
     return _mappedDataSizeKB > MAX_MAPPED_SIZE_KB;
 }
 
-+ (CGDataProviderRef)dataProviderForURL:(NSURL *)aURL
++ (CGDataProviderRef)newDataProviderForURL:(NSURL *)aURL
 {
     pthread_mutex_lock(&_providerLock);
     _FVProviderInfo *pInfo = (id)CFDictionaryGetValue(_dataProviders, (CFURLRef)aURL);
@@ -109,7 +111,15 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
             strcpy(mapInfo->path, path);
             mapInfo->length = sb.st_size;                
             mapInfo->mapregion = NULL;
-            pInfo->_provider = CGDataProviderCreateDirectAccess(mapInfo, mapInfo->length, &_FVMappedDataProviderCallBacks);
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+            pInfo->_provider = CGDataProviderCreateDirect(mapInfo, mapInfo->length, &_FVMappedDataProviderDirectCallBacks);
+#else
+            // if compiled for 10.4, check for the symbol before using it
+            if (NULL != CGDataProviderCreateDirect)
+                pInfo->_provider = CGDataProviderCreateDirect(mapInfo, mapInfo->length, &_FVMappedDataProviderDirectCallBacks);
+            else
+                pInfo->_provider = CGDataProviderCreateDirectAccess(mapInfo, mapInfo->length, &_FVMappedDataProviderCallBacks);
+#endif
         }
         close(fd);
         CFDictionarySetValue(_dataProviders, (CFURLRef)aURL, pInfo);
@@ -120,7 +130,7 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
     return pInfo ? pInfo->_provider : NULL;
 }
 
-+ (void)removeProviderReferenceForURL:(NSURL *)aURL
++ (void)releaseProviderForURL:(NSURL *)aURL
 {
     pthread_mutex_lock(&_providerLock);
     _FVProviderInfo *pInfo = (id)CFDictionaryGetValue(_dataProviders, (CFURLRef)aURL);
