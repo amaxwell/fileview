@@ -124,6 +124,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
         _thumbnailSize = _fullSize;
 
         _pdfDoc = NULL;
+        _isMapped = NO;
         _pdfPage = NULL;
         _thumbnail = NULL;
         _desiredSize = NSZeroSize;
@@ -140,7 +141,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
 - (void)dealloc
 {
     [[self class] _removeIconForMappedRelease:self];
-    if (_pdfDoc) [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
+    if (_pdfDoc && _isMapped) [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
     CGImageRelease(_thumbnail);
     CGPDFDocumentRelease(_pdfDoc);
     [super dealloc];
@@ -159,7 +160,7 @@ static void __FVPDFIconSetDescriptionForKey(_FVPDFDescription *desc, id aKey)
     
         if (NULL != _pdfDoc) {
             _pdfPage = NULL;
-            [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
+            if (_isMapped) [_FVMappedDataProvider removeProviderReferenceForURL:_fileURL];
             CGPDFDocumentRelease(_pdfDoc);
             _pdfDoc = NULL;
         }
@@ -233,10 +234,14 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 
 - (CGPDFDocumentRef)_newPDFDocument
 {
-    if (FVCanMapFileAtURL(_fileURL))
+    if (FVCanMapFileAtURL(_fileURL)) {
+        _isMapped = YES;
         return CGPDFDocumentCreateWithProvider([_FVMappedDataProvider dataProviderForURL:_fileURL]);
-    else
+    }
+    else {
+        _isMapped = NO;
         return CGPDFDocumentCreateWithURL((CFURLRef)_fileURL);
+    }
 }
 
 - (void)renderOffscreen
