@@ -705,13 +705,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     [self _resetTrackingRectsAndToolTips];
 }
 
-- (void)scrollWheel:(NSEvent *)event
-{
-    // Run in NSEventTrackingRunLoopMode for scroll wheel events, in order to avoid continuous tracking/tooltip rect resets while scrolling.
-    while ((event = [NSApp nextEventMatchingMask:NSScrollWheelMask untilDate:[NSDate dateWithTimeIntervalSinceNow:0.1] inMode:NSEventTrackingRunLoopMode dequeue:YES]))
-        [super scrollWheel:event];
-}
-
 - (void)_reloadIconsAndController:(BOOL)shouldReloadController;
 {
     // scale changes don't cause any data reordering
@@ -1790,6 +1783,13 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 - (BOOL)acceptsFirstResponder { return YES; }
 
 - (BOOL)canBecomeKeyView { return YES; }
+
+- (void)scrollWheel:(NSEvent *)event
+{
+    // Run in NSEventTrackingRunLoopMode for scroll wheel events, in order to avoid continuous tracking/tooltip rect resets while scrolling.
+    while ((event = [NSApp nextEventMatchingMask:NSScrollWheelMask untilDate:[NSDate dateWithTimeIntervalSinceNow:0.5] inMode:NSEventTrackingRunLoopMode dequeue:YES]))
+        [super scrollWheel:event];
+}
 
 - (void)_updateButtonsForIcon:(FVIcon *)anIcon;
 {
