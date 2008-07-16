@@ -642,7 +642,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         NSPoint mouseLoc = [self convertPoint:[[self window] mouseLocationOutsideOfEventStream] fromView:nil];
         NSUInteger mouseIndex = NSNotFound;
-        NSLog(@"resetting rects");
         
         for (r = rMin, i = iMin; r < rMax; r++) 
         {
