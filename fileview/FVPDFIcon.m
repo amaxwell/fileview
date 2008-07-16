@@ -43,8 +43,9 @@
 #import "_FVSplitSet.h"
 #import "_FVDocumentDescription.h"
 
-static OSSpinLock _releaseLock = OS_SPINLOCK_INIT;
+static OSSpinLock   _releaseLock = OS_SPINLOCK_INIT;
 static _FVSplitSet *_releaseableIcons = nil;
+static CGLayerRef   _pageLayer = NULL;
 
 @implementation FVPDFIcon
 
@@ -52,6 +53,16 @@ static _FVSplitSet *_releaseableIcons = nil;
 {
     FVINITIALIZE(FVPDFIcon);
     _releaseableIcons = [_FVSplitSet new];
+    
+    CGSize layerSize = CGSizeMake(1, 1);
+    CGContextRef context = [FVWindowGraphicsContextWithSize(*(NSSize *)&layerSize) graphicsPort];
+    _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
+    context = CGLayerGetContext(_pageLayer);
+    CGContextSetRGBFillColor(context, 1.0, 1.0, 1.0, 1.0);
+    CGRect pageRect = CGRectZero;
+    pageRect.size = CGLayerGetSize(_pageLayer);
+    CGContextClipToRect(context, pageRect);
+    CGContextFillRect(context, pageRect);
 }
 
 + (void)_addIconForMappedRelease:(FVPDFIcon *)anIcon;
@@ -315,10 +326,8 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         CGContextRef ctxt = FVIconBitmapContextCreateWithSize(_thumbnailSize.width, _thumbnailSize.height);
         
         // set a white page background
-        CGContextSetRGBFillColor(ctxt, 1.0, 1.0, 1.0, 1.0);
         CGRect pageRect = CGRectMake(0, 0, _thumbnailSize.width, _thumbnailSize.height);
-        CGContextClipToRect(ctxt, pageRect);
-        CGContextFillRect(ctxt, pageRect);
+        CGContextDrawLayerInRect(ctxt, pageRect, _pageLayer);
         
         if (_pdfPage) {
             // always downscaling, so CGPDFPageGetDrawingTransform is okay to use here
@@ -353,8 +362,10 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
     if ([self tryLock]) {
         // tells the render method if work is needed
         _desiredSize = size;
+        
+        // If we're drawing full size, don't bother loading the thumbnail if we have a PDFPage.  It can be quicker just to draw the page if the document is already loaded, rather than loading the thumbnail from cache.
         if (FVShouldDrawFullImageWithThumbnailSize(size, _thumbnailSize))
-            needsRender = (NULL == _pdfPage || NULL == _thumbnail);
+            needsRender = (NULL == _pdfPage);
         else
             needsRender = (NULL == _thumbnail);
         [self unlock];
@@ -368,7 +379,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 
 - (void)fastDrawInRect:(NSRect)dstRect ofContext:(CGContextRef)context
 {    
-    // draw thumbnail if present, regardless of the size requested
+    // draw thumbnail if present, regardless of the size requested, then try the page
     if (NO == [self tryLock]) {
         // no lock, so just draw the blank page and bail out
         [self _drawPlaceholderInRect:dstRect ofContext:context];
@@ -378,6 +389,10 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         [self unlock];
         if (_drawsLinkBadge)
             [self _badgeIconInRect:dstRect ofContext:context];
+    }
+    else if (NULL != _pdfPage) {
+        [self unlock];
+        [self drawInRect:dstRect ofContext:context];
     }
     else {
         [self unlock];
@@ -398,11 +413,11 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         
         if (FVShouldDrawFullImageWithThumbnailSize(dstRect.size, _thumbnailSize) && NULL != _pdfDoc) {
             
-            CGContextSaveGState(context);
-            CGContextSetRGBFillColor(context, 1.0, 1.0, 1.0, 1.0);
             // don't clip, because the caller has a shadow set
-            CGContextFillRect(context, drawRect);
+            CGContextDrawLayerInRect(context, drawRect, _pageLayer);
+
             // get rid of any shadow, or we may draw a text shadow if the page is transparent
+            CGContextSaveGState(context);
             CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
 
             // CGPDFPageGetDrawingTransform only downscales PDF, so we have to set up the CTM manually
