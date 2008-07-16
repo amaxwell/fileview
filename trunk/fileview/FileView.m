@@ -642,6 +642,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         NSPoint mouseLoc = [self convertPoint:[[self window] mouseLocationOutsideOfEventStream] fromView:nil];
         NSUInteger mouseIndex = NSNotFound;
+        NSLog(@"resetting rects");
         
         for (r = rMin, i = iMin; r < rMax; r++) 
         {
@@ -703,6 +704,13 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     [super resetCursorRects];
     [self _discardTrackingRectsAndToolTips];
     [self _resetTrackingRectsAndToolTips];
+}
+
+- (void)scrollWheel:(NSEvent *)event
+{
+    // Run in NSEventTrackingRunLoopMode for scroll wheel events, in order to avoid continuous tracking/tooltip rect resets while scrolling.
+    while ((event = [NSApp nextEventMatchingMask:NSScrollWheelMask untilDate:[NSDate dateWithTimeIntervalSinceNow:0.1] inMode:NSEventTrackingRunLoopMode dequeue:YES]))
+        [super scrollWheel:event];
 }
 
 - (void)_reloadIconsAndController:(BOOL)shouldReloadController;
