@@ -58,7 +58,18 @@ static CGLayerRef   _pageLayer = NULL;
     CGContextRef context = [FVWindowGraphicsContextWithSize(*(NSSize *)&layerSize) graphicsPort];
     _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
     context = CGLayerGetContext(_pageLayer);
-    CGContextSetRGBFillColor(context, 1.0, 1.0, 1.0, 1.0);
+    CGFloat components[4] = { 1, 1 };
+    CGColorRef color = NULL;
+    if (NULL != &kCGColorWhite && NULL != CGColorGetConstantColor) {
+        color = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
+    }
+    else {
+        CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericGray);
+        color = CGColorCreate(cspace, components);
+        CGColorSpaceRelease(cspace);
+    }
+    CGContextSetFillColorWithColor(context, color);
+    CGColorRelease(color);
     CGRect pageRect = CGRectZero;
     pageRect.size = CGLayerGetSize(_pageLayer);
     CGContextClipToRect(context, pageRect);
