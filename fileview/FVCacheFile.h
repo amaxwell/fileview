@@ -38,9 +38,13 @@
 
 #import <Cocoa/Cocoa.h>
 
-#ifdef __cplusplus
-#import <queue>
-#endif
+/** @internal @brief Binary cache file.
+ 
+ Conceptually, FVCacheFile provides a dictionary-like interface to a data file wherein NSData objects are represented by a key, and only one object exists for a given key.  FVCacheFile instances are thread-safe for multiple readers and writers, although write operations are serialized.  Reads are performed using mmap(2), and data is compressed using zlib when writing and decompressed while reading.  Various preferences are available for gathering usage statistics to see object space usage per key.
+ 
+ The file is written to a temporary location, created using mkstemp(3).  If this location is not suitable for memory-mapping files, an exception will be raised.  The file is unlinked immediately after creation, so it will vanish if the app crashes or is otherwise terminated.  Typically, the owner of the FVCacheFile should register for NSApplicationWillTerminateNotification and call closeFile at that time.
+ 
+ @warning FVCacheFile is not designed for persistent storage across app launches or architectures.  No validation or consistency checks are performed.  */
 
 @interface FVCacheFile : NSObject {
 @private;
@@ -53,19 +57,44 @@
     NSMutableDictionary *_eventTable;
 }
 
-// Returns an object suitable for use as a key (needs to be safe for use as an NSDictionary key).  Do not rely on this being the same class between releases or even between calls to this method.
+/** Cache key.
+ 
+ Returns an object suitable for use as a key (needs to be safe for use as an NSDictionary key).  This assumes that each object is representable by an NSURL.  Note that file: URLs are handled specially for improved performance and for tracking files after they are moved.
+ 
+ @warning Do not rely on this being the same class between releases or even between calls to this method.
+ @param aURL An NSURL representing the object to be cached.
+ @return A newly created key. */
 + (id)newKeyForURL:(NSURL *)aURL;
 
-// Write data to disk and use the specified key to retrieve it later; key may be any object that conforms to NSCopying, and it must implement -hash and -isEqual: correctly.  The copyDataForKey: method will return nil if the cache had no data for the specified key.
+/** Saving data.
+ 
+ Write data to disk and use the specified key to retrieve it later.
+ 
+ @param data The data object to store.
+ @param aKey Key may be any object that conforms to NSCopying, and it must implement -hash and -isEqual: correctly.  */ 
 - (void)saveData:(NSData *)data forKey:(id)aKey;
+
+/** Reading data.
+ 
+ @param aKey The key to read.
+ @return Previously stored data or nil if the cache had no value for the specified key. */
 - (NSData *)copyDataForKey:(id)aKey;
 
+/** Invalidate cached data.
+ 
+ Marks the data pointed to as invalid, but does not remove it from the on-disk cache.  It will not be accessible after this call, and the key may be safely reused for another data instance.
+ @param aKey The key to invalidate */
 - (void)invalidateDataForKey:(id)aKey;
 
-// Name is currently only used when recording statistics to the log file.
+/** Cache name.
+ 
+ Name is currently only used when recording statistics to the log file.
+ @param aName The name, which may be any string. */
 - (void)setName:(NSString *)aName;
 
-// Owner is responsible for calling this before deallocating the file
+/** Close the file.
+ 
+ The owner of the FVCacheFile is responsible for calling this before deallocating the file. */
 - (void)closeFile;
 
 @end
