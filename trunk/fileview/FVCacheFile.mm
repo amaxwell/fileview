@@ -228,6 +228,11 @@ static NSInteger FVCacheLogLevel = 0;
 - (void)_recordCacheEventWithKey:(_FVCacheKey *)key size:(double)kbytes
 {
     NSAssert(NO == [_writeLock tryLock], @"failed to acquire write lock before calling _recordCacheEventWithKey:size:");
+    
+    // !!! Early return; we don't want to dereference members that don't exist, since any object can be used as key.
+    if ([key isKindOfClass:[_FVCacheKey class]] == NO)
+        return;
+    
     CFURLRef theURL = (CFURLRef)key->_URL;
     CFStringRef scheme = CFURLCopyScheme(theURL);
     CFStringRef identifier = NULL;
@@ -357,8 +362,8 @@ static NSInteger FVCacheLogLevel = 0;
     
     NSData *data = nil;
     
-    // no need to retain this result, as it's never removed from the dictionarys
-    _FVCacheLocation *location = [_offsetTable objectForKey:aKey];
+    // retain to avoid losing this in case -invalidateDataForKey: is called
+    _FVCacheLocation *location = [[_offsetTable objectForKey:aKey] retain];
 
     if (location) {
                     
@@ -425,6 +430,8 @@ static NSInteger FVCacheLogLevel = 0;
         }
 
         NSParameterAssert([data length] == location->_decompressedLength);
+        
+        [location release];
     }
     
     return data;
@@ -433,6 +440,8 @@ static NSInteger FVCacheLogLevel = 0;
 - (void)invalidateDataForKey:(id)aKey;
 {
     [_writeLock lock];
+    // give copyDataForKey: a chance to get/retain
+    [[[_offsetTable objectForKey:aKey] retain] autorelease];
     [_offsetTable removeObjectForKey:aKey];
     [_writeLock unlock];
 }
@@ -505,10 +514,11 @@ static NSInteger FVCacheLogLevel = 0;
     return [self retain];
 }
 
-// these are only used as dictionary keys, and the dictionary won't have keys of another class
 - (BOOL)isEqual:(_FVCacheKey *)other
 {
-    NSAssert2([other isKindOfClass:[self class]], @"tried to compare %@ and %@", self, other);
+    if ([other isKindOfClass:[self class]] == NO)
+        return NO;
+    
     if (other->_device == _device && other->_inode == _inode)        
         return (_device != 0 && _inode != 0) ? YES : [other->_URL isEqual:_URL];
     
