@@ -30,8 +30,8 @@
 		F91A5BBE0E1C118500FC4E59 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
 		F91A5BC90E1C126E00FC4E59 /* InterfaceBuilderKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */; };
 		F91A5BF90E1C2CF700FC4E59 /* FVColumnView.classdescription in Resources */ = {isa = PBXBuildFile; fileRef = F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */; };
-		F923B78D0E296DAE007F6E7B /* FVConcreteIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F923B7710E29661E007F6E7B /* FVConcreteIcon.h */; };
-		F923B78E0E296DB0007F6E7B /* FVConcreteIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F923B7720E29661E007F6E7B /* FVConcreteIcon.m */; };
+		F923B78D0E296DAE007F6E7B /* FVBaseIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F923B7710E29661E007F6E7B /* FVBaseIcon.h */; };
+		F923B78E0E296DB0007F6E7B /* FVBaseIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F923B7720E29661E007F6E7B /* FVBaseIcon.m */; };
 		F926D0850D96C6DC00190DED /* FVCacheFile.h in Headers */ = {isa = PBXBuildFile; fileRef = F926D0830D96C6DC00190DED /* FVCacheFile.h */; };
 		F926D0860D96C6DC00190DED /* FVCacheFile.mm in Sources */ = {isa = PBXBuildFile; fileRef = F926D0840D96C6DC00190DED /* FVCacheFile.mm */; };
 		F928C6B30E0D9147000C0548 /* FVThread.h in Headers */ = {isa = PBXBuildFile; fileRef = F928C6B10E0D9147000C0548 /* FVThread.h */; };
@@ -226,8 +226,8 @@
 		8DC2EF5A0486A6940098B216 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8DC2EF5B0486A6940098B216 /* FileView.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = FileView.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InterfaceBuilderKit.framework; path = Library/Frameworks/InterfaceBuilderKit.framework; sourceTree = DEVELOPER_DIR; };
-		F923B7710E29661E007F6E7B /* FVConcreteIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVConcreteIcon.h; sourceTree = "<group>"; };
-		F923B7720E29661E007F6E7B /* FVConcreteIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVConcreteIcon.m; sourceTree = "<group>"; };
+		F923B7710E29661E007F6E7B /* FVBaseIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVBaseIcon.h; sourceTree = "<group>"; };
+		F923B7720E29661E007F6E7B /* FVBaseIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVBaseIcon.m; sourceTree = "<group>"; };
 		F926D0830D96C6DC00190DED /* FVCacheFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCacheFile.h; sourceTree = "<group>"; };
 		F926D0840D96C6DC00190DED /* FVCacheFile.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = FVCacheFile.mm; sourceTree = "<group>"; };
 		F928C6B10E0D9147000C0548 /* FVThread.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVThread.h; sourceTree = "<group>"; };
@@ -575,8 +575,8 @@
 				F9E5CEE20D7511EE00940EB6 /* FVPlaceholderImage.m */,
 				F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */,
 				F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */,
-				F923B7710E29661E007F6E7B /* FVConcreteIcon.h */,
-				F923B7720E29661E007F6E7B /* FVConcreteIcon.m */,
+				F923B7710E29661E007F6E7B /* FVBaseIcon.h */,
+				F923B7720E29661E007F6E7B /* FVBaseIcon.m */,
 			);
 			name = Icons;
 			sourceTree = "<group>";
@@ -728,7 +728,7 @@
 				F94F1EB40DA2F0BB007B5ABD /* FVAliasBadge.h in Headers */,
 				F9C664280E04205100ED3EC1 /* FVCoreTextIcon.h in Headers */,
 				F928C6B30E0D9147000C0548 /* FVThread.h in Headers */,
-				F923B78D0E296DAE007F6E7B /* FVConcreteIcon.h in Headers */,
+				F923B78D0E296DAE007F6E7B /* FVBaseIcon.h in Headers */,
 				F991B8680E2C5D4F0046000A /* _FVMappedDataProvider.h in Headers */,
 				F991B8B70E2C657B0046000A /* _FVSplitSet.h in Headers */,
 				F9AB43840E2D0B2700D0A75E /* _FVDocumentDescription.h in Headers */,
@@ -965,7 +965,7 @@
 				F94F1EB50DA2F0BB007B5ABD /* FVAliasBadge.m in Sources */,
 				F9C664290E04205100ED3EC1 /* FVCoreTextIcon.m in Sources */,
 				F928C6B40E0D9147000C0548 /* FVThread.m in Sources */,
-				F923B78E0E296DB0007F6E7B /* FVConcreteIcon.m in Sources */,
+				F923B78E0E296DB0007F6E7B /* FVBaseIcon.m in Sources */,
 				F991B8690E2C5D4F0046000A /* _FVMappedDataProvider.m in Sources */,
 				F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */,
 				F9AB43850E2D0B2700D0A75E /* _FVDocumentDescription.m in Sources */,
