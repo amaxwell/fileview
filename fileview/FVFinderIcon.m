@@ -37,7 +37,6 @@
  */
 
 #import "FVFinderIcon.h"
-#import <Foundation/NSDebug.h>
 
 // Apple seems to use JPEG2000 storage for icons, and decompressing them is a serious performance hit on the main thread (when scrolling).  Hence, we'll create the images here and burn some memory to handle the common cases.  Custom icons still get their own instance and are drawn as needed with Icon Services.
 @interface FVSingletonFinderIcon : FVFinderIcon
@@ -108,32 +107,6 @@ static CFStringRef _savedSearchUTI = NULL;
 - (void)renderOffscreen
 {
     // no-op
-}
-
-- (oneway void)release 
-{
-    do {
-        
-        if (1 == _rc) [self dealloc];
-        
-    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
-    NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
-}
-
-- (id)retain
-{
-    OSAtomicIncrement32Barrier((int32_t *)&_rc);
-    NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
-    return self;
-}
-
-- (NSUInteger)retainCount { return _rc; }
-
-- (id)init
-{
-    self = [super init];
-    if (self) _rc = 1;
-    return self;
 }
 
 - (id)initWithURLScheme:(NSString *)scheme;

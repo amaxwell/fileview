@@ -37,6 +37,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
+#import "FVObject.h"
 
 /** Abstract class used for drawing in FileView
  
@@ -45,7 +46,7 @@
  The iconWithURL: factory method is designed to be cheap, in that it does no rendering, should will require very little memory or disk access just for initialization.  Only after calling renderOffscreen will memory usage increase substantially, as data is cached and bitmaps created.  Icons that won't be displayed for some time (scrolled out of sight) should be sent a releaseResources message by the view in order to free up (some) of the cached data.  Subsequent calls to renderOffscreen should be substantially less expensive, since data will be read from the disk cache.
  
  This class is thread safe, but it is not reentrant.  You can abuse it to create deadlocks.  Don't do that. */
-@interface FVIcon : NSObject
+@interface FVIcon : FVObject
 
 /** Shared instance representing a missing file.
  

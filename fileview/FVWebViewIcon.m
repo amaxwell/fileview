@@ -40,7 +40,6 @@
 #import "FVFinderIcon.h"
 #import "FVMIMEIcon.h"
 #import <WebKit/WebKit.h>
-#import <Foundation/NSDebug.h>
 
 @interface WebView (FVExtensions)
 - (BOOL)fv_isLoading;
@@ -134,7 +133,6 @@ static const NSSize _webViewSize = { 1000, 900 };
         self = [[FVFinderIcon allocWithZone:zone] initWithURL:aURL];
     }
     else if ((self = [super init])) {
-        _rc = 1;
         _httpURL = [aURL copy];
         _fullImage = NULL;
         _thumbnail = NULL;
@@ -184,25 +182,6 @@ static const NSSize _webViewSize = { 1000, 900 };
     [_cacheKey release];
     [super dealloc];
 }
-
-- (oneway void)release 
-{
-    do {
-
-        if (1 == _rc) [self dealloc];
-        
-    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
-    NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
-}
-
-- (id)retain
-{
-    OSAtomicIncrement32Barrier((int32_t *)&_rc);
-    NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
-    return self;
-}
-
-- (NSUInteger)retainCount { return _rc; }
 
 - (BOOL)canReleaseResources;
 {

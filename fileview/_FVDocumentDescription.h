@@ -37,13 +37,11 @@
  */
 
 #import <Cocoa/Cocoa.h>
-
+#import "FVObject.h"
 
 // enables instantation entirely from pre-cached objects, so no longer necessary to load the PDF/PS document
 
-@interface _FVDocumentDescription : NSObject {
-@private
-    uint32_t _rc;
+@interface _FVDocumentDescription : FVObject {
 @public
     size_t   _pageCount;
     NSSize   _fullSize;

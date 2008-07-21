@@ -37,17 +37,9 @@
  */
 
 #import "FVBaseIcon.h"
-#import <Foundation/NSDebug.h>
 #import "FVIcon_Private.h"
 
 @implementation FVBaseIcon
-
-- (id)init
-{
-    self = [super init];
-    if (self) _rc = 1;
-    return self;
-}
 
 - (id)initWithURL:(NSURL *)aURL
 {
@@ -59,25 +51,6 @@
     }
     return self;
 }
-
-- (oneway void)release 
-{
-    do {
-        
-        if (1 == _rc) [self dealloc];
-        
-    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
-    NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
-}
-
-- (id)retain
-{
-    OSAtomicIncrement32Barrier((int32_t *)&_rc);
-    NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
-    return self;
-}
-
-- (NSUInteger)retainCount { return _rc; }
 
 - (void)dealloc
 {
