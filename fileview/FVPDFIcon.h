@@ -37,9 +37,9 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "FVConcreteIcon.h"
+#import "FVBaseIcon.h"
 
-@interface FVPDFIcon : FVConcreteIcon
+@interface FVPDFIcon : FVBaseIcon
 {
 @private
     CGPDFDocumentRef  _pdfDoc;

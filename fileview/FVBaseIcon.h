@@ -1,5 +1,5 @@
 //
-//  FVConcreteIcon.h
+//  FVBaseIcon.h
 //  FileView
 //
 //  Created by Adam Maxwell on 7/12/08.
@@ -43,7 +43,7 @@
 /** @brief Base implementation.
  
  This provides a base implementation for several subclasses and allows removal of some interface details from the abstract class (e.g. FVFinderIcon does not need to implement NSLocking).  It also uses inline refcounting since icons are long-lived (generally) and are retained/released frequently. */
-@interface FVConcreteIcon : FVIcon <NSLocking>
+@interface FVBaseIcon : FVIcon <NSLocking>
 {
 @private
     uint32_t         _rc;

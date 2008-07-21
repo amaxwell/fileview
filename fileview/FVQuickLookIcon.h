@@ -37,9 +37,9 @@
  */
 
 #import <Cocoa/Cocoa.h>
-#import "FVConcreteIcon.h"
+#import "FVBaseIcon.h"
 
-@interface FVQuickLookIcon : FVConcreteIcon
+@interface FVQuickLookIcon : FVBaseIcon
 {
 @private
     CGImageRef      _fullImage;

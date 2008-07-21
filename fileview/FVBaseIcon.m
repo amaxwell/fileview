@@ -1,5 +1,5 @@
 //
-//  FVConcreteIcon.m
+//  FVBaseIcon.m
 //  FileView
 //
 //  Created by Adam Maxwell on 7/12/08.
@@ -36,11 +36,11 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "FVConcreteIcon.h"
+#import "FVBaseIcon.h"
 #import <Foundation/NSDebug.h>
 #import "FVIcon_Private.h"
 
-@implementation FVConcreteIcon
+@implementation FVBaseIcon
 
 - (id)init
 {
