@@ -74,30 +74,10 @@ static OSSpinLock _descriptionLock = OS_SPINLOCK_INIT;
 {
     self = [super init];
     if (self) {
-        _rc = 1;
         _fullSize = NSZeroSize;
         _pageCount = 0;
     }
     return self;
 }
-
-- (oneway void)release 
-{
-    do {
-        
-        if (1 == _rc) [self dealloc];
-        
-    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
-    NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
-}
-
-- (id)retain
-{
-    OSAtomicIncrement32Barrier((int32_t *)&_rc);
-    NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
-    return self;
-}
-
-- (NSUInteger)retainCount { return _rc; }
 
 @end

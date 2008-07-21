@@ -45,7 +45,6 @@
 
 @interface FVWebViewIcon : FVIcon <NSLocking>
 {
-    uint32_t         _rc;
     CGImageRef       _viewImage;
     CGImageRef       _fullImage;
     NSSize           _fullImageSize;
