@@ -99,6 +99,8 @@
 		F9A2D4280CCBE6BA002F517B /* FVQuickLookIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D4270CCBE6BA002F517B /* FVQuickLookIcon.h */; };
 		F9AB43840E2D0B2700D0A75E /* _FVDocumentDescription.h in Headers */ = {isa = PBXBuildFile; fileRef = F9AB43820E2D0B2700D0A75E /* _FVDocumentDescription.h */; };
 		F9AB43850E2D0B2700D0A75E /* _FVDocumentDescription.m in Sources */ = {isa = PBXBuildFile; fileRef = F9AB43830E2D0B2700D0A75E /* _FVDocumentDescription.m */; };
+		F9AC423F0E351BA400EDA60D /* FVObject.h in Headers */ = {isa = PBXBuildFile; fileRef = F9AC423D0E351BA400EDA60D /* FVObject.h */; };
+		F9AC42400E351BA400EDA60D /* FVObject.m in Sources */ = {isa = PBXBuildFile; fileRef = F9AC423E0E351BA400EDA60D /* FVObject.m */; };
 		F9AE7CB30D9B5534007FAF73 /* FVViewController.h in Headers */ = {isa = PBXBuildFile; fileRef = F9AE7CB10D9B5534007FAF73 /* FVViewController.h */; };
 		F9AE7CB40D9B5534007FAF73 /* FVViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = F9AE7CB20D9B5534007FAF73 /* FVViewController.m */; };
 		F9B152810D5ED9B900F6E755 /* FVIconOperation.h in Headers */ = {isa = PBXBuildFile; fileRef = F9B1527F0D5ED9B900F6E755 /* FVIconOperation.h */; };
@@ -296,6 +298,8 @@
 		F9A2D4270CCBE6BA002F517B /* FVQuickLookIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVQuickLookIcon.h; sourceTree = "<group>"; };
 		F9AB43820E2D0B2700D0A75E /* _FVDocumentDescription.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _FVDocumentDescription.h; sourceTree = "<group>"; };
 		F9AB43830E2D0B2700D0A75E /* _FVDocumentDescription.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = _FVDocumentDescription.m; sourceTree = "<group>"; };
+		F9AC423D0E351BA400EDA60D /* FVObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVObject.h; sourceTree = "<group>"; };
+		F9AC423E0E351BA400EDA60D /* FVObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVObject.m; sourceTree = "<group>"; };
 		F9AE7CB10D9B5534007FAF73 /* FVViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVViewController.h; sourceTree = "<group>"; };
 		F9AE7CB20D9B5534007FAF73 /* FVViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVViewController.m; sourceTree = "<group>"; };
 		F9B143260E1C069000BA315D /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Configurations/Debug.xcconfig; sourceTree = "<group>"; };
@@ -468,6 +472,8 @@
 				F92ABB130DCE1B2700F82452 /* Controllers */,
 				F9E9F91F0D5ACE5B000FCB7F /* FVUtilities.h */,
 				F9E9F9200D5ACE5B000FCB7F /* FVUtilities.m */,
+				F9AC423D0E351BA400EDA60D /* FVObject.h */,
+				F9AC423E0E351BA400EDA60D /* FVObject.m */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -732,6 +738,7 @@
 				F991B8680E2C5D4F0046000A /* _FVMappedDataProvider.h in Headers */,
 				F991B8B70E2C657B0046000A /* _FVSplitSet.h in Headers */,
 				F9AB43840E2D0B2700D0A75E /* _FVDocumentDescription.h in Headers */,
+				F9AC423F0E351BA400EDA60D /* FVObject.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -969,6 +976,7 @@
 				F991B8690E2C5D4F0046000A /* _FVMappedDataProvider.m in Sources */,
 				F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */,
 				F9AB43850E2D0B2700D0A75E /* _FVDocumentDescription.m in Sources */,
+				F9AC42400E351BA400EDA60D /* FVObject.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
