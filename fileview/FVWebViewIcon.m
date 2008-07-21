@@ -173,8 +173,8 @@ static const NSSize _webViewSize = { 1000, 900 };
 
 - (void)dealloc
 {
-    // should always be on the main thread here
-    [self _releaseWebView];
+    // typically on the main thread here, but not guaranteed
+    [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
     [_condLock release];
     CGImageRelease(_viewImage);
     CGImageRelease(_fullImage);
