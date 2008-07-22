@@ -53,7 +53,7 @@
 {
     do {
         
-        if (1 == _rc) [self dealloc];
+        if (__builtin_expect(1 == _rc, 0)) [self dealloc];
         
     } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
     NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);

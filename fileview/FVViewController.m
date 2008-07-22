@@ -193,7 +193,7 @@
 - (NSURL *)URLAtIndex:(NSUInteger)anIndex { 
     NSParameterAssert(anIndex < [self numberOfIcons]);
     NSURL *aURL = _isBound ? [_orderedURLs objectAtIndex:anIndex] : [_dataSource fileView:_view URLAtIndex:anIndex];
-    if (nil == aURL || [NSNull null] == (id)aURL)
+    if (__builtin_expect(nil == aURL || [NSNull null] == (id)aURL, 0))
         aURL = [FVIcon missingFileURL];
     return aURL;
 }
