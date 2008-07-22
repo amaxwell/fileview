@@ -42,18 +42,13 @@
 
 @implementation FVObject
 
-- (id)init
-{
-    self = [super init];
-    if (self) _rc = 1;
-    return self;
-}
+// _rc is initialized to zero in allocWithZone:, so avoid overriding -init by counting from 0.
 
 - (oneway void)release 
 {
     do {
         
-        if (__builtin_expect(1 == _rc, 0)) [self dealloc];
+        if (__builtin_expect(0 == _rc, 0)) [self dealloc];
         
     } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
     NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
@@ -66,7 +61,7 @@
     return self;
 }
 
-- (NSUInteger)retainCount { return _rc; }
+- (NSUInteger)retainCount { return _rc + 1; }
 
 
 @end
