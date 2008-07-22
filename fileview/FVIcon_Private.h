@@ -59,7 +59,7 @@
  */
 @interface FVIcon (Private)
 
-/** @internal Called from FVIcon::initialize */
+/** @internal Called after FVIcon::initialize */
 + (void)_initializeCategory;
 
 /** @internal

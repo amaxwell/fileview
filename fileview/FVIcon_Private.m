@@ -58,7 +58,7 @@
 // key = Class, object = _FVQueuedKeys
 static CFDictionaryRef _queuedKeysByClass = NULL;
 
-// Walk the runtime's class list and get all subclasses of FVIcon, then add an _FVQueuedKeys instance to _queuedKeysByClass for each subclass.  This avoids adding them lazily, which would require locking around the dictionary.
+// Walk the runtime's class list and get all subclasses of FVIcon, then add an _FVQueuedKeys instance to _queuedKeysByClass for each subclass.  This avoids adding them lazily, which would require locking around the dictionary, but also means that all classes must be loaded by this time.  Since +initialize is pretty late, and bundles are loaded first, this assumption is safe.
 + (void)_processIconSubclasses
 {
     int numClasses = objc_getClassList(NULL, 0);
@@ -74,9 +74,13 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
         
         for (int classIndex = 0; classIndex < numClasses; classIndex++) {
             Class aClass = classes[classIndex];
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+            Class superClass = class_getSuperclass(aClass);
+#else
             Class superClass = aClass->super_class;
+#endif
             
-            while (NULL != superClass) {
+            while (Nil != superClass) {
 
                 if (superClass == FVIconClass) {
                     _FVQueuedKeys *qkeys = [_FVQueuedKeys new];
@@ -84,7 +88,11 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
                     [qkeys release];
                     break;
                 }
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+                superClass = class_getSuperclass(superClass);
+#else
                 superClass = superClass->super_class;
+#endif
             }
         }
         NSZoneFree([self zone], classes);
@@ -98,7 +106,8 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
     static bool didInit = false;
     NSAssert(false == didInit, @"attempt to initialize category again");
     didInit = true;    
-    
+
+    // This is called /after/ +[FVIcon initialize] has set up statics and loaded the Leopard bundle, so all subclasses should be available by now.  If a plugin architecture is ever implemented, the class will have to register for NSBundleDidLoadNotification and add new classes.
     [self _processIconSubclasses];
 }
 
