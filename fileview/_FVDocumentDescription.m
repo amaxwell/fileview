@@ -38,7 +38,6 @@
 
 #import "_FVDocumentDescription.h"
 #import <libkern/OSAtomic.h>
-#import <Foundation/NSDebug.h>
 
 @implementation _FVDocumentDescription
 
