@@ -81,7 +81,6 @@ struct FVOpFlags {
 
 - (FVOperationQueuePriority)queuePriority;
 {
-    OSMemoryBarrier();
     return _flags->_priority;
 }
 
@@ -123,25 +122,21 @@ struct FVOpFlags {
 
 - (BOOL)isCancelled;
 {
-    OSMemoryBarrier();
     return 0 != _flags->_cancelled;
 }
 
 - (BOOL)isExecuting;
 {
-    OSMemoryBarrier();
     return 1 == _flags->_executing;
 }
 
 - (BOOL)isFinished;
 {
-    OSMemoryBarrier();
     return 1 == _flags->_finished;
 }
 
 - (BOOL)isConcurrent;
 {
-    OSMemoryBarrier();
     return 1 == _flags->_concurrent;
 }
 
