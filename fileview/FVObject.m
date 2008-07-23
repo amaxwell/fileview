@@ -46,11 +46,11 @@
 
 - (oneway void)release 
 {
-    do {
-        
-        if (__builtin_expect(0 == _rc, 0)) [self dealloc];
-        
-    } while (false == OSAtomicCompareAndSwap32Barrier(_rc, _rc - 1, (int32_t *)&_rc));
+    OSMemoryBarrier();
+    if (__builtin_expect(0 == _rc, 0)) 
+        [self dealloc];
+    else 
+        OSAtomicDecrement32Barrier((int32_t *)&_rc);
     NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
 }
 
