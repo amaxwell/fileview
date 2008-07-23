@@ -38,6 +38,7 @@
 
 #import "FVCacheFile.h"
 #import "FVUtilities.h"
+#import "FVObject.h"
 #import <libkern/OSAtomic.h>
 #import <string>
 #import <sys/stat.h>
@@ -45,7 +46,7 @@
 #import <zlib.h>
 #import <sys/mman.h>
 
-@interface _FVCacheKey : NSObject <NSCopying>
+@interface _FVCacheKey : FVObject <NSCopying>
 {
 @public;
     dev_t       _device;
@@ -511,7 +512,7 @@ static NSInteger FVCacheLogLevel = 0;
 
 - (id)copyWithZone:(NSZone *)aZone
 {
-    return [self retain];
+    return NSShouldRetainWithZone(self, aZone) ? [self retain] : [[[self class] allocWithZone:aZone] initWithURL:_URL];
 }
 
 - (BOOL)isEqual:(_FVCacheKey *)other
