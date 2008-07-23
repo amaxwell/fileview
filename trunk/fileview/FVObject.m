@@ -72,7 +72,6 @@ static void _FVObjectError(NSString *format, ...)
     // call NSRecordAllocationEvent before the event, since it may call retainCount (and we may dealloc)
     if (__builtin_expect(__FVOASafe, 0)) NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
     
-    OSMemoryBarrier();
     if (__builtin_expect(0 == _rc, 0)) {
         [self dealloc];
     }
@@ -102,11 +101,7 @@ static void _FVObjectError(NSString *format, ...)
     return self;
 }
 
-- (NSUInteger)retainCount
-{ 
-    OSMemoryBarrier(); 
-    return _rc + 1; 
-}
+- (NSUInteger)retainCount { return _rc + 1; }
 
 
 @end

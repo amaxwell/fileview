@@ -149,7 +149,6 @@ static volatile int32_t _activeCPUs = 0;
 
 - (void)dealloc
 {
-    OSMemoryBarrier();
     FVAPIAssert1(1 == _terminate, @"*** ERROR *** attempt to deallocate %@ without calling -terminate", self);
     [_threadLock release];
     [_pendingOperations release];
@@ -212,7 +211,6 @@ static uint32_t __FVSendTrivialMachMessage(mach_port_t port, uint32_t msg_id, CF
     ret = __FVSendTrivialMachMessage(_threadPort, 0, MACH_SEND_TIMEOUT, 0);
     if (ret != MACH_MSG_SUCCESS && ret != MACH_SEND_TIMED_OUT) {
         // we can ignore MACH_SEND_INVALID_DEST when terminating
-        OSMemoryBarrier();
         if (MACH_SEND_INVALID_DEST != ret || 1 != _terminate) HALT;
     }
 }
@@ -339,8 +337,6 @@ static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef alloc
         SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10, TRUE);
         if (kCFRunLoopRunFinished == result || kCFRunLoopRunStopped == result)
             OSAtomicCompareAndSwap32Barrier(0, 1, &_terminate);
-        else
-            OSMemoryBarrier();
         
     } while (0 == _terminate);
 
