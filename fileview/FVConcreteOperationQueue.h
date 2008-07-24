@@ -49,12 +49,12 @@
 @interface FVConcreteOperationQueue : FVOperationQueue
 {
 @private
-    mach_port_t       _threadPort;
-    NSConditionLock  *_threadLock;
-    OSSpinLock        _queueLock;
-    FVPriorityQueue  *_pendingOperations;
-    NSMutableSet     *_activeOperations;    
-    volatile int32_t  _terminate;    
+    int32_t          _terminate;    
+    mach_port_t      _threadPort;
+    NSConditionLock *_threadLock;
+    OSSpinLock       _queueLock;
+    FVPriorityQueue *_pendingOperations;
+    NSMutableSet    *_activeOperations;    
 }
 
 @end
