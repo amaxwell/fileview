@@ -61,11 +61,9 @@ static NSURL *missingFileURL = nil;
     FVINITIALIZE(FVIcon);
     
     FVIconClass = self;
-    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4) {
-        NSBundle *frameworkBundle = [NSBundle bundleForClass:FVIconClass];
-        [[NSBundle bundleWithPath:[frameworkBundle pathForResource:@"FileView-Leopard" ofType:@"bundle"]] load];
-        FVQLIconClass = NSClassFromString(@"FVQuickLookIcon");
-    }
+    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4)
+        FVQLIconClass = [FVQuickLookIcon self];
+    
     defaultPlaceholderIcon = (FVIcon *)NSAllocateObject(FVIconClass, 0, [self zone]);
     missingFileURL = [[NSURL alloc] initWithScheme:@"x-fileview" host:@"localhost" path:@"/missing"];
     [self _initializeCategory];
