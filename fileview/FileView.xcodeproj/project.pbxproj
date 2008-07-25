@@ -15,7 +15,6 @@
 			);
 			comments = "This target just copies the plugin into the framework's bundle, since the bundle needs to link against the framework.";
 			dependencies = (
-				F9F04CE50CE260F400F28ED2 /* PBXTargetDependency */,
 				F9F04CE70CE260FA00F28ED2 /* PBXTargetDependency */,
 				F963C2660E17FE950066B20F /* PBXTargetDependency */,
 			);
@@ -27,7 +26,6 @@
 /* Begin PBXBuildFile section */
 		8DC2EF530486A6940098B216 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = 089C1666FE841158C02AAC07 /* InfoPlist.strings */; };
 		8DC2EF570486A6940098B216 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
-		F91A5BBE0E1C118500FC4E59 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
 		F91A5BC90E1C126E00FC4E59 /* InterfaceBuilderKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */; };
 		F91A5BF90E1C2CF700FC4E59 /* FVColumnView.classdescription in Resources */ = {isa = PBXBuildFile; fileRef = F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */; };
 		F923B78D0E296DAE007F6E7B /* FVBaseIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F923B7710E29661E007F6E7B /* FVBaseIcon.h */; };
@@ -56,12 +54,9 @@
 		F94692090CA56EC500AC2772 /* FVOperationQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = F94691FE0CA56EC500AC2772 /* FVOperationQueue.m */; };
 		F946920A0CA56EC500AC2772 /* FVPreviewer.h in Headers */ = {isa = PBXBuildFile; fileRef = F94691FF0CA56EC500AC2772 /* FVPreviewer.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		F946920B0CA56EC500AC2772 /* FVPreviewer.m in Sources */ = {isa = PBXBuildFile; fileRef = F94692000CA56EC500AC2772 /* FVPreviewer.m */; };
-		F946921D0CA5700800AC2772 /* FVQuickLookIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F946921C0CA5700800AC2772 /* FVQuickLookIcon.m */; };
-		F946921E0CA5701F00AC2772 /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DC2EF5B0486A6940098B216 /* FileView.framework */; };
 		F94692310CA5710500AC2772 /* QTKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F946922D0CA5710500AC2772 /* QTKit.framework */; };
 		F94692320CA5710500AC2772 /* Quartz.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F946922E0CA5710500AC2772 /* Quartz.framework */; };
 		F94692340CA5710500AC2772 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F94692300CA5710500AC2772 /* WebKit.framework */; };
-		F94692370CA5712800AC2772 /* QuickLook.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F946922F0CA5710500AC2772 /* QuickLook.framework */; };
 		F946926A0CA5767700AC2772 /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DC2EF5B0486A6940098B216 /* FileView.framework */; };
 		F946926E0CA5769100AC2772 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */; };
 		F94692830CA5777300AC2772 /* Controller.m in Sources */ = {isa = PBXBuildFile; fileRef = F946927D0CA5777300AC2772 /* Controller.m */; };
@@ -73,6 +68,8 @@
 		F94694510CA59AF100AC2772 /* FVScaledImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F946944F0CA59AF100AC2772 /* FVScaledImageView.m */; };
 		F94F1EB40DA2F0BB007B5ABD /* FVAliasBadge.h in Headers */ = {isa = PBXBuildFile; fileRef = F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */; };
 		F94F1EB50DA2F0BB007B5ABD /* FVAliasBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */; };
+		F95881A30E3A80DA001807B6 /* QuickLook.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F95881A20E3A80DA001807B6 /* QuickLook.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
+		F95881AC0E3A811B001807B6 /* FVQuickLookIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F946921C0CA5700800AC2772 /* FVQuickLookIcon.m */; };
 		F963C2690E17FEA10066B20F /* FileViewIBPlugin.ibplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */; };
 		F963C3950E180FCB0066B20F /* FileViewIBPluginLibrary.nib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3940E180FCB0066B20F /* FileViewIBPluginLibrary.nib */; };
 		F963C3970E180FD70066B20F /* FileViewIBPluginInspector.xib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3960E180FD70066B20F /* FileViewIBPluginInspector.xib */; };
@@ -140,7 +137,6 @@
 		F9E5CEE40D7511EE00940EB6 /* FVPlaceholderImage.m in Sources */ = {isa = PBXBuildFile; fileRef = F9E5CEE20D7511EE00940EB6 /* FVPlaceholderImage.m */; };
 		F9E9F9290D5ACF2B000FCB7F /* FVUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F9E9F9200D5ACE5B000FCB7F /* FVUtilities.m */; };
 		F9E9F92A0D5ACF35000FCB7F /* FVUtilities.h in Headers */ = {isa = PBXBuildFile; fileRef = F9E9F91F0D5ACE5B000FCB7F /* FVUtilities.h */; };
-		F9F04CEF0CE2618200F28ED2 /* FileView-Leopard.bundle in CopyFiles */ = {isa = PBXBuildFile; fileRef = F94692130CA56F4300AC2772 /* FileView-Leopard.bundle */; };
 		F9F22DE90CDAD53300A9D449 /* License in Resources */ = {isa = PBXBuildFile; fileRef = F9F22DE80CDAD53300A9D449 /* License */; };
 		F9F256240E14A4690059A21A /* FileView.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 8DC2EF5B0486A6940098B216 /* FileView.framework */; };
 		F9F2563E0E14A6710059A21A /* FileViewIBPlugin.m in Sources */ = {isa = PBXBuildFile; fileRef = F9F256360E14A6710059A21A /* FileViewIBPlugin.m */; };
@@ -172,20 +168,6 @@
 			remoteGlobalIDString = F9F04CE10CE260EB00F28ED2;
 			remoteInfo = "Framework + Plugin";
 		};
-		F9F04CDA0CE260AC00F28ED2 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = 8DC2EF4F0486A6940098B216;
-			remoteInfo = FileView;
-		};
-		F9F04CE40CE260F400F28ED2 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
-			proxyType = 1;
-			remoteGlobalIDString = F94692120CA56F4300AC2772;
-			remoteInfo = "FileView-Leopard";
-		};
 		F9F04CE60CE260FA00F28ED2 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 0867D690FE84028FC02AAC07 /* Project object */;
@@ -213,7 +195,6 @@
 			dstSubfolderSpec = 16;
 			files = (
 				F963C2690E17FEA10066B20F /* FileViewIBPlugin.ibplugin in CopyFiles */,
-				F9F04CEF0CE2618200F28ED2 /* FileView-Leopard.bundle in CopyFiles */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -256,7 +237,6 @@
 		F94691FF0CA56EC500AC2772 /* FVPreviewer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVPreviewer.h; sourceTree = "<group>"; };
 		F94692000CA56EC500AC2772 /* FVPreviewer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVPreviewer.m; sourceTree = "<group>"; };
 		F94692010CA56EC500AC2772 /* FVPreviewer.nib */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; path = FVPreviewer.nib; sourceTree = "<group>"; };
-		F94692130CA56F4300AC2772 /* FileView-Leopard.bundle */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "FileView-Leopard.bundle"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F94692140CA56F4300AC2772 /* FileView-Leopard-Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = "FileView-Leopard-Info.plist"; sourceTree = "<group>"; };
 		F946921C0CA5700800AC2772 /* FVQuickLookIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVQuickLookIcon.m; sourceTree = "<group>"; };
 		F946922D0CA5710500AC2772 /* QTKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QTKit.framework; path = /System/Library/Frameworks/QTKit.framework; sourceTree = "<absolute>"; };
@@ -274,6 +254,7 @@
 		F946944F0CA59AF100AC2772 /* FVScaledImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVScaledImageView.m; sourceTree = "<group>"; };
 		F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVAliasBadge.h; sourceTree = "<group>"; };
 		F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVAliasBadge.m; sourceTree = "<group>"; };
+		F95881A20E3A80DA001807B6 /* QuickLook.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickLook.framework; path = System/Library/Frameworks/QuickLook.framework; sourceTree = SDKROOT; };
 		F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FVColumnView.classdescription; sourceTree = "<group>"; };
 		F980F0920CCC3C2E0067C1DF /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
 		F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCGImageUtilities.h; sourceTree = "<group>"; };
@@ -368,16 +349,7 @@
 				F94692340CA5710500AC2772 /* WebKit.framework in Frameworks */,
 				F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */,
 				F92CBB400D806B7C0009E371 /* Accelerate.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F94692110CA56F4300AC2772 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F91A5BBE0E1C118500FC4E59 /* Cocoa.framework in Frameworks */,
-				F94692370CA5712800AC2772 /* QuickLook.framework in Frameworks */,
-				F946921E0CA5701F00AC2772 /* FileView.framework in Frameworks */,
+				F95881A30E3A80DA001807B6 /* QuickLook.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -407,7 +379,6 @@
 			isa = PBXGroup;
 			children = (
 				8DC2EF5B0486A6940098B216 /* FileView.framework */,
-				F94692130CA56F4300AC2772 /* FileView-Leopard.bundle */,
 				F94692510CA575F000AC2772 /* FileView Program.app */,
 				F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */,
 			);
@@ -428,6 +399,7 @@
 				F9F2562F0E14A6710059A21A /* IBPlugin */,
 				F99C0AB00E1F27D8003255C7 /* Configurations */,
 				F94692140CA56F4300AC2772 /* FileView-Leopard-Info.plist */,
+				F95881A20E3A80DA001807B6 /* QuickLook.framework */,
 			);
 			name = FileView;
 			sourceTree = "<group>";
@@ -766,24 +738,6 @@
 			productReference = 8DC2EF5B0486A6940098B216 /* FileView.framework */;
 			productType = "com.apple.product-type.framework";
 		};
-		F94692120CA56F4300AC2772 /* FileView-Leopard */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = F94692170CA56F4600AC2772 /* Build configuration list for PBXNativeTarget "FileView-Leopard" */;
-			buildPhases = (
-				F946920F0CA56F4300AC2772 /* Resources */,
-				F94692100CA56F4300AC2772 /* Sources */,
-				F94692110CA56F4300AC2772 /* Frameworks */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-				F9F04CDB0CE260AC00F28ED2 /* PBXTargetDependency */,
-			);
-			name = "FileView-Leopard";
-			productName = "FileView-Leopard";
-			productReference = F94692130CA56F4300AC2772 /* FileView-Leopard.bundle */;
-			productType = "com.apple.product-type.bundle";
-		};
 		F94692500CA575F000AC2772 /* FileView Program */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = F94692560CA575F200AC2772 /* Build configuration list for PBXNativeTarget "FileView Program" */;
@@ -836,7 +790,6 @@
 			projectRoot = "";
 			targets = (
 				8DC2EF4F0486A6940098B216 /* FileView */,
-				F94692120CA56F4300AC2772 /* FileView-Leopard */,
 				F94692500CA575F000AC2772 /* FileView Program */,
 				F9F255FD0E14A3430059A21A /* FileViewIBPlugin */,
 				F9F04CE10CE260EB00F28ED2 /* Framework + Plugins */,
@@ -854,13 +807,6 @@
 				F9F22DE90CDAD53300A9D449 /* License in Resources */,
 				F9E469370CFF6D12003E6C0A /* FileView.strings in Resources */,
 				F9C3BD020D6E005800BDC3FF /* FVColorMenuView.nib in Resources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F946920F0CA56F4300AC2772 /* Resources */ = {
-			isa = PBXResourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -977,14 +923,7 @@
 				F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */,
 				F9AB43850E2D0B2700D0A75E /* _FVDocumentDescription.m in Sources */,
 				F9AC42400E351BA400EDA60D /* FVObject.m in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		F94692100CA56F4300AC2772 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				F946921D0CA5700800AC2772 /* FVQuickLookIcon.m in Sources */,
+				F95881AC0E3A811B001807B6 /* FVQuickLookIcon.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1024,16 +963,6 @@
 			isa = PBXTargetDependency;
 			target = F9F04CE10CE260EB00F28ED2 /* Framework + Plugins */;
 			targetProxy = F9B9F3D50D5CD3450002CAB7 /* PBXContainerItemProxy */;
-		};
-		F9F04CDB0CE260AC00F28ED2 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = 8DC2EF4F0486A6940098B216 /* FileView */;
-			targetProxy = F9F04CDA0CE260AC00F28ED2 /* PBXContainerItemProxy */;
-		};
-		F9F04CE50CE260F400F28ED2 /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			target = F94692120CA56F4300AC2772 /* FileView-Leopard */;
-			targetProxy = F9F04CE40CE260F400F28ED2 /* PBXContainerItemProxy */;
 		};
 		F9F04CE70CE260FA00F28ED2 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1140,37 +1069,6 @@
 			};
 			name = Release;
 		};
-		F94692150CA56F4600AC2772 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
-			buildSettings = {
-				INFOPLIST_FILE = "FileView-Leopard-Info.plist";
-				INSTALL_PATH = "$(HOME)/Library/Bundles";
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				PRODUCT_NAME = "FileView-Leopard";
-				WRAPPER_EXTENSION = bundle;
-			};
-			name = Debug;
-		};
-		F94692160CA56F4600AC2772 /* Release */ = {
-			isa = XCBuildConfiguration;
-			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
-			buildSettings = {
-				INFOPLIST_FILE = "FileView-Leopard-Info.plist";
-				INSTALL_PATH = "$(HOME)/Library/Bundles";
-				MACOSX_DEPLOYMENT_TARGET = 10.5;
-				OTHER_LDFLAGS = (
-					"-framework",
-					Foundation,
-					"-framework",
-					AppKit,
-				);
-				PREBINDING = NO;
-				PRODUCT_NAME = "FileView-Leopard";
-				WRAPPER_EXTENSION = bundle;
-			};
-			name = Release;
-		};
 		F94692540CA575F100AC2772 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
@@ -1274,15 +1172,6 @@
 			buildConfigurations = (
 				1DEB91B208733DA50010E9CD /* Debug */,
 				1DEB91B308733DA50010E9CD /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		F94692170CA56F4600AC2772 /* Build configuration list for PBXNativeTarget "FileView-Leopard" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				F94692150CA56F4600AC2772 /* Debug */,
-				F94692160CA56F4600AC2772 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
