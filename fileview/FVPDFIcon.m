@@ -223,14 +223,18 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 
 - (CGPDFDocumentRef)_newPDFDocument
 {
-    if (FVCanMapFileAtURL(_fileURL)) {
+    CGPDFDocumentRef document = NULL;
+    if (FVCanMapFileAtURL(_fileURL))
+        document = CGPDFDocumentCreateWithProvider([_FVMappedDataProvider newDataProviderForURL:_fileURL]);
+    
+    if (document) {
         _isMapped = YES;
-        return CGPDFDocumentCreateWithProvider([_FVMappedDataProvider newDataProviderForURL:_fileURL]);
     }
     else {
         _isMapped = NO;
-        return CGPDFDocumentCreateWithURL((CFURLRef)_fileURL);
+        document = CGPDFDocumentCreateWithURL((CFURLRef)_fileURL);
     }
+    return document;
 }
 
 - (void)renderOffscreen
