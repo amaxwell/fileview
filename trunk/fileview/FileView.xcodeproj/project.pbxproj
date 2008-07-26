@@ -68,12 +68,12 @@
 		F94694510CA59AF100AC2772 /* FVScaledImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F946944F0CA59AF100AC2772 /* FVScaledImageView.m */; };
 		F94F1EB40DA2F0BB007B5ABD /* FVAliasBadge.h in Headers */ = {isa = PBXBuildFile; fileRef = F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */; };
 		F94F1EB50DA2F0BB007B5ABD /* FVAliasBadge.m in Sources */ = {isa = PBXBuildFile; fileRef = F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */; };
-		F95881A30E3A80DA001807B6 /* QuickLook.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F95881A20E3A80DA001807B6 /* QuickLook.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		F95881AC0E3A811B001807B6 /* FVQuickLookIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F946921C0CA5700800AC2772 /* FVQuickLookIcon.m */; };
 		F963C2690E17FEA10066B20F /* FileViewIBPlugin.ibplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */; };
 		F963C3950E180FCB0066B20F /* FileViewIBPluginLibrary.nib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3940E180FCB0066B20F /* FileViewIBPluginLibrary.nib */; };
 		F963C3970E180FD70066B20F /* FileViewIBPluginInspector.xib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3960E180FD70066B20F /* FileViewIBPluginInspector.xib */; };
 		F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F980F0920CCC3C2E0067C1DF /* libz.dylib */; };
+		F9865B540E3AC65300B7A373 /* QuickLook.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F946922F0CA5710500AC2772 /* QuickLook.framework */; };
 		F98D3A5E0D82EFD300ED9D22 /* FVCGImageUtilities.h in Headers */ = {isa = PBXBuildFile; fileRef = F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */; };
 		F98D3A5F0D82EFD300ED9D22 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */; };
 		F991B8680E2C5D4F0046000A /* _FVMappedDataProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = F991B8660E2C5D4F0046000A /* _FVMappedDataProvider.h */; };
@@ -254,7 +254,6 @@
 		F946944F0CA59AF100AC2772 /* FVScaledImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVScaledImageView.m; sourceTree = "<group>"; };
 		F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVAliasBadge.h; sourceTree = "<group>"; };
 		F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVAliasBadge.m; sourceTree = "<group>"; };
-		F95881A20E3A80DA001807B6 /* QuickLook.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuickLook.framework; path = System/Library/Frameworks/QuickLook.framework; sourceTree = SDKROOT; };
 		F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FVColumnView.classdescription; sourceTree = "<group>"; };
 		F980F0920CCC3C2E0067C1DF /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
 		F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCGImageUtilities.h; sourceTree = "<group>"; };
@@ -343,13 +342,13 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				F9865B540E3AC65300B7A373 /* QuickLook.framework in Frameworks */,
 				8DC2EF570486A6940098B216 /* Cocoa.framework in Frameworks */,
 				F94692310CA5710500AC2772 /* QTKit.framework in Frameworks */,
 				F94692320CA5710500AC2772 /* Quartz.framework in Frameworks */,
 				F94692340CA5710500AC2772 /* WebKit.framework in Frameworks */,
 				F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */,
 				F92CBB400D806B7C0009E371 /* Accelerate.framework in Frameworks */,
-				F95881A30E3A80DA001807B6 /* QuickLook.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -399,7 +398,6 @@
 				F9F2562F0E14A6710059A21A /* IBPlugin */,
 				F99C0AB00E1F27D8003255C7 /* Configurations */,
 				F94692140CA56F4300AC2772 /* FileView-Leopard-Info.plist */,
-				F95881A20E3A80DA001807B6 /* QuickLook.framework */,
 			);
 			name = FileView;
 			sourceTree = "<group>";
