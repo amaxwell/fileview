@@ -37,6 +37,7 @@
  */
 
 #import "FVThread.h"
+#import "FVUtilities.h"
 #import <libkern/OSAtomic.h>
 
 @interface _FVThread : NSObject
@@ -46,10 +47,14 @@
     id               _target;
     id               _argument;
     SEL              _selector;
+    CFAbsoluteTime   _lastPerformTime;
+    BOOL             _timeToDie;
 }
 
 + (void)detachNewThreadSelector:(SEL)selector toTarget:(id)target withObject:(id)argument;
 - (void)performSelector:(SEL)selector withTarget:(id)target argument:(id)argument;
+- (CFAbsoluteTime)lastPerformTime;
+- (void)die;
 
 @end
 
@@ -62,13 +67,23 @@
 
 @end
 
+#define THREAD_POOL_MAX 20
+#define THREAD_POOL_MIN 4
+
 static NSMutableArray  *_threadPool = nil;
 static OSSpinLock       _lock = OS_SPINLOCK_INIT;
-static int32_t          _threadPoolCapacity = 14;
+static int32_t          _threadPoolCapacity = THREAD_POOL_MAX;
 static volatile int32_t _threadCount = 0;
 
 #define FVTHREADWAITING 1
 #define FVTHREADWAKE    2
+
+#define DEBUG_REAPER 0
+#if DEBUG_REAPER
+#define TIME_TO_DIE 60
+#else
+#define TIME_TO_DIE 300
+#endif
 
 @implementation _FVThread
 
@@ -82,6 +97,7 @@ static volatile int32_t _threadCount = 0;
     // Pass in args on command line: -FVThreadPoolCapacity 0 to disable pooling
     NSNumber *capacity = [[NSUserDefaults standardUserDefaults] objectForKey:@"FVThreadPoolCapacity"];
     if (nil != capacity) _threadPoolCapacity = [capacity intValue];
+    [NSTimer scheduledTimerWithTimeInterval:TIME_TO_DIE target:self selector:@selector(reapThreads) userInfo:nil repeats:YES];
 }
 
 /*
@@ -116,6 +132,28 @@ static volatile int32_t _threadCount = 0;
     OSSpinLockUnlock(&_lock);
 }
 
++ (void)reapThreads
+{
+    OSSpinLockLock(&_lock);
+    NSUInteger cnt = [_threadPool count];
+#if DEBUG_REAPER
+    NSLog(@"%d threads should fear the reaper", cnt);
+#endif
+    while (cnt-- && _threadCount > THREAD_POOL_MIN) {
+        _FVThread *thread = [_threadPool objectAtIndex:cnt];
+        if (CFAbsoluteTimeGetCurrent() - [thread lastPerformTime] > TIME_TO_DIE) {
+            [thread die];
+            [_threadPool removeObjectAtIndex:cnt];
+            [thread release];
+            OSAtomicDecrement32Barrier(&_threadCount);
+        }
+    }
+#if DEBUG_REAPER
+    NSLog(@"%d threads will survive", [_threadPool count]);
+#endif    
+    OSSpinLockUnlock(&_lock);
+}
+
 + (void)detachNewThreadSelector:(SEL)selector toTarget:(id)target withObject:(id)argument;
 {
     if (_threadPoolCapacity == _threadCount)
@@ -130,6 +168,8 @@ static volatile int32_t _threadCount = 0;
     if (self) {
         _condLock = [NSConditionLock new];
         [NSThread detachNewThreadSelector:@selector(_run) toTarget:self withObject:nil];
+        _lastPerformTime = CFAbsoluteTimeGetCurrent();
+        _timeToDie = NO;
         // return immediately; performSelector:withObject:argument: will block if necessary until the thread is running
     }
     return self;
@@ -138,6 +178,9 @@ static volatile int32_t _threadCount = 0;
 // _FVThread instances should never dealloc, since they are retained by the NSThread
 - (void)dealloc
 {
+#if DEBUG_REAPER
+    NSLog(@"dealloc %@", self);
+#endif
     [_condLock release];
     [_target release];
     [_argument release];
@@ -145,9 +188,33 @@ static volatile int32_t _threadCount = 0;
     [super dealloc];
 }
 
+- (NSString *)debugDescription
+{
+    NSMutableString *desc = [NSMutableString stringWithFormat:@"%@: %@ {\n", [super description], _threadDescription];
+    [desc appendFormat:@"\ttarget = %@\n", _target];
+    [desc appendFormat:@"\targument = %@\n", _argument];
+    [desc appendFormat:@"\tselector = %@ }", NSStringFromSelector(_selector)];
+    return desc;
+}
+
 - (NSString *)description
 {
     return [NSString stringWithFormat:@"%@: %@", [super description], _threadDescription];
+}
+
+- (CFAbsoluteTime)lastPerformTime { return _lastPerformTime; }
+
+- (void)die;
+{
+    if ([_condLock tryLockWhenCondition:FVTHREADWAITING]) {
+        _timeToDie = YES;
+        [_condLock unlockWithCondition:FVTHREADWAKE];
+    }
+#if DEBUG_REAPER
+    else {
+        FVLog(@"active thread will die: %@", [self debugDescription]);
+    }
+#endif
 }
 
 - (void)_run
@@ -170,17 +237,35 @@ static volatile int32_t _threadCount = 0;
     // no exit condition, so the thread will run until the program dies
     while (1) {
         [_condLock lockWhenCondition:FVTHREADWAKE];
-        if (_argument)
-            [_target performSelector:_selector withObject:_argument];
-        else
-            [_target performSelector:_selector];
-        [_condLock unlockWithCondition:FVTHREADWAITING];
-        [pool release];
-        pool = [NSAutoreleasePool new];
         
-        // selector has been performed, and we're unlocked, so it's now safe to allow another caller to use this thread
-        [_FVThread recycleBackgroundThread:self];
+        if (_timeToDie) {
+            /*
+                 I've seen things you people wouldn't believe. 
+                 Attack ships on fire off the shoulder of Orion. 
+                 I watched C-beams glitter in the dark near the Tannhauser Gate. 
+                 All those moments will be lost in time, like tears in rain.
+                 Time to die.
+             */
+#if DEBUG_REAPER
+            NSLog(@"Time to die.  %@", self);
+#endif            
+            [_condLock unlockWithCondition:FVTHREADWAITING];
+            break;
+        }
+        else {
+            if (_argument)
+                [_target performSelector:_selector withObject:_argument];
+            else
+                [_target performSelector:_selector];
+            [_condLock unlockWithCondition:FVTHREADWAITING];
+            [pool release];
+            pool = [NSAutoreleasePool new];
+            
+            // selector has been performed, and we're unlocked, so it's now safe to allow another caller to use this thread
+            [_FVThread recycleBackgroundThread:self];
+        }
     }
+    [pool release];
 }
 
 - (void)setTarget:(id)value {
@@ -205,9 +290,11 @@ static volatile int32_t _threadCount = 0;
 - (void)performSelector:(SEL)selector withTarget:(id)target argument:(id)argument;
 {
     [_condLock lockWhenCondition:FVTHREADWAITING];
+    NSParameterAssert(NO == _timeToDie);
     [self setTarget:target];
     [self setArgument:argument];
     [self setSelector:selector];
+    _lastPerformTime = CFAbsoluteTimeGetCurrent();
     [_condLock unlockWithCondition:FVTHREADWAKE];
 }
 
