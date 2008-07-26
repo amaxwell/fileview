@@ -37,6 +37,7 @@
  */
 
 #import "_FVMappedDataProvider.h"
+#import "FVObject.h"
 #import "FVUtilities.h"
 #import <pthread.h>
 #import <sys/mman.h>
@@ -66,7 +67,7 @@ const CGDataProviderDirectCallbacks _FVMappedDataProviderDirectCallBacks = { 0, 
 static CFMutableDictionaryRef _dataProviders = NULL;
 static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
 
-@interface _FVProviderInfo : NSObject
+@interface _FVProviderInfo : FVObject
 {
 @public;
     CGDataProviderRef _provider;
