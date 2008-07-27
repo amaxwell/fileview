@@ -623,7 +623,13 @@ static NSLock *_convertedKeysLock = nil;
         [_convertedKeysLock unlock];
 
     }
-    return [super _newPDFDocument];
+    
+    // lock in case the URL is blown away in app terminate before a mapped provider is opened
+    [_convertedKeysLock lock];
+    CGPDFDocumentRef pdfDoc = [super _newPDFDocument];
+    [_convertedKeysLock unlock];
+    
+    return pdfDoc;
 }
 
 
