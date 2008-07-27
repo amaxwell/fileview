@@ -39,16 +39,30 @@
 #import "FVThread.h"
 #import "FVUtilities.h"
 #import <libkern/OSAtomic.h>
+#import <pthread.h>
+
+#define __FVBitIsSet(V, N)  (((V) & (1UL << (N))) != 0)
+#define __FVBitSet(V, N)  ((V) |= (1UL << (N)))
+#define __FVBitClear(V, N)  ((V) &= ~(1UL << (N)))
+
+enum {
+    FVThreadSetup   = 1,
+    FVThreadWaiting = 2,
+    FVThreadWake    = 3,
+    FVThreadDie     = 4
+};
 
 @interface _FVThread : NSObject
 {
-    NSConditionLock *_condLock;
     NSString        *_threadDescription;
     id               _target;
     id               _argument;
     SEL              _selector;
     CFAbsoluteTime   _lastPerformTime;
-    BOOL             _timeToDie;
+    uint32_t         _flags;
+    pthread_cond_t   _condition;
+    pthread_mutex_t  _mutex;
+    pthread_t        _thread;
 }
 
 + (void)detachNewThreadSelector:(SEL)selector toTarget:(id)target withObject:(id)argument;
@@ -75,10 +89,7 @@ static OSSpinLock       _lock = OS_SPINLOCK_INIT;
 static int32_t          _threadPoolCapacity = THREAD_POOL_MAX;
 static volatile int32_t _threadCount = 0;
 
-#define FVTHREADWAITING 1
-#define FVTHREADWAKE    2
-
-#define DEBUG_REAPER 0
+#define DEBUG_REAPER 1
 #if DEBUG_REAPER
 #define TIME_TO_DIE 60
 #else
@@ -126,7 +137,7 @@ static volatile int32_t _threadCount = 0;
 {
     NSParameterAssert(nil != thread);
     OSSpinLockLock(&_lock);
-    NSParameterAssert([_threadPool containsObject:thread] == NO);
+    NSAssert1([_threadPool containsObject:thread] == NO, @"thread %@ is already in the pool", thread);
     // no ownership transfer here
     [_threadPool addObject:thread];
     OSSpinLockUnlock(&_lock);
@@ -134,10 +145,14 @@ static volatile int32_t _threadCount = 0;
 
 + (void)reapThreads
 {
+    // !!! early return; recall that _threadCount != [_threadPool count] if threads are working
+    if (_threadCount <= THREAD_POOL_MIN)
+        return;
+    
     OSSpinLockLock(&_lock);
     NSUInteger cnt = [_threadPool count];
 #if DEBUG_REAPER
-    NSLog(@"%d threads should fear the reaper", cnt);
+    FVLog(@"%d threads should fear the reaper", cnt);
 #endif
     while (cnt-- && _threadCount > THREAD_POOL_MIN) {
         _FVThread *thread = [_threadPool objectAtIndex:cnt];
@@ -149,7 +164,7 @@ static volatile int32_t _threadCount = 0;
         }
     }
 #if DEBUG_REAPER
-    NSLog(@"%d threads will survive", [_threadPool count]);
+    FVLog(@"%d threads will survive", [_threadPool count]);
 #endif    
     OSSpinLockUnlock(&_lock);
 }
@@ -162,14 +177,38 @@ static volatile int32_t _threadCount = 0;
         [[self backgroundThread] performSelector:selector withTarget:target argument:argument];
 }
 
+static void *__FVThread_main(void *obj);
+
 - (id)init
 {
     self = [super init];
     if (self) {
-        _condLock = [NSConditionLock new];
-        [NSThread detachNewThreadSelector:@selector(_run) toTarget:self withObject:nil];
-        _lastPerformTime = CFAbsoluteTimeGetCurrent();
-        _timeToDie = NO;
+        
+        // for debugging
+        static uint32_t threadIndex = 0;
+        uint32_t idx = OSAtomicIncrement32Barrier((int32_t *)&threadIndex);
+        _threadDescription = [[NSString allocWithZone:[self zone]] initWithFormat:@"FVThread index %d", idx];
+        
+        _lastPerformTime = CFAbsoluteTimeGetCurrent();        
+        _flags = 0;
+        __FVBitSet(_flags, FVThreadSetup);
+        
+        int err;
+        err = pthread_cond_init(&_condition, NULL);
+        if (0 == err)
+            err = pthread_mutex_init(&_mutex, NULL);
+        
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        if (0 == err)
+            err = pthread_create(&_thread, &attr, __FVThread_main, [self retain]);
+        pthread_attr_destroy(&attr);
+        
+        if (0 != err) {
+            [self release];
+            self = nil;
+        }
         // return immediately; performSelector:withObject:argument: will block if necessary until the thread is running
     }
     return self;
@@ -181,7 +220,8 @@ static volatile int32_t _threadCount = 0;
 #if DEBUG_REAPER
     NSLog(@"dealloc %@", self);
 #endif
-    [_condLock release];
+    pthread_cond_destroy(&_condition);
+    pthread_mutex_destroy(&_mutex);
     [_target release];
     [_argument release];
     [_threadDescription release];
@@ -206,66 +246,77 @@ static volatile int32_t _threadCount = 0;
 
 - (void)die;
 {
-    if ([_condLock tryLockWhenCondition:FVTHREADWAITING]) {
-        _timeToDie = YES;
-        [_condLock unlockWithCondition:FVTHREADWAKE];
-    }
+    if (0 == pthread_mutex_trylock(&_mutex)) {
+        
+        if (__FVBitIsSet(_flags, FVThreadWaiting)) {
+            __FVBitClear(_flags, FVThreadWaiting);
+            __FVBitSet(_flags, FVThreadWake);
+        }
 #if DEBUG_REAPER
-    else {
-        FVLog(@"active thread will die: %@", [self debugDescription]);
-    }
+        else {
+            FVLog(@"active thread will die: %@", [self debugDescription]);
+        }
 #endif
+        __FVBitSet(_flags, FVThreadDie);
+        
+        pthread_cond_signal(&_condition);
+        pthread_mutex_unlock(&_mutex);
+    }
 }
 
-- (void)_run
+void *__FVThread_main(void *obj)
 {
+    
+#if DEBUG_REAPER
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
+#endif
     
-    [_condLock lock];
+    _FVThread *self = obj;
     
-    // do some initial debugging setup
-    NSThread *currentThread = [NSThread currentThread];
-    static uint32_t threadIndex = 0;
-    if ([currentThread respondsToSelector:@selector(setName:)])
-        [currentThread setName:[NSString stringWithFormat:@"FVThread index %d", threadIndex++]];
-    
-    _threadDescription = [[currentThread description] copy];
-    
+    pthread_mutex_lock(&self->_mutex);
+        
     // performSelector:withTarget:argument: will block until this is ready
-    [_condLock unlockWithCondition:FVTHREADWAITING];
+    
+    __FVBitClear(self->_flags, FVThreadSetup);
+    __FVBitSet(self->_flags, FVThreadWaiting);
+    pthread_cond_signal(&self->_condition);
+    pthread_mutex_unlock(&self->_mutex);
         
     // no exit condition, so the thread will run until the program dies
     while (1) {
-        [_condLock lockWhenCondition:FVTHREADWAKE];
         
-        if (_timeToDie) {
-            /*
-                 I've seen things you people wouldn't believe. 
-                 Attack ships on fire off the shoulder of Orion. 
-                 I watched C-beams glitter in the dark near the Tannhauser Gate. 
-                 All those moments will be lost in time, like tears in rain.
-                 Time to die.
-             */
+        pthread_mutex_lock(&self->_mutex);
+        int ret = 0;
+        while (0 == ret && __FVBitIsSet(self->_flags, FVThreadWake) == NO)
+            ret = pthread_cond_wait(&self->_condition, &self->_mutex);
+        
+        if (__FVBitIsSet(self->_flags, FVThreadDie)) {
+            // I've seen things you people wouldn't believe. Attack ships on fire off the shoulder of Orion.  I watched C-beams glitter in the dark near the Tannhauser Gate.  All those moments will be lost in time, like tears in rain.  Time to die.
 #if DEBUG_REAPER
             NSLog(@"Time to die.  %@", self);
 #endif            
-            [_condLock unlockWithCondition:FVTHREADWAITING];
+            pthread_mutex_unlock(&self->_mutex);
             break;
         }
         else {
-            if (_argument)
-                [_target performSelector:_selector withObject:_argument];
+            if (self->_argument)
+                [self->_target performSelector:self->_selector withObject:self->_argument];
             else
-                [_target performSelector:_selector];
-            [_condLock unlockWithCondition:FVTHREADWAITING];
-            [pool release];
-            pool = [NSAutoreleasePool new];
+                [self->_target performSelector:self->_selector];
+            __FVBitClear(self->_flags, FVThreadWake);
+            __FVBitSet(self->_flags, FVThreadWaiting);
+            pthread_cond_signal(&self->_condition);
+            pthread_mutex_unlock(&self->_mutex);
             
             // selector has been performed, and we're unlocked, so it's now safe to allow another caller to use this thread
             [_FVThread recycleBackgroundThread:self];
         }
     }
+    [self release];
+#if DEBUG_REAPER
     [pool release];
+#endif
+    return NULL;
 }
 
 - (void)setTarget:(id)value {
@@ -289,13 +340,21 @@ static volatile int32_t _threadCount = 0;
 
 - (void)performSelector:(SEL)selector withTarget:(id)target argument:(id)argument;
 {
-    [_condLock lockWhenCondition:FVTHREADWAITING];
-    NSParameterAssert(NO == _timeToDie);
+    int ret = 0;
+    pthread_mutex_lock(&_mutex);
+    while (0 == ret && __FVBitIsSet(_flags, FVThreadWaiting) == NO)
+        ret = pthread_cond_wait(&_condition, &_mutex);
+
+    NSParameterAssert(__FVBitIsSet(_flags, FVThreadDie) == NO);
     [self setTarget:target];
     [self setArgument:argument];
     [self setSelector:selector];
     _lastPerformTime = CFAbsoluteTimeGetCurrent();
-    [_condLock unlockWithCondition:FVTHREADWAKE];
+    
+    __FVBitClear(_flags, FVThreadWaiting);
+    __FVBitSet(_flags, FVThreadWake);
+    pthread_cond_signal(&_condition);
+    pthread_mutex_unlock(&_mutex);
 }
 
 @end
