@@ -106,7 +106,7 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
         if (-1 != fd && -1 != fstat(fd, &sb)) {
             
             // don't mmap network/firewire/usb filesystems
-            NSParameterAssert(FVCanMapFileAtURL(aURL));
+            NSAssert1(FVCanMapFileAtURL(aURL), @"%@ is not safe for mmap()", aURL);
             
             NSZone *zone = [self zone];
             FVMappedRegion *mapInfo = NSZoneMalloc(zone, sizeof(FVMappedRegion));
