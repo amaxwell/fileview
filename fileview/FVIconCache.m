@@ -104,9 +104,11 @@ static FVOperationQueue *_cacheQueue = nil;
 #if USE_CACHE_QUEUE
     [_cacheQueue terminate];
 #endif
-    [_cacheFile closeFile];   
-    [_cacheFile release];
+    // avoid writing to a closed file
+    FVCacheFile *cacheFile = _cacheFile;
     _cacheFile = nil;
+    [cacheFile closeFile];   
+    [cacheFile release];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
