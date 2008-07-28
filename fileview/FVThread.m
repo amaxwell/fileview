@@ -110,6 +110,9 @@ static volatile int32_t _threadCount = 0;
     NSNumber *capacity = [[NSUserDefaults standardUserDefaults] objectForKey:@"FVThreadPoolCapacity"];
     if (nil != capacity) _threadPoolCapacity = [capacity intValue];
     [NSTimer scheduledTimerWithTimeInterval:TIME_TO_DIE target:self selector:@selector(reapThreads) userInfo:nil repeats:YES];
+    
+    // make sure Cocoa is multithreaded, since we're using pthreads directly
+    [NSThread detachNewThreadSelector:@selector(self) toTarget:self withObject:nil];
 }
 
 /*
