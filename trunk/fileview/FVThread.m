@@ -55,15 +55,15 @@ enum {
 
 @interface _FVThread : NSObject
 {
-    NSString        *_threadDescription;
-    id               _target;
-    id               _argument;
-    SEL              _selector;
+@private
     CFAbsoluteTime   _lastPerformTime;
-    uint32_t         _flags;
+    uint32_t         _threadIndex;
+    uint32_t         _flags;    
     pthread_cond_t   _condition;
     pthread_mutex_t  _mutex;
-    pthread_t        _thread;
+    id               _target;
+    id               _argument;
+    SEL              _selector;    
 }
 
 + (void)detachNewThreadSelector:(SEL)selector toTarget:(id)target withObject:(id)argument;
@@ -90,7 +90,7 @@ static OSSpinLock       _lock = OS_SPINLOCK_INIT;
 static int32_t          _threadPoolCapacity = THREAD_POOL_MAX;
 static volatile int32_t _threadCount = 0;
 
-#define DEBUG_REAPER 1
+#define DEBUG_REAPER 0
 #if DEBUG_REAPER
 #define TIME_TO_DIE 60
 #else
@@ -187,8 +187,7 @@ static void *__FVThread_main(void *obj);
         
         // for debugging
         static uint32_t threadIndex = 0;
-        uint32_t idx = OSAtomicIncrement32Barrier((int32_t *)&threadIndex);
-        _threadDescription = [[NSString allocWithZone:[self zone]] initWithFormat:@"FVThread index %d", idx];
+        _threadIndex = OSAtomicIncrement32Barrier((int32_t *)&threadIndex);
         
         _lastPerformTime = CFAbsoluteTimeGetCurrent();        
         _flags = 0;
@@ -202,8 +201,11 @@ static void *__FVThread_main(void *obj);
         pthread_attr_t attr;
         pthread_attr_init(&attr);
         pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        
+        // not required as an ivar at present
+        pthread_t thread;
         if (0 == err)
-            err = pthread_create(&_thread, &attr, __FVThread_main, [self retain]);
+            err = pthread_create(&thread, &attr, __FVThread_main, [self retain]);
         pthread_attr_destroy(&attr);
         
         if (0 != err) {
@@ -225,13 +227,12 @@ static void *__FVThread_main(void *obj);
     pthread_mutex_destroy(&_mutex);
     [_target release];
     [_argument release];
-    [_threadDescription release];
     [super dealloc];
 }
 
 - (NSString *)debugDescription
 {
-    NSMutableString *desc = [NSMutableString stringWithFormat:@"%@: %@ {\n", [super description], _threadDescription];
+    NSMutableString *desc = [NSMutableString stringWithFormat:@"%@: creation index %d {\n", [super description], _threadIndex];
     [desc appendFormat:@"\ttarget = %@\n", _target];
     [desc appendFormat:@"\targument = %@\n", _argument];
     [desc appendFormat:@"\tselector = %@ }", NSStringFromSelector(_selector)];
@@ -240,7 +241,7 @@ static void *__FVThread_main(void *obj);
 
 - (NSString *)description
 {
-    return [NSString stringWithFormat:@"%@: %@", [super description], _threadDescription];
+    return [NSString stringWithFormat:@"%@: creation index %d", [super description], _threadIndex];
 }
 
 - (CFAbsoluteTime)lastPerformTime { return _lastPerformTime; }
