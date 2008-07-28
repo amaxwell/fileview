@@ -41,6 +41,7 @@
 #import <libkern/OSAtomic.h>
 #import <pthread.h>
 
+// lifted from CFInternal.h
 #define __FVBitIsSet(V, N)  (((V) & (1UL << (N))) != 0)
 #define __FVBitSet(V, N)  ((V) |= (1UL << (N)))
 #define __FVBitClear(V, N)  ((V) &= ~(1UL << (N)))
@@ -282,7 +283,7 @@ void *__FVThread_main(void *obj)
     pthread_cond_signal(&self->_condition);
     pthread_mutex_unlock(&self->_mutex);
         
-    // no exit condition, so the thread will run until the program dies
+    // break from the loop when the exit bit is set
     while (1) {
         
         pthread_mutex_lock(&self->_mutex);
