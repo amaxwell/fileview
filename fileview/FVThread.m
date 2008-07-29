@@ -251,22 +251,20 @@ static void *__FVThread_main(void *obj);
 
 - (void)die;
 {
-    if (0 == pthread_mutex_trylock(&_mutex)) {
-        
-        if (__FVBitIsSet(_flags, FVThreadWaiting)) {
-            __FVBitClear(_flags, FVThreadWaiting);
-            __FVBitSet(_flags, FVThreadWake);
-        }
-#if DEBUG_REAPER
-        else {
-            FVLog(@"active thread will die: %@", [self debugDescription]);
-        }
-#endif
-        __FVBitSet(_flags, FVThreadDie);
-        
-        pthread_cond_signal(&_condition);
-        pthread_mutex_unlock(&_mutex);
+    // this should always acquire the lock immediately, since the (locked) pool should only contain idle threads
+    pthread_mutex_lock(&_mutex);        
+    if (__FVBitIsSet(_flags, FVThreadWaiting)) {
+        __FVBitClear(_flags, FVThreadWaiting);
+        __FVBitSet(_flags, FVThreadWake);
     }
+#if DEBUG_REAPER
+    else {
+        FVLog(@"active thread will die: %@", [self debugDescription]);
+    }
+#endif
+    __FVBitSet(_flags, FVThreadDie);
+    pthread_cond_signal(&_condition);
+    pthread_mutex_unlock(&_mutex);
 }
 
 void *__FVThread_main(void *obj)
