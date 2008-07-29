@@ -99,20 +99,27 @@ static volatile int32_t _threadCount = 0;
 
 @implementation _FVThread
 
++ (void)_scheduleReaper
+{
+    [NSTimer scheduledTimerWithTimeInterval:TIME_TO_DIE target:self selector:@selector(reapThreads) userInfo:nil repeats:YES];
+}
+
 + (void)initialize 
 {
     FVINITIALIZE(_FVThread);
     
+    // make sure Cocoa is multithreaded, since we're using pthreads directly
+    [NSThread detachNewThreadSelector:@selector(self) toTarget:self withObject:nil];
+
     // nonretaining mutable array
     _threadPool = (NSMutableArray *)CFArrayCreateMutable(CFAllocatorGetDefault(), 0, NULL);
     
     // Pass in args on command line: -FVThreadPoolCapacity 0 to disable pooling
     NSNumber *capacity = [[NSUserDefaults standardUserDefaults] objectForKey:@"FVThreadPoolCapacity"];
     if (nil != capacity) _threadPoolCapacity = [capacity intValue];
-    [NSTimer scheduledTimerWithTimeInterval:TIME_TO_DIE target:self selector:@selector(reapThreads) userInfo:nil repeats:YES];
     
-    // make sure Cocoa is multithreaded, since we're using pthreads directly
-    [NSThread detachNewThreadSelector:@selector(self) toTarget:self withObject:nil];
+    // schedule this on the main thread, since the class may first be used from a secondary thread
+    [self performSelectorOnMainThread:@selector(_scheduleReaper) withObject:nil waitUntilDone:NO];    
 }
 
 /*
