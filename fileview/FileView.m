@@ -1515,6 +1515,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         CGContextSetInterpolationQuality(cgContext, kCGInterpolationDefault);
         CGContextSetShouldAntialias(cgContext, true);
     }
+    
+    // http://lists.apple.com/archives/Cocoa-dev/2008/Jul/msg02539.html indicates this is a good idea; I don't see a difference
+    if (_isDrawingDragImage)
+        CGContextSetShouldSmoothFonts(cgContext, false);
             
     BOOL isDrawingToScreen = [ctxt isDrawingToScreen];
     
