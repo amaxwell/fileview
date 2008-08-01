@@ -172,7 +172,9 @@ static const NSSize _webViewSize = { 1000, 900 };
 - (void)dealloc
 {
     // typically on the main thread here, but not guaranteed
-    [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
+    OSMemoryBarrier();
+    if (nil != _webView)
+        [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
     [_condLock release];
     CGImageRelease(_viewImage);
     CGImageRelease(_fullImage);
@@ -191,7 +193,9 @@ static const NSSize _webViewSize = { 1000, 900 };
 - (void)releaseResources
 {     
     // Cancel any pending loads
-    [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
+    OSMemoryBarrier();
+    if (nil != _webView)
+        [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
 
     // allow current waiters on LOADING to exit
     if ([_condLock tryLockWhenCondition:LOADING])
