@@ -80,6 +80,8 @@
 		F991B8690E2C5D4F0046000A /* _FVMappedDataProvider.m in Sources */ = {isa = PBXBuildFile; fileRef = F991B8670E2C5D4F0046000A /* _FVMappedDataProvider.m */; };
 		F991B8B70E2C657B0046000A /* _FVSplitSet.h in Headers */ = {isa = PBXBuildFile; fileRef = F991B8B50E2C657B0046000A /* _FVSplitSet.h */; };
 		F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */ = {isa = PBXBuildFile; fileRef = F991B8B60E2C657B0046000A /* _FVSplitSet.m */; };
+		F99FEC860E43CB3A006FC8E4 /* FVAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = F99FEC840E43CB3A006FC8E4 /* FVAllocator.h */; };
+		F99FEC870E43CB3A006FC8E4 /* FVAllocator.m in Sources */ = {isa = PBXBuildFile; fileRef = F99FEC850E43CB3A006FC8E4 /* FVAllocator.m */; };
 		F9A2D39D0CCBB3B5002F517B /* FVIconCache.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D39B0CCBB3B5002F517B /* FVIconCache.h */; };
 		F9A2D39E0CCBB3B5002F517B /* FVIconCache.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D39C0CCBB3B5002F517B /* FVIconCache.m */; };
 		F9A2D3DA0CCBDDDF002F517B /* FVBitmapContext.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */; };
@@ -262,6 +264,8 @@
 		F991B8670E2C5D4F0046000A /* _FVMappedDataProvider.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = _FVMappedDataProvider.m; sourceTree = "<group>"; };
 		F991B8B50E2C657B0046000A /* _FVSplitSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = _FVSplitSet.h; sourceTree = "<group>"; };
 		F991B8B60E2C657B0046000A /* _FVSplitSet.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = _FVSplitSet.m; sourceTree = "<group>"; };
+		F99FEC840E43CB3A006FC8E4 /* FVAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVAllocator.h; sourceTree = "<group>"; };
+		F99FEC850E43CB3A006FC8E4 /* FVAllocator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVAllocator.m; sourceTree = "<group>"; };
 		F9A2D39B0CCBB3B5002F517B /* FVIconCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVIconCache.h; sourceTree = "<group>"; };
 		F9A2D39C0CCBB3B5002F517B /* FVIconCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVIconCache.m; sourceTree = "<group>"; };
 		F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVBitmapContext.h; sourceTree = "<group>"; };
@@ -444,6 +448,8 @@
 				F9E9F9200D5ACE5B000FCB7F /* FVUtilities.m */,
 				F9AC423D0E351BA400EDA60D /* FVObject.h */,
 				F9AC423E0E351BA400EDA60D /* FVObject.m */,
+				F99FEC840E43CB3A006FC8E4 /* FVAllocator.h */,
+				F99FEC850E43CB3A006FC8E4 /* FVAllocator.m */,
 			);
 			name = Classes;
 			sourceTree = "<group>";
@@ -709,6 +715,7 @@
 				F991B8B70E2C657B0046000A /* _FVSplitSet.h in Headers */,
 				F9AB43840E2D0B2700D0A75E /* _FVDocumentDescription.h in Headers */,
 				F9AC423F0E351BA400EDA60D /* FVObject.h in Headers */,
+				F99FEC860E43CB3A006FC8E4 /* FVAllocator.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -922,6 +929,7 @@
 				F9AB43850E2D0B2700D0A75E /* _FVDocumentDescription.m in Sources */,
 				F9AC42400E351BA400EDA60D /* FVObject.m in Sources */,
 				F95881AC0E3A811B001807B6 /* FVQuickLookIcon.m in Sources */,
+				F99FEC870E43CB3A006FC8E4 /* FVAllocator.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
