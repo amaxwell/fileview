@@ -78,4 +78,5 @@
 - (void)downloadUpdated:(FVDownload *)download;
 - (void)downloadFinished:(FVDownload *)download;
 - (void)downloadFailed:(FVDownload *)download;
+- (void)download:(FVDownload *)download setDestinationWithSuggestedFilename:(NSString *)filename;
 @end
