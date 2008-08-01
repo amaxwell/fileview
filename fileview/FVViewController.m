@@ -396,7 +396,7 @@
     [_view setNeedsDisplay:YES];
 }
 
-- (void)download:(FVDownload *)download decideDestinationWithSuggestedFilename:(NSString *)filename;
+- (void)download:(FVDownload *)download setDestinationWithSuggestedFilename:(NSString *)filename;
 {
     NSString *fullPath = nil;
     if ([[_view delegate] respondsToSelector:@selector(fileView:downloadDestinationWithSuggestedFilename:)])
