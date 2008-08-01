@@ -39,6 +39,7 @@
 #import "FVCacheFile.h"
 #import "FVUtilities.h"
 #import "FVObject.h"
+#import "FVAllocator.h"
 #import <libkern/OSAtomic.h>
 #import <string>
 #import <sys/stat.h>
@@ -369,7 +370,7 @@ static NSInteger FVCacheLogLevel = 0;
     if (location) {
                     
         // malloc the entire block immediately since we have a fixed length, insted of using NSMutableData to manage a buffer
-        char *bytes = (char *)NSZoneCalloc([aKey zone], location->_decompressedLength, sizeof(char));
+        char *bytes = (char *)CFAllocatorAllocate(FVAllocatorGetDefault(), location->_decompressedLength * sizeof(char), 0);
         
         if (NULL != bytes) {
             
@@ -424,7 +425,7 @@ static NSInteger FVCacheLogLevel = 0;
             NSParameterAssert(strm.total_out == location->_decompressedLength);
             
             // transfer ownership to NSData in order to avoid copying
-            data = [[NSData allocWithZone:[aKey zone]] initWithBytesNoCopy:bytes length:location->_decompressedLength freeWhenDone:YES];
+            data = (id)CFDataCreateWithBytesNoCopy(FVAllocatorGetDefault(), (const uint8_t *)bytes, location->_decompressedLength, FVAllocatorGetDefault());
         }
         else {
             FVLog(@"Unable to malloc %d bytes in -[FVCacheFile copyDataForKey:] with key %@", location->_decompressedLength, aKey);
