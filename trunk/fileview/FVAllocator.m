@@ -37,9 +37,13 @@
  */
 
 #import "FVAllocator.h"
-#import <libkern/OSAtomic.h>
 #import "FVObject.h"
 #import "FVUtilities.h"
+
+#import <libkern/OSAtomic.h>
+#import <malloc/malloc.h>
+#import <mach/mach.h>
+#import <mach/vm_map.h>
 
 typedef struct _fv_alloc_info_t {
     size_t  size;
@@ -56,6 +60,8 @@ static OSSpinLock         _pointerTableLock = OS_SPINLOCK_INIT;
 // array of buffers that are currently free (have been deallocated)
 static CFMutableArrayRef  _freeBuffers = NULL;
 static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
+
+#define FV_VM_THRESHOLD 16384UL
 
 static CFComparisonResult __FVAllocInfoComparator(const void *val1, const void *val2, void *context)
 {
@@ -103,7 +109,24 @@ static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_alloc_info_t
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
-    return (CFStringRef)[[NSString alloc] initWithFormat:@"FVCacheFileAllocator <%p>", _allocator];
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), _allocator);
+}
+
+static void *__FVAllocateFromSystem(const size_t requestedSize, size_t *actualSize)
+{
+    void *ptr;
+    // allocations going through this allocator should generally larger than 4K
+    if (__builtin_expect(requestedSize >= FV_VM_THRESHOLD, 1)) {
+        kern_return_t ret;
+        *actualSize = round_page(requestedSize);
+        ret = vm_allocate(mach_task_self(), (vm_address_t *)&ptr, *actualSize, VM_FLAGS_ANYWHERE);
+        if (0 != ret) ptr = NULL;
+    }
+    else {
+        ptr = malloc_zone_malloc(malloc_default_zone(), requestedSize);
+        *actualSize = requestedSize;
+    }
+    return ptr;
 }
 
 // return an available buffer of sufficient size or create a new one
@@ -113,43 +136,27 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     OSSpinLockLock(&_freeBufferLock);
     CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(allocSize);
     void *ptr = NULL;
-    if (kCFNotFound == idx) {
-        // unlock immediately
+    if (__builtin_expect(kCFNotFound == idx, 0)) {
+        // nothing found; unlock immediately
         OSSpinLockUnlock(&_freeBufferLock);
-        fv_alloc_info_t *allocInfo = NSZoneMalloc(NSDefaultMallocZone(), sizeof(fv_alloc_info_t));
-        ptr = NSZoneMalloc(NSDefaultMallocZone(), allocSize);
+        fv_alloc_info_t *allocInfo = malloc_zone_calloc(malloc_default_zone(), 1, sizeof(fv_alloc_info_t));
+        // may round up to page size, so pass a pointer to allocInfo's size field
+        ptr = __FVAllocateFromSystem(allocSize, &allocInfo->size);
         allocInfo->ptr = ptr;
-        allocInfo->size = allocSize;
-        OSSpinLockLock(&_pointerTableLock);
-        NSMapInsertKnownAbsent(_pointerTable, ptr, allocInfo);
-        OSSpinLockUnlock(&_pointerTableLock);
+        if (__builtin_expect(NULL != ptr, 1)) {
+            OSSpinLockLock(&_pointerTableLock);
+            NSMapInsertKnownAbsent(_pointerTable, ptr, allocInfo);
+            OSSpinLockUnlock(&_pointerTableLock);
+        }
     }
     else {
         const fv_alloc_info_t *allocInfo = CFArrayGetValueAtIndex(_freeBuffers, idx);
         CFArrayRemoveValueAtIndex(_freeBuffers, idx);
         OSSpinLockUnlock(&_freeBufferLock);
-        if ((size_t)allocSize > allocInfo->size) HALT;
+        if (__builtin_expect((size_t)allocSize > allocInfo->size, 0)) HALT;
         ptr = allocInfo->ptr;
     }
     return ptr;
-}
-
-static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
-{
-    // ??? could possibly optimize by returning ptr to the pool and getting a new buffer, then copying contents
-    void *newPtr = NSZoneRealloc(NSZoneFromPointer(ptr), ptr, newSize);
-    OSSpinLockLock(&_pointerTableLock);
-    fv_alloc_info_t *allocInfo = NSMapGet(_pointerTable, ptr);
-    if (NULL == allocInfo) HALT;
-    allocInfo->size = newSize;
-    // if realloc changed the location, remove ptr from table and add newPtr as key
-    if (newPtr != ptr) {
-        allocInfo->ptr = newPtr;
-        NSMapRemove(_pointerTable, ptr);
-        NSMapInsertKnownAbsent(_pointerTable, ptr, allocInfo);
-    }
-    OSSpinLockUnlock(&_pointerTableLock);
-    return newPtr;
 }
 
 static void __FVDeallocate(void *ptr, void *info)
@@ -158,7 +165,7 @@ static void __FVDeallocate(void *ptr, void *info)
     OSSpinLockLock(&_pointerTableLock);
     const fv_alloc_info_t *allocInfo = NSMapGet(_pointerTable, ptr);
     OSSpinLockUnlock(&_pointerTableLock);
-    if (NULL == allocInfo) HALT;
+    if (__builtin_expect(NULL == allocInfo, 0)) HALT;
     // add to free list
     OSSpinLockLock(&_freeBufferLock);
     CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(allocInfo);
@@ -166,14 +173,28 @@ static void __FVDeallocate(void *ptr, void *info)
     OSSpinLockUnlock(&_freeBufferLock);
 }
 
+static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
+{
+    // get a new buffer, copy contents, return ptr to the pool
+    void *newPtr = __FVAllocate(newSize, hint, info);
+    OSSpinLockLock(&_pointerTableLock);
+    const fv_alloc_info_t *allocInfo = NSMapGet(_pointerTable, ptr);
+    OSSpinLockUnlock(&_pointerTableLock);
+    if (__builtin_expect(NULL == allocInfo, 0)) HALT;
+    memcpy(newPtr, ptr, allocInfo->size);
+    __FVDeallocate(ptr, info);
+    return newPtr;
+}
+
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 {
-    return size;
+    size_t allocSize = size;
+    return allocSize >= FV_VM_THRESHOLD ? round_page(allocSize) : allocSize;
 }
 
 __attribute__ ((constructor))
 static void __initialize_allocator()
-{    
+{  
     _pointerTable = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 256);
     const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
