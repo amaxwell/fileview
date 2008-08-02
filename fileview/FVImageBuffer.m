@@ -41,6 +41,7 @@
 #import "FVCGImageUtilities.h"
 #import <libkern/OSAtomic.h>
 #import "FVBitmapContext.h"
+#import "FVAllocator.h"
 
 static NSMutableSet *_availableBuffers = nil;
 static NSMutableSet *_workingBuffers = nil;
@@ -59,7 +60,7 @@ static CFStringRef FVImageAllocatorCopyDescription(const void *info)
 
 static void * FVImageBufferAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
 {
-    void *ptr = NSZoneMalloc(NULL, allocSize);
+    void *ptr = CFAllocatorAllocate(FVAllocatorGetDefault(), allocSize, hint);
     OSSpinLockLock(&_monitorLock);
     _allocatedBytes += allocSize;
     CFDictionaryAddValue(_monitoredPointers, ptr, (void *)allocSize);
@@ -75,7 +76,7 @@ static void * FVImageBufferReallocate(void *ptr, CFIndex newSize, CFOptionFlags 
         CFDictionaryRemoveValue(_monitoredPointers, ptr);
     else
         oldSize = 0;
-    ptr = NSZoneRealloc(NSZoneFromPointer(ptr), ptr, newSize);
+    ptr = CFAllocatorReallocate(FVAllocatorGetDefault(), ptr, newSize, hint);
     _allocatedBytes += (newSize - oldSize);
     CFDictionaryAddValue(_monitoredPointers, ptr, (void *)newSize);
     OSSpinLockUnlock(&_monitorLock);
@@ -91,7 +92,7 @@ static void FVImageBufferDeallocate(void *ptr, void *info)
         _allocatedBytes -= oldSize;
     }
     OSSpinLockUnlock(&_monitorLock);
-    NSZoneFree(NSZoneFromPointer(ptr), ptr);
+    CFAllocatorDeallocate(FVAllocatorGetDefault(), ptr);
 }
 
 static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
