@@ -122,7 +122,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
 // FVMovieIcon overrides this to provide its TIFF data
 - (CFDataRef)_copyDataForImageSourceWhileLocked
 {
-    return (CFDataRef)[[NSData alloc] initWithContentsOfURL:_fileURL options:NSMappedRead error:NULL];
+    return (CFDataRef)[[NSData alloc] initWithContentsOfURL:_fileURL options:NSUncachedRead error:NULL];
 }
 
 - (void)renderOffscreen
