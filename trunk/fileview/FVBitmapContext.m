@@ -67,13 +67,6 @@ size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixels
     return destRowBytes;
 }
 
-__attribute__ ((constructor))
-static void __WorkaroundNSRoundUpToMultipleOfPageSize()
-{
-    // workaround for NSRoundUpToMultipleOfPageSize: http://www.cocoabuilder.com/archive/message/cocoa/2008/3/5/200500
-    (void)NSPageSize();
-}
-
 CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
 {
     size_t bitsPerComponent = 8;
@@ -95,7 +88,7 @@ CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
     
     char *bitmapData;
     kern_return_t ret;
-    ret = vm_allocate(mach_task_self(), (vm_address_t *)&bitmapData, NSRoundUpToMultipleOfPageSize(requiredDataSize), VM_FLAGS_ANYWHERE);
+    ret = vm_allocate(mach_task_self(), (vm_address_t *)&bitmapData, round_page(requiredDataSize), VM_FLAGS_ANYWHERE);
     if (0 != ret) return NULL;
     
     CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
@@ -114,7 +107,7 @@ CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
 void FVIconBitmapContextDispose(CGContextRef ctxt)
 {
     void *bitmapData = CGBitmapContextGetData(ctxt);
-    if (bitmapData) vm_deallocate(mach_task_self(), (vm_address_t)bitmapData, NSRoundUpToMultipleOfPageSize(CGBitmapContextGetBytesPerRow(ctxt) * CGBitmapContextGetHeight(ctxt)));
+    if (bitmapData) vm_deallocate(mach_task_self(), (vm_address_t)bitmapData, round_page(CGBitmapContextGetBytesPerRow(ctxt) * CGBitmapContextGetHeight(ctxt)));
     CGContextRelease(ctxt);
 }
 
