@@ -270,7 +270,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
     
     if (NULL == _thumbnail && 1 == _currentPage) {
         
-        _thumbnail = [FVIconCache newImageForKey:_cacheKey];
+        _thumbnail = [FVIconCache newThumbnailForKey:_cacheKey];
         BOOL exitEarly = NO;
         
         // This is an optimization to avoid loading the PDF document unless absolutely necessary.  If the icon was cached by a different FVPDFIcon instance, _pageCount won't be correct and we have to continue on and load the PDF document.  In that case, our sizes will be overwritten, but the thumbnail won't be recreated.  If we need to render something that's larger than the thumbnail by 20%, we have to continue on and make sure the PDF doc is loaded as well.
@@ -364,7 +364,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
     [self unlock];
     
     // okay to draw, but now cache to disk before allowing others to read from disk
-    if (thumbnail) [FVIconCache cacheImage:thumbnail forKey:_cacheKey];
+    if (thumbnail) [FVIconCache cacheThumbnail:thumbnail forKey:_cacheKey];
     CGImageRelease(thumbnail);
 
     [[self class] _stopRenderingForKey:_cacheKey];
