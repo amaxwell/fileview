@@ -80,6 +80,7 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex allocS
 {
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    // need a temporary struct for comparison
     const fv_alloc_info_t tempInfo = { allocSize, NULL };
     CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &tempInfo, __FVAllocInfoComparator, NULL);
     if (idx >= range.length)
@@ -105,13 +106,16 @@ static CFStringRef __FVAllocatorCopyDescription(const void *info)
     return (CFStringRef)[[NSString alloc] initWithFormat:@"FVCacheFileAllocator <%p>", _allocator];
 }
 
+// return an available buffer of sufficient size or create a new one
 static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
 {
-    // check for available buffer of sufficient size and return
+    // !!! unlock on each if branch
     OSSpinLockLock(&_freeBufferLock);
     CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(allocSize);
     void *ptr = NULL;
     if (kCFNotFound == idx) {
+        // unlock immediately
+        OSSpinLockUnlock(&_freeBufferLock);
         fv_alloc_info_t *allocInfo = NSZoneMalloc(NSDefaultMallocZone(), sizeof(fv_alloc_info_t));
         ptr = NSZoneMalloc(NSDefaultMallocZone(), allocSize);
         allocInfo->ptr = ptr;
@@ -122,11 +126,11 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     }
     else {
         const fv_alloc_info_t *allocInfo = CFArrayGetValueAtIndex(_freeBuffers, idx);
-        if ((size_t)allocSize > allocInfo->size) HALT;
         CFArrayRemoveValueAtIndex(_freeBuffers, idx);
+        OSSpinLockUnlock(&_freeBufferLock);
+        if ((size_t)allocSize > allocInfo->size) HALT;
         ptr = allocInfo->ptr;
     }
-    OSSpinLockUnlock(&_freeBufferLock);
     return ptr;
 }
 
