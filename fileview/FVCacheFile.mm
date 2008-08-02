@@ -40,6 +40,7 @@
 #import "FVUtilities.h"
 #import "FVObject.h"
 #import "FVAllocator.h"
+
 #import <libkern/OSAtomic.h>
 #import <string>
 #import <sys/stat.h>
@@ -94,10 +95,7 @@ static NSInteger FVCacheLogLevel = 0;
     // 0 - disabled
     // 1 - only print final stats
     // 2 - print URL each as it's added
-    FVCacheLogLevel = [[NSUserDefaults standardUserDefaults] integerForKey:@"FVCacheLogLevel"];
-    
-    // workaround for NSRoundUpToMultipleOfPageSize: http://www.cocoabuilder.com/archive/message/cocoa/2008/3/5/200500
-    (void)NSPageSize();    
+    FVCacheLogLevel = [[NSUserDefaults standardUserDefaults] integerForKey:@"FVCacheLogLevel"];  
 }
 
 + (id)newKeyForURL:(NSURL *)aURL;
@@ -340,8 +338,8 @@ static NSInteger FVCacheLogLevel = 0;
             (void)deflateEnd(&strm);
                         
             // extend the file so we fall on a page boundary
-            location->_padLength = NSRoundUpToMultipleOfPageSize(location->_compressedLength) - location->_compressedLength;
-            if (0 != ftruncate(_fileDescriptor, currentEnd + NSRoundUpToMultipleOfPageSize(location->_compressedLength)))
+            location->_padLength = round_page(location->_compressedLength) - location->_compressedLength;
+            if (0 != ftruncate(_fileDescriptor, currentEnd + round_page(location->_compressedLength)))
                 perror([[NSString stringWithFormat:@"failed to zero pad data in file %@", self] UTF8String]);
             
             if (FVCacheLogLevel > 0)
@@ -377,7 +375,7 @@ static NSInteger FVCacheLogLevel = 0;
             
             ssize_t bytesRemaining = location->_compressedLength;
             // man page says mmap will fail if offset isn't a multiple of page size
-            NSParameterAssert(location->_offset == NSRoundUpToMultipleOfPageSize(location->_offset));
+            NSParameterAssert(location->_offset == round_page(location->_offset));
             
             int status;
             
