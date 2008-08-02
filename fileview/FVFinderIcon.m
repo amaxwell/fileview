@@ -229,6 +229,7 @@ static CGImageRef __FVCreateImageWithIcon(IconRef icon, size_t width, size_t hei
     CGContextRef ctxt = FVIconBitmapContextCreateWithSize(width, height);
     CGRect rect = CGRectZero;
     rect.size = CGSizeMake(width, height);
+    CGContextClearRect(ctxt, rect);
     CGImageRef image = NULL;
     if (noErr == PlotIconRefInContext(ctxt, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, icon))
         image = CGBitmapContextCreateImage(ctxt);
@@ -304,6 +305,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
         CGRect rect = CGRectZero;
         
         rect.size = CGSizeMake(FVMaxThumbnailDimension, FVMaxThumbnailDimension);
+        CGContextClearRect(context, rect);
         if (docIcon) PlotIconRefInContext(context, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, docIcon);
 
         rect = CGRectInset(rect, rect.size.width/4, rect.size.height/4);
@@ -316,6 +318,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
         rect = CGRectZero;
         
         rect.size = CGSizeMake(FVMaxImageDimension, FVMaxImageDimension);
+        CGContextClearRect(context, rect);
         if (docIcon) PlotIconRefInContext(context, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, docIcon);
         
         rect = CGRectInset(rect, rect.size.width/4, rect.size.height/4);

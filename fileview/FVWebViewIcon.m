@@ -295,6 +295,7 @@ static const NSSize _webViewSize = { 1000, 900 };
     
     NSSize size = [self _webviewSize];
     CGContextRef context = FVIconBitmapContextCreateWithSize(size.width, size.height);
+    CGContextClearRect(context, CGRectMake(0, 0, size.width, size.height));
     NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:[view isFlipped]];
     
     [NSGraphicsContext saveGraphicsState];
