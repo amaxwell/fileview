@@ -46,23 +46,59 @@ typedef struct _fv_alloc_info_t {
     void   *ptr;
 } fv_alloc_info_t;
 
-static CFAllocatorRef _allocator = NULL;
-static OSSpinLock _pointerTableLock = OS_SPINLOCK_INIT;
-static NSMapTable *_pointerTable = NULL;
-static CFMutableArrayRef _freeBuffers = NULL;
-static OSSpinLock _freeBufferLock = OS_SPINLOCK_INIT;
+// single instance of this allocator
+static CFAllocatorRef     _allocator = NULL;
 
-static CFComparisonResult __FVBufferSizeComparator(const void *val1, const void *val2, void *context)
+// map with pointer from malloc as key, and fv_alloc_info_t* as value
+static NSMapTable        *_pointerTable = NULL;
+static OSSpinLock         _pointerTableLock = OS_SPINLOCK_INIT;
+
+// array of buffers that are currently free (have been deallocated)
+static CFMutableArrayRef  _freeBuffers = NULL;
+static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
+
+static CFComparisonResult __FVAllocInfoComparator(const void *val1, const void *val2, void *context)
 {
     const size_t size1 = ((fv_alloc_info_t *)val1)->size;
     const size_t size2 = ((fv_alloc_info_t *)val2)->size;
     if (size1 > size2)
         return kCFCompareGreaterThan;
-    else if (size2 < size1)
+    else if (size1 < size2)
         return kCFCompareLessThan;
     else
         return kCFCompareEqualTo;
 }
+
+static CFStringRef __FVAllocInfoCopyDescription(const void *value)
+{
+    const fv_alloc_info_t *info = value;
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %d"), info->ptr, info->size);
+}
+
+// returns kCFNotFound if no buffer of sufficient size exists
+static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex allocSize)
+{
+    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
+    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    const fv_alloc_info_t tempInfo = { allocSize, NULL };
+    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &tempInfo, __FVAllocInfoComparator, NULL);
+    if (idx >= range.length)
+        idx = kCFNotFound;
+    return idx;
+}
+
+// always insert at the correct index, so we maintain heap order
+static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_alloc_info_t *allocInfo)
+{
+    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
+    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    CFIndex anIndex = CFArrayBSearchValues(_freeBuffers, range, allocInfo, __FVAllocInfoComparator, NULL);
+    if (anIndex >= range.length)
+        anIndex = range.length;
+    return anIndex;
+}
+
+#pragma mark CFAllocatorContext functions
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
@@ -73,14 +109,9 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
 {
     // check for available buffer of sufficient size and return
     OSSpinLockLock(&_freeBufferLock);
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    CFArraySortValues(_freeBuffers, range, __FVBufferSizeComparator, NULL);
-    fv_alloc_info_t tempInfo;
-    tempInfo.size = allocSize;
-    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &tempInfo, __FVBufferSizeComparator, NULL);
-    
+    CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(allocSize);
     void *ptr = NULL;
-    if (idx >= range.length) {
+    if (kCFNotFound == idx) {
         fv_alloc_info_t *allocInfo = NSZoneMalloc(NSDefaultMallocZone(), sizeof(fv_alloc_info_t));
         ptr = NSZoneMalloc(NSDefaultMallocZone(), allocSize);
         allocInfo->ptr = ptr;
@@ -91,6 +122,7 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     }
     else {
         const fv_alloc_info_t *allocInfo = CFArrayGetValueAtIndex(_freeBuffers, idx);
+        if ((size_t)allocSize > allocInfo->size) HALT;
         CFArrayRemoveValueAtIndex(_freeBuffers, idx);
         ptr = allocInfo->ptr;
     }
@@ -100,16 +132,18 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
 
 static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
 {
-    // could possibly optimize by returning ptr to the pool and getting a new buffer, then copying contents
+    // ??? could possibly optimize by returning ptr to the pool and getting a new buffer, then copying contents
     void *newPtr = NSZoneRealloc(NSZoneFromPointer(ptr), ptr, newSize);
     OSSpinLockLock(&_pointerTableLock);
     fv_alloc_info_t *allocInfo = NSMapGet(_pointerTable, ptr);
     if (NULL == allocInfo) HALT;
     allocInfo->size = newSize;
-    allocInfo->ptr = newPtr;
-    // remove ptr from table and add newPtr as key
-    NSMapRemove(_pointerTable, ptr);
-    NSMapInsertKnownAbsent(_pointerTable, ptr, allocInfo);
+    // if realloc changed the location, remove ptr from table and add newPtr as key
+    if (newPtr != ptr) {
+        allocInfo->ptr = newPtr;
+        NSMapRemove(_pointerTable, ptr);
+        NSMapInsertKnownAbsent(_pointerTable, ptr, allocInfo);
+    }
     OSSpinLockUnlock(&_pointerTableLock);
     return newPtr;
 }
@@ -123,7 +157,8 @@ static void __FVDeallocate(void *ptr, void *info)
     if (NULL == allocInfo) HALT;
     // add to free list
     OSSpinLockLock(&_freeBufferLock);
-    CFArrayAppendValue(_freeBuffers, allocInfo);
+    CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(allocInfo);
+    CFArrayInsertValueAtIndex(_freeBuffers, idx, allocInfo);
     OSSpinLockUnlock(&_freeBufferLock);
 }
 
@@ -135,9 +170,9 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 __attribute__ ((constructor))
 static void __initialize_allocator()
 {    
-    // create before _allocator
     _pointerTable = NSCreateMapTable(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 256);
-    _freeBuffers = CFArrayCreateMutable(NULL, 0, NULL);
+    const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
+    _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
     
     CFAllocatorContext context = { 
         0, 
@@ -150,7 +185,7 @@ static void __initialize_allocator()
         __FVDeallocate, 
         __FVPreferredSize 
     };
-    _allocator = CFAllocatorCreate(kCFAllocatorUseContext, &context);
+    _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
 }
 
 CFAllocatorRef FVAllocatorGetDefault() 
