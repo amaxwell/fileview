@@ -41,6 +41,7 @@
 #import "FVInvocationOperation.h"
 #import "FVPriorityQueue.h"
 #import "FVMainThreadOperationQueue.h"
+#import "FVUtilities.h"
 
 // for sysctl stuff
 #import <sys/types.h>
@@ -49,19 +50,6 @@
 #import <pthread.h>
 #import <mach/mach.h>
 #import <mach/mach_port.h>
-
-// from CFInternal.h
-#if defined(__ppc__) || defined(__ppc64__)
-    #define HALT __asm__ __volatile__("trap")
-#elif defined(__i386__) || defined(__x86_64__)
-    #if defined(__GNUC__)
-        #define HALT __asm__ __volatile__("int3")
-    #elif defined(_MSC_VER)
-        #define HALT __asm int 3;
-    #else
-        #error Compiler not supported
-    #endif
-#endif
 
 @implementation FVConcreteOperationQueue
 
