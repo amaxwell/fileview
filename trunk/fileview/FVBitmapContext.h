@@ -50,7 +50,7 @@ FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, c
 
 /** @internal @brief Bitmap context creation.
  
- Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using FVIconBitmapContextDispose.
+ Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using FVIconBitmapContextDispose.  The context may contain garbage, so clear it first if you're drawing transparent content.
  @param width Width in pixels.
  @param height Height in pixels. 
  @return A new CGBitmapContext or NULL if it could not be created. */

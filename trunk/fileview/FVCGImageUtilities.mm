@@ -96,7 +96,8 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
 {
     [_copyLock lock];
     CGContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
-    
+    CGContextClearRect(ctxt, CGRectMake(0, 0, size.width, size.height));
+
     CGContextSaveGState(ctxt);
     CGContextSetInterpolationQuality(ctxt, kCGInterpolationHigh);
     CGContextDrawImage(ctxt, CGRectMake(0, 0, CGBitmapContextGetWidth(ctxt), CGBitmapContextGetHeight(ctxt)), image);
