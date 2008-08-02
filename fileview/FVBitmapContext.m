@@ -38,8 +38,7 @@
 
 #import "FVBitmapContext.h"
 #import "FVCGImageUtilities.h"
-#import <mach/mach.h>
-#import <mach/vm_map.h>
+#import "FVAllocator.h"
 
 // discard indexed color images (e.g. GIF) and convert to RGBA for FVCGImageDescription compatibility
 static inline bool __FVColorSpaceIsIncompatible(CGImageRef image)
@@ -86,10 +85,8 @@ CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
      Based on the older post outlined above, I was already using a device RGB colorspace, but former information indicated that 16 byte row alignment was best, and I was using ARGB on both ppc and x86.  Not sure if the alignment comment is completely applicable since I'm not interacting directly with the GPU, but it shouldn't hurt.
      */
     
-    char *bitmapData;
-    kern_return_t ret;
-    ret = vm_allocate(mach_task_self(), (vm_address_t *)&bitmapData, round_page(requiredDataSize), VM_FLAGS_ANYWHERE);
-    if (0 != ret) return NULL;
+    char *bitmapData = CFAllocatorAllocate(FVAllocatorGetDefault(), requiredDataSize, 0);
+    if (NULL == bitmapData) return NULL;
     
     CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
     CGContextRef ctxt;
@@ -107,7 +104,7 @@ CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
 void FVIconBitmapContextDispose(CGContextRef ctxt)
 {
     void *bitmapData = CGBitmapContextGetData(ctxt);
-    if (bitmapData) vm_deallocate(mach_task_self(), (vm_address_t)bitmapData, round_page(CGBitmapContextGetBytesPerRow(ctxt) * CGBitmapContextGetHeight(ctxt)));
+    if (bitmapData) CFAllocatorDeallocate(FVAllocatorGetDefault(), bitmapData);
     CGContextRelease(ctxt);
 }
 
