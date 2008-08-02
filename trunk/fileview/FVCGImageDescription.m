@@ -41,6 +41,7 @@
 #import "FVCGImageUtilities.h"
 #import "FVUtilities.h"
 #import "FVCGColorSpaceDescription.h"
+#import "FVAllocator.h"
 
 @implementation FVCGImageDescription
 
@@ -137,7 +138,11 @@
         [aCoder encodeValueOfObjCType:@encode(bool) at:&_shouldInterpolate];
         [aCoder encodeValueOfObjCType:@encode(CGColorRenderingIntent) at:&_renderingIntent];
         [aCoder encodeObject:_colorSpaceDescription];
-        [aCoder encodeObject:(NSData *)_bitmapData];
+        
+        size_t len = CFDataGetLength(_bitmapData);
+        [aCoder encodeValueOfObjCType:@encode(size_t) at:&len];
+        [aCoder encodeArrayOfObjCType:@encode(char) count:len at:CFDataGetBytePtr(_bitmapData)];
+        
         [aCoder encodeBytes:_decode length:[self _decodeLength]];
     }
 }
@@ -180,7 +185,12 @@
             [aDecoder decodeValueOfObjCType:@encode(bool) at:&_shouldInterpolate];
             [aDecoder decodeValueOfObjCType:@encode(CGColorRenderingIntent) at:&_renderingIntent];
             _colorSpaceDescription = [[aDecoder decodeObject] retain];
-            _bitmapData = (CFDataRef)[[aDecoder decodeObject] retain];
+            
+            size_t bitmapLength;
+            [aDecoder decodeValueOfObjCType:@encode(size_t) at:&bitmapLength];
+            void *data = CFAllocatorAllocate(FVAllocatorGetDefault(), bitmapLength * sizeof(char), 0);
+            [aDecoder decodeArrayOfObjCType:@encode(char) count:bitmapLength at:data];
+            _bitmapData = CFDataCreateWithBytesNoCopy(FVAllocatorGetDefault(), data, bitmapLength, FVAllocatorGetDefault());
 
             _image = NULL;
             
