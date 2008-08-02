@@ -131,6 +131,7 @@ static NSInteger FVCacheLogLevel = 0;
         
         // all writes are synchronous since they need to occur in a single block at the end of the file
         _fileDescriptor = open(tempName, O_RDWR);
+        fcntl(_fileDescriptor, F_NOCACHE, 1);
 
         _path = (NSString *)CFStringCreateWithFileSystemRepresentation(NULL, tempName);
         FVAPIAssert1(FVCanMapFileAtURL([NSURL fileURLWithPath:_path]), @"%@ is not safe for mmap()", _path);

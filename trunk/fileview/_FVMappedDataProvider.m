@@ -107,7 +107,8 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
             
             // don't mmap network/firewire/usb filesystems
             NSAssert1(FVCanMapFileAtURL(aURL), @"%@ is not safe for mmap()", aURL);
-            
+            fcntl(fd, F_NOCACHE, 1);
+
             NSZone *zone = [self zone];
             FVMappedRegion *mapInfo = NSZoneMalloc(zone, sizeof(FVMappedRegion));
             mapInfo->zone = zone;
@@ -164,6 +165,7 @@ static const void *__FVGetMappedRegion(void *info)
             perror("failed to open PDF file");
         }
         else {
+            fcntl(fd, F_NOCACHE, 1);
             mapInfo->mapregion = mmap(0, mapInfo->length, PROT_READ, MAP_SHARED, fd, 0);
             if (mapInfo->mapregion == (void *)-1) {
                 perror("failed to mmap file");
