@@ -38,4 +38,5 @@
 
 #import <Cocoa/Cocoa.h>
 
+FV_PRIVATE_EXTERN void FVAllocatorShowStats(void);
 FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void);
