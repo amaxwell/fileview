@@ -208,10 +208,109 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
     return allocSize >= FV_VM_THRESHOLD ? round_page(allocSize) : allocSize;
 }
 
+@interface _FVAllocatorStat : FVObject
+{
+@public
+    size_t _allocationSize;
+    size_t _allocationCount;
+    double _totalMbytes;
+    double _percentOfTotal;
+}
+@end
+
+@implementation _FVAllocatorStat
+
+- (NSComparisonResult)allocationSizeCompare:(_FVAllocatorStat *)other
+{
+    if (other->_allocationSize > _allocationSize)
+        return NSOrderedAscending;
+    else if (other->_allocationSize < _allocationSize)
+        return NSOrderedDescending;
+    else
+        return NSOrderedSame;
+}
+
+- (NSComparisonResult)totalMbyteCompare:(_FVAllocatorStat *)other
+{
+    if (other->_totalMbytes > _totalMbytes)
+        return NSOrderedAscending;
+    else if (other->_totalMbytes < _totalMbytes)
+        return NSOrderedDescending;
+    else
+        return NSOrderedSame;
+}
+
+- (NSComparisonResult)percentCompare:(_FVAllocatorStat *)other
+{
+    if (other->_percentOfTotal > _percentOfTotal)
+        return NSOrderedAscending;
+    else if (other->_percentOfTotal < _percentOfTotal)
+        return NSOrderedDescending;
+    else
+        return NSOrderedSame;
+}
+
+@end
+
+#define FV_STACK_MAX 512
+
+void FVAllocatorShowStats()
+{
+    NSAutoreleasePool *pool = [NSAutoreleasePool new];
+    OSSpinLockLock(&_freeBufferLock);
+    const void *stackBuf[FV_STACK_MAX];
+    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    const void **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    CFArrayGetValues(_freeBuffers, range, ptrs);
+    OSSpinLockUnlock(&_freeBufferLock);
+    size_t totalMemory = 0;
+    NSCountedSet *duplicateAllocations = [NSCountedSet new];
+    for (CFIndex i = 0; i < range.length; i++) {
+        const fv_alloc_info_t *allocInfo = ptrs[i];
+        totalMemory += allocInfo->size;
+        [duplicateAllocations addObject:[NSNumber numberWithInt:allocInfo->size]];
+    }
+    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);
+    NSEnumerator *dupeEnum = [duplicateAllocations objectEnumerator];
+    NSMutableArray *sortedDuplicates = [NSMutableArray new];
+    NSNumber *value;
+    const double totalMemoryMbytes = (double)totalMemory / 1024 / 1024;
+    while (value = [dupeEnum nextObject]) {
+        _FVAllocatorStat *stat = [_FVAllocatorStat new];
+        stat->_allocationSize = [value intValue];
+        stat->_allocationCount = [duplicateAllocations countForObject:value];
+        stat->_totalMbytes = (double)stat->_allocationSize * stat->_allocationCount / 1024 / 1024;
+        stat->_percentOfTotal = (double)stat->_totalMbytes / totalMemoryMbytes * 100;
+        [sortedDuplicates addObject:stat];
+        [stat release];
+    }
+    NSSortDescriptor *sort = [[NSSortDescriptor alloc] initWithKey:@"self" ascending:YES selector:@selector(percentCompare:)];
+    [sortedDuplicates sortUsingDescriptors:[NSArray arrayWithObject:sort]];
+    FVLog(@"   Size     Count  Total  Percentage");
+    FVLog(@"   (b)       --    (Mb)      ----   ");
+    for (NSUInteger i = 0; i < [sortedDuplicates count]; i++) {
+        _FVAllocatorStat *stat = [sortedDuplicates objectAtIndex:i];
+        FVLog(@"%8lu    %3lu   %5.2f    %5.2f %%", (long)stat->_allocationSize, (long)stat->_allocationCount, stat->_totalMbytes, stat->_percentOfTotal);
+    }
+    [duplicateAllocations release];
+    [sortedDuplicates release];
+    [sort release];
+    double missRate = (double)_cacheMisses / (double)_cacheHits * 100;
+    FVLog(@"%lu hits and %lu misses for a cache failure rate of %.2f%%", _cacheHits, _cacheMisses, missRate);
+    FVLog(@"total memory used: %.2f Mbytes", (double)totalMemory / 1024 / 1024);      
+    [pool release];
+}
+
 __attribute__ ((destructor))
 static void __log_stats()
 {
-    FVLog(@"hits = %lu, misses = %lu", _cacheHits, _cacheMisses);
+    // CFShow(_freeBuffers);
+    FVAllocatorShowStats();
+}
+
+static void _reap(CFRunLoopTimerRef t, void *info)
+{
+    //FVAllocatorShowStats();
 }
 
 __attribute__ ((constructor))
@@ -219,6 +318,9 @@ static void __initialize_allocator()
 {  
     const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+60, 60, 0, 0, _reap, NULL);
+    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
+    CFRelease(timer);
     
     CFAllocatorContext context = { 
         0, 
