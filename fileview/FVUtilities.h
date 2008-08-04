@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @file FVUtilities.h */
+/** @file FVUtilities.h  Various useful functions. */
 
 /** @internal @var FVIntegerKeyDictionaryCallBacks
  For integer keys in a CFDictionary.  Do not use for toll-free bridging. */

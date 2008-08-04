@@ -49,7 +49,7 @@
 #import "FVCGImageUtilities.h"
 #import "FVUtilities.h"
 
-/** @file FVIcon_Private.h */
+/** @file FVIcon_Private.h  FVIcon internal methods. */
 
 /** @internal 
  

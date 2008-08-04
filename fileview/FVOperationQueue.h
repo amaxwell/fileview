@@ -40,7 +40,7 @@
 
 @class FVOperation;
 
-/** @file FVOperationQueue.h */ 
+/** @file FVOperationQueue.h  Abstract operation queue. */ 
 
 /** \var FVMainQueueRunLoopMode 
  Can use this to run main queue operations in a blocking mode. */

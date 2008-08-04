@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @file FVBitmapContext.h */
+/** @file FVBitmapContext.h  Bitmap context creation and disposal. */
 
 /** @internal @brief Row bytes for pixel width.
  

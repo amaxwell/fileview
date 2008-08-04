@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @file FVArrowButtonCell.h */
+/** @file FVArrowButtonCell.h  Arrow button for page changes. */
 
 enum { 
     FVArrowRight = 0, 
