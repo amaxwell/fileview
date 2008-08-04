@@ -51,6 +51,8 @@ typedef struct _fv_alloc_info_t {
     const void *guard;
 } fv_alloc_info_t;
 
+static const char *_guard = "FVAllocatorGuard";
+
 // single instance of this allocator
 static CFAllocatorRef     _allocator = NULL;
 
@@ -58,8 +60,17 @@ static CFAllocatorRef     _allocator = NULL;
 static CFMutableArrayRef  _freeBuffers = NULL;
 static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
 
+// small allocations (below this size) will use malloc
 #define FV_VM_THRESHOLD 16384UL
-static const char *_guard = "FVAllocatorGuard";
+// clean up the pool at 50 MB of freed memory
+#define FV_REAP_THRESHOLD 52428800UL
+
+#if DEBUG
+#define FV_REAP_TIMEINTERVAL 60
+#else
+#define FV_REAP_TIMEINTERVAL 300
+#endif
+
 static volatile uint32_t _cacheHits = 0;
 static volatile uint32_t _cacheMisses = 0;
 
@@ -121,6 +132,23 @@ static inline const fv_alloc_info_t *__FVGetAllocInfoFromPointer(const void *ptr
         HALT;
     }
     return allocInfo;
+}
+
+static void __FVDeallocateFromSystem(const void *ptr, void *context)
+{
+    const fv_alloc_info_t *allocInfo = ptr;
+    if (__builtin_expect(_guard != allocInfo->guard, 0)) {
+        FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
+        HALT;
+    }
+    vm_size_t len = allocInfo->size + sizeof(fv_alloc_info_t);
+    if (__builtin_expect(len >= FV_VM_THRESHOLD, 1)) {
+        kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)allocInfo, len);
+        if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", allocInfo);
+    }
+    else {
+        malloc_zone_free(malloc_zone_from_ptr(ptr), (void *)allocInfo);
+    }
 }
 
 static fv_alloc_info_t *__FVAllocateFromSystem(const size_t requestedSize)
@@ -254,6 +282,21 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 
 #define FV_STACK_MAX 512
 
+static size_t __FVTotalAllocationsLocked()
+{
+    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
+    const fv_alloc_info_t *stackBuf[FV_STACK_MAX];
+    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    const fv_alloc_info_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
+    size_t totalMemory = 0;
+    for (CFIndex i = 0; i < range.length; i++)
+        totalMemory += ptrs[i]->size;
+    
+    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
+    return totalMemory;
+}
+
 void FVAllocatorShowStats()
 {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
@@ -301,16 +344,28 @@ void FVAllocatorShowStats()
     [pool release];
 }
 
+#if DEBUG
 __attribute__ ((destructor))
 static void __log_stats()
 {
-    // CFShow(_freeBuffers);
+    // !!! artifically high since a bunch of stuff is freed right before this gets called
     FVAllocatorShowStats();
 }
+#endif
 
 static void _reap(CFRunLoopTimerRef t, void *info)
 {
-    //FVAllocatorShowStats();
+#if DEBUG
+    FVAllocatorShowStats();
+#endif
+    // if we can't lock immediately, wait for another opportunity
+    if (OSSpinLockTry(&_freeBufferLock)) {
+        if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
+            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVDeallocateFromSystem, NULL);
+            CFArrayRemoveAllValues(_freeBuffers);
+        }
+        OSSpinLockUnlock(&_freeBufferLock);
+    }
 }
 
 __attribute__ ((constructor))
@@ -318,7 +373,9 @@ static void __initialize_allocator()
 {  
     const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
-    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+60, 60, 0, 0, _reap, NULL);
+    
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, _reap, NULL);
+    // add this to the main thread's runloop, which will always exist
     CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
     CFRelease(timer);
     
