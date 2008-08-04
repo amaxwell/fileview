@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @file FileView.h */ 
+/** @file FileView.h  Primary view class.  */ 
 
 enum {
     FVZoomInMenuItemTag      = 1001, 

@@ -57,5 +57,6 @@
 FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void);
 
 /** @internal @brief Print allocator statistics.
- Logs various information about allocator usage, particularly the number and size of the free blocks currently available.  This should be used for debugging only.  */
+ Logs various information about allocator usage, particularly the number and size of the free blocks currently available.  
+ @warning For debugging only.  */
 FV_PRIVATE_EXTERN void FVAllocatorShowStats(void);

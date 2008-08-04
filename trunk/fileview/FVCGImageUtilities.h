@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @file FVCGImageUtilities.h */
+/** @file FVCGImageUtilities.h  Manipulate CGImages. */
 
 /** @internal @brief Get image size in pixels.
  @return CGImage size in pixels. */

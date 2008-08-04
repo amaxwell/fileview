@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @file FVOperation.h */
+/** @file FVOperation.h  Abstract operation. */
 
 enum {
     FVOperationQueuePriorityVeryLow  = -8,
