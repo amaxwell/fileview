@@ -64,6 +64,10 @@ static CFAllocatorRef     _allocator = NULL;
 static CFMutableArrayRef  _freeBuffers = NULL;
 static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
 
+// set of pointers to all blocks allocated in this zone
+static CFMutableSetRef    _vmAllocations = NULL;
+static OSSpinLock         _vmAllocationLock = OS_SPINLOCK_INIT;
+
 // small allocations (below this size) will use malloc
 #define FV_VM_THRESHOLD 16384UL
 // clean up the pool at 50 MB of freed memory
@@ -79,7 +83,7 @@ static volatile uint32_t _cacheHits = 0;
 static volatile uint32_t _cacheMisses = 0;
 static volatile uint32_t _reallocCount = 0;
 
-static CFComparisonResult __FVAllocationComparator(const void *val1, const void *val2, void *context)
+static CFComparisonResult __FVAllocationSizeComparator(const void *val1, const void *val2, void *context)
 {
     const size_t size1 = ((fv_allocation_t *)val1)->ptrSize;
     const size_t size2 = ((fv_allocation_t *)val2)->ptrSize;
@@ -93,8 +97,20 @@ static CFComparisonResult __FVAllocationComparator(const void *val1, const void 
 
 static CFStringRef __FVAllocationCopyDescription(const void *value)
 {
-    const fv_allocation_t *info = value;
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %d"), info->ptr, info->ptrSize);
+    const fv_allocation_t *alloc = value;
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %d"), alloc->ptr, alloc->ptrSize);
+}
+
+static Boolean __FVAllocationEqual(const void *val1, const void *val2)
+{
+    return (val1 == val2);
+}
+
+// !!! hash by size; need to check this to make sure it uses buckets effectively
+static CFHashCode __FVAllocationHash(const void *value)
+{
+    const fv_allocation_t *alloc = value;
+    return alloc->allocSize;
 }
 
 // returns kCFNotFound if no buffer of sufficient size exists
@@ -107,7 +123,7 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex allocS
     
     // !!! This will potentially return a 256K buffer when a 48 byte buffer was requested, which will be pretty inefficient.  Should possibly just exclude anything < 16K from the cache, but we still shouldn't return 256K when 20K is required...need a heuristic for this?
 #warning fixme
-    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &alloc, __FVAllocationComparator, NULL);
+    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &alloc, __FVAllocationSizeComparator, NULL);
     if (idx >= range.length)
         idx = kCFNotFound;
     return idx;
@@ -118,13 +134,13 @@ static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t
 {
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    CFIndex anIndex = CFArrayBSearchValues(_freeBuffers, range, alloc, __FVAllocationComparator, NULL);
+    CFIndex anIndex = CFArrayBSearchValues(_freeBuffers, range, alloc, __FVAllocationSizeComparator, NULL);
     if (anIndex >= range.length)
         anIndex = range.length;
     return anIndex;
 }
 
-// alloc_info_t struct always immediately precedes the data pointer
+// fv_allocation_t struct always immediately precedes the data pointer
 static inline const fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 {
     const fv_allocation_t *alloc = ptr - sizeof(fv_allocation_t);
@@ -136,7 +152,7 @@ static inline const fv_allocation_t *__FVGetAllocationFromPointer(const void *pt
     return alloc;
 }
 
-// CFArrayApplierFunction; ptr argument must point to an alloc_info_t
+// CFArrayApplierFunction; ptr argument must point to an fv_allocation_t
 static void __FVAllocationFree(const void *ptr, void *unused)
 {
     const fv_allocation_t *alloc = ptr;
@@ -146,6 +162,10 @@ static void __FVAllocationFree(const void *ptr, void *unused)
     }
     if (alloc->zone == _allocator) {
         NSCParameterAssert(alloc->allocSize >= FV_VM_THRESHOLD);
+        OSSpinLockLock(&_vmAllocationLock);
+        NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == TRUE);
+        CFSetRemoveValue(_vmAllocations, alloc);
+        OSSpinLockUnlock(&_vmAllocationLock);
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", alloc);        
@@ -197,6 +217,11 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
         alloc->zone = _allocator;
         alloc->guard = _guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
+        
+        OSSpinLockLock(&_vmAllocationLock);
+        NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == FALSE);
+        CFSetAddValue(_vmAllocations, alloc);
+        OSSpinLockUnlock(&_vmAllocationLock);
     }
     return alloc;
 }
@@ -421,16 +446,24 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t siz
     return newPtr;
 }
 
-#warning not a correct implementation
 static void __FVAllocatorZoneDestroy(malloc_zone_t *zone)
 {
-    // !!! need to record all allocations and free them
+    // remove all the free buffers
     OSSpinLockLock(&_freeBufferLock);
-    CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocationFree, NULL);
     CFArrayRemoveAllValues(_freeBuffers);
     OSSpinLockUnlock(&_freeBufferLock);    
+
+    // now deallocate all buffers
+    OSSpinLockLock(&_vmAllocationLock);
+    CFSetApplyFunction(_vmAllocations, __FVAllocationFree, NULL);
+    CFSetRemoveAllValues(_vmAllocations);
+    OSSpinLockUnlock(&_vmAllocationLock);
+    
+    // free the zone itself
+    malloc_zone_free(malloc_default_zone(), zone);
 }
 
+// All of the introspection stuff was copied from CFBase.c
 static kern_return_t __FVAllocatorZoneIntrospectNoOp(void) {
     return 0;
 }
@@ -472,8 +505,11 @@ static void __initialize_allocator()
     _allocator_zone->introspect = &__FVAllocatorZoneIntrospect;
     _allocator_zone->version = 0;
     
-    const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocationCopyDescription, NULL };
-    _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
+    const CFArrayCallBacks acb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual };
+    _freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
+    
+    const CFSetCallBacks scb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual, __FVAllocationHash };
+    _vmAllocations = CFSetCreateMutable(NULL, 0, &scb);
     
     CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
     // add this to the main thread's runloop, which will always exist
