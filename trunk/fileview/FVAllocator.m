@@ -116,13 +116,6 @@ static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_alloc_info_t
     return anIndex;
 }
 
-#pragma mark CFAllocatorContext functions
-
-static CFStringRef __FVAllocatorCopyDescription(const void *info)
-{
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), _allocator);
-}
-
 static inline const fv_alloc_info_t *__FVGetAllocInfoFromPointer(const void *ptr)
 {
     const fv_alloc_info_t *allocInfo = ptr - sizeof(fv_alloc_info_t);
@@ -182,6 +175,13 @@ static fv_alloc_info_t *__FVAllocateFromSystem(const size_t requestedSize)
     return allocInfo;
 }
 
+#pragma mark CFAllocatorContext functions
+
+static CFStringRef __FVAllocatorCopyDescription(const void *info)
+{
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), _allocator);
+}
+
 // return an available buffer of sufficient size or create a new one
 static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
 {
@@ -236,6 +236,72 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
     return allocSize >= FV_VM_THRESHOLD ? round_page(allocSize) : allocSize;
 }
 
+#pragma mark API and setup
+
+#define FV_STACK_MAX 512
+
+static size_t __FVTotalAllocationsLocked()
+{
+    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
+    const fv_alloc_info_t *stackBuf[FV_STACK_MAX];
+    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    const fv_alloc_info_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
+    size_t totalMemory = 0;
+    for (CFIndex i = 0; i < range.length; i++)
+        totalMemory += ptrs[i]->size;
+    
+    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
+    return totalMemory;
+}
+
+static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
+{
+#if DEBUG
+    FVAllocatorShowStats();
+#endif
+    // if we can't lock immediately, wait for another opportunity
+    if (OSSpinLockTry(&_freeBufferLock)) {
+        if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
+            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVDeallocateFromSystem, NULL);
+            CFArrayRemoveAllValues(_freeBuffers);
+        }
+        OSSpinLockUnlock(&_freeBufferLock);
+    }
+}
+
+__attribute__ ((constructor))
+static void __initialize_allocator()
+{  
+    const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
+    _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
+    
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
+    // add this to the main thread's runloop, which will always exist
+    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
+    CFRelease(timer);
+    
+    CFAllocatorContext context = { 
+        0, 
+        NULL, 
+        NULL, 
+        NULL, 
+        __FVAllocatorCopyDescription, 
+        __FVAllocate, 
+        __FVReallocate, 
+        __FVDeallocate, 
+        __FVPreferredSize 
+    };
+    _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
+}
+
+CFAllocatorRef FVAllocatorGetDefault() 
+{ 
+    return _allocator; 
+}
+
+#pragma mark Statistics
+
 @interface _FVAllocatorStat : FVObject
 {
 @public
@@ -280,38 +346,20 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 
 @end
 
-#define FV_STACK_MAX 512
-
-static size_t __FVTotalAllocationsLocked()
-{
-    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
-    const fv_alloc_info_t *stackBuf[FV_STACK_MAX];
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const fv_alloc_info_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
-    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
-    size_t totalMemory = 0;
-    for (CFIndex i = 0; i < range.length; i++)
-        totalMemory += ptrs[i]->size;
-    
-    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
-    return totalMemory;
-}
-
 void FVAllocatorShowStats()
 {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     OSSpinLockLock(&_freeBufferLock);
-    const void *stackBuf[FV_STACK_MAX];
+    const fv_alloc_info_t *stackBuf[FV_STACK_MAX];
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const void **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
-    CFArrayGetValues(_freeBuffers, range, ptrs);
+    const fv_alloc_info_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     OSSpinLockUnlock(&_freeBufferLock);
     size_t totalMemory = 0;
     NSCountedSet *duplicateAllocations = [NSCountedSet new];
     for (CFIndex i = 0; i < range.length; i++) {
-        const fv_alloc_info_t *allocInfo = ptrs[i];
-        totalMemory += allocInfo->size;
-        [duplicateAllocations addObject:[NSNumber numberWithInt:allocInfo->size]];
+        totalMemory += ptrs[i]->size;
+        [duplicateAllocations addObject:[NSNumber numberWithInt:ptrs[i]->size]];
     }
     if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);
     NSEnumerator *dupeEnum = [duplicateAllocations objectEnumerator];
@@ -329,6 +377,7 @@ void FVAllocatorShowStats()
     }
     NSSortDescriptor *sort = [[NSSortDescriptor alloc] initWithKey:@"self" ascending:YES selector:@selector(percentCompare:)];
     [sortedDuplicates sortUsingDescriptors:[NSArray arrayWithObject:sort]];
+    FVLog(@"------------------------------------");
     FVLog(@"   Size     Count  Total  Percentage");
     FVLog(@"   (b)       --    (Mb)      ----   ");
     for (NSUInteger i = 0; i < [sortedDuplicates count]; i++) {
@@ -339,8 +388,9 @@ void FVAllocatorShowStats()
     [sortedDuplicates release];
     [sort release];
     double missRate = (double)_cacheMisses / (double)_cacheHits * 100;
-    FVLog(@"%lu hits and %lu misses for a cache failure rate of %.2f%%", _cacheHits, _cacheMisses, missRate);
-    FVLog(@"total memory used: %.2f Mbytes", (double)totalMemory / 1024 / 1024);      
+    NSDate *date = [NSDate date];
+    FVLog(@"%@: %lu hits and %lu misses for a cache failure rate of %.2f%%", date, _cacheHits, _cacheMisses, missRate);
+    FVLog(@"%@: total memory used: %.2f Mbytes", date, (double)totalMemory / 1024 / 1024);      
     [pool release];
 }
 
@@ -352,48 +402,3 @@ static void __log_stats()
     FVAllocatorShowStats();
 }
 #endif
-
-static void _reap(CFRunLoopTimerRef t, void *info)
-{
-#if DEBUG
-    FVAllocatorShowStats();
-#endif
-    // if we can't lock immediately, wait for another opportunity
-    if (OSSpinLockTry(&_freeBufferLock)) {
-        if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
-            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVDeallocateFromSystem, NULL);
-            CFArrayRemoveAllValues(_freeBuffers);
-        }
-        OSSpinLockUnlock(&_freeBufferLock);
-    }
-}
-
-__attribute__ ((constructor))
-static void __initialize_allocator()
-{  
-    const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
-    _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
-    
-    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, _reap, NULL);
-    // add this to the main thread's runloop, which will always exist
-    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
-    CFRelease(timer);
-    
-    CFAllocatorContext context = { 
-        0, 
-        NULL, 
-        NULL, 
-        NULL, 
-        __FVAllocatorCopyDescription, 
-        __FVAllocate, 
-        __FVReallocate, 
-        __FVDeallocate, 
-        __FVPreferredSize 
-    };
-    _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
-}
-
-CFAllocatorRef FVAllocatorGetDefault() 
-{ 
-    return _allocator; 
-}
