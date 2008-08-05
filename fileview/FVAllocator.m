@@ -270,9 +270,87 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
     }
 }
 
+static malloc_zone_t *_allocator_zone = NULL;
+
+static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
+{
+    return 0;
+}
+
+static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
+{
+    return NULL;
+    
+}
+
+static void *__FVAllocatorZoneCalloc(malloc_zone_t *zone, size_t num_items, size_t size)
+{
+    return NULL;
+    
+}
+
+static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
+{
+    return NULL;
+    
+}
+
+static void __FVAllocatorZoneFree(malloc_zone_t *zone, void *ptr)
+{
+    
+}
+
+static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t size)
+{
+    return NULL;
+}
+
+static void __FVAllocatorZoneDestroy(malloc_zone_t *zone)
+{
+    
+}
+
+static kern_return_t __FVAllocatorZoneIntrospectNoOp(void) {
+    return 0;
+}
+
+static boolean_t __FVAllocatorZoneIntrospectTrue(void) {
+    return 1;
+}
+
+static size_t __FVAllocatorCustomGoodSize(malloc_zone_t *zone, size_t size)
+{
+    return size;
+}
+
+static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
+    (void *)__FVAllocatorZoneIntrospectNoOp,
+    (void *)__FVAllocatorCustomGoodSize,
+    (void *)__FVAllocatorZoneIntrospectTrue,
+    (void *)__FVAllocatorZoneIntrospectNoOp,
+    (void *)__FVAllocatorZoneIntrospectNoOp,
+    (void *)__FVAllocatorZoneIntrospectNoOp,
+    (void *)__FVAllocatorZoneIntrospectNoOp,
+    (void *)__FVAllocatorZoneIntrospectNoOp
+};
+
 __attribute__ ((constructor))
 static void __initialize_allocator()
 {  
+    _allocator_zone = malloc_zone_malloc(malloc_default_zone(), sizeof(malloc_zone_t));
+    _allocator_zone->size = __FVAllocatorZoneSize;
+    _allocator_zone->malloc = __FVAllocatorZoneMalloc;
+    _allocator_zone->calloc = __FVAllocatorZoneCalloc;
+    _allocator_zone->valloc = __FVAllocatorZoneValloc;
+    _allocator_zone->free = __FVAllocatorZoneFree;
+    _allocator_zone->realloc = __FVAllocatorZoneRealloc;
+    _allocator_zone->destroy = __FVAllocatorZoneDestroy;
+    _allocator_zone->zone_name = "FVAllocatorZone";
+    _allocator_zone->batch_malloc = NULL;
+    _allocator_zone->batch_free = NULL;
+    _allocator_zone->introspect = &__FVAllocatorZoneIntrospect;
+    _allocator_zone->version = 0;
+    
     const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
     
@@ -387,7 +465,9 @@ void FVAllocatorShowStats()
     [duplicateAllocations release];
     [sortedDuplicates release];
     [sort release];
-    double missRate = (double)_cacheMisses / (double)_cacheHits * 100;
+    // avoid divide-by-zero
+    double cacheRequests = (_cacheHits + _cacheMisses);
+    double missRate = cacheRequests > 0 ? (double)_cacheMisses / (_cacheHits + _cacheMisses) * 100 : 0;
     NSDate *date = [NSDate date];
     FVLog(@"%@: %lu hits and %lu misses for a cache failure rate of %.2f%%", date, _cacheHits, _cacheMisses, missRate);
     FVLog(@"%@: total memory used: %.2f Mbytes", date, (double)totalMemory / 1024 / 1024);      
