@@ -75,6 +75,7 @@ static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
 
 static volatile uint32_t _cacheHits = 0;
 static volatile uint32_t _cacheMisses = 0;
+static volatile uint32_t _reallocCount = 0;
 
 static CFComparisonResult __FVAllocInfoComparator(const void *val1, const void *val2, void *context)
 {
@@ -273,6 +274,7 @@ static void __FVDeallocate(void *ptr, void *info)
 
 static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
 {
+    OSAtomicIncrement32((int32_t *)&_reallocCount);
     // as per documentation for CFAllocatorContext
     if (__builtin_expect((NULL == ptr || newSize <= 0), 0))
         return NULL;
@@ -527,8 +529,8 @@ void FVAllocatorShowStats()
     double cacheRequests = (_cacheHits + _cacheMisses);
     double missRate = cacheRequests > 0 ? (double)_cacheMisses / (_cacheHits + _cacheMisses) * 100 : 0;
     NSDate *date = [NSDate date];
-    FVLog(@"%@: %lu hits and %lu misses for a cache failure rate of %.2f%%", date, _cacheHits, _cacheMisses, missRate);
-    FVLog(@"%@: total memory used: %.2f Mbytes", date, (double)totalMemory / 1024 / 1024);      
+    FVLog(@"%@: %d hits and %d misses for a cache failure rate of %.2f%%", date, _cacheHits, _cacheMisses, missRate);
+    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", date, (double)totalMemory / 1024 / 1024, _reallocCount);      
     [pool release];
 }
 
