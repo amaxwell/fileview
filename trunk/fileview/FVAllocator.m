@@ -45,14 +45,15 @@
 #import <mach/mach.h>
 #import <mach/vm_map.h>
 
-typedef struct _fv_alloc_info_t {
-    size_t      ptrSize;
-    size_t      allocSize;
-    void       *ptr;
-    void       *base;
-    const void *guard;
-} fv_alloc_info_t;
+typedef struct _fv_allocation_t {
+    void       *base;      /* base of entire allocation     */
+    size_t      allocSize; /* length of entire allocation   */
+    void       *ptr;       /* writable region of allocation */
+    size_t      ptrSize;   /* writable length of ptr        */
+    const void *guard;     /* pointer to a check variable   */
+} fv_allocation_t;
 
+// used as guard field in allocation struct; do not rely on the value
 static const char *_guard = "FVAllocatorGuard";
 
 // single instance of this allocator
@@ -77,10 +78,10 @@ static volatile uint32_t _cacheHits = 0;
 static volatile uint32_t _cacheMisses = 0;
 static volatile uint32_t _reallocCount = 0;
 
-static CFComparisonResult __FVAllocInfoComparator(const void *val1, const void *val2, void *context)
+static CFComparisonResult __FVAllocationComparator(const void *val1, const void *val2, void *context)
 {
-    const size_t size1 = ((fv_alloc_info_t *)val1)->ptrSize;
-    const size_t size2 = ((fv_alloc_info_t *)val2)->ptrSize;
+    const size_t size1 = ((fv_allocation_t *)val1)->ptrSize;
+    const size_t size2 = ((fv_allocation_t *)val2)->ptrSize;
     if (size1 > size2)
         return kCFCompareGreaterThan;
     else if (size1 < size2)
@@ -89,9 +90,9 @@ static CFComparisonResult __FVAllocInfoComparator(const void *val1, const void *
         return kCFCompareEqualTo;
 }
 
-static CFStringRef __FVAllocInfoCopyDescription(const void *value)
+static CFStringRef __FVAllocationCopyDescription(const void *value)
 {
-    const fv_alloc_info_t *info = value;
+    const fv_allocation_t *info = value;
     return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %d"), info->ptr, info->ptrSize);
 }
 
@@ -100,53 +101,56 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex allocS
 {
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    // need a temporary struct for comparison
-    const fv_alloc_info_t tempInfo = { allocSize, 0, NULL, NULL, NULL };
-    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &tempInfo, __FVAllocInfoComparator, NULL);
+    // need a temporary struct for comparison; only the ptrSize field is needed
+    const fv_allocation_t alloc = { NULL, 0, NULL, allocSize, _guard };
+    
+    // !!! This will potentially return a 256K buffer when a 48 byte buffer was requested, which will be pretty inefficient.  Should possibly just exclude anything < 16K from the cache, but we still shouldn't return 256K when 20K is required...need a heuristic for this?
+#warning fixme
+    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &alloc, __FVAllocationComparator, NULL);
     if (idx >= range.length)
         idx = kCFNotFound;
     return idx;
 }
 
 // always insert at the correct index, so we maintain heap order
-static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_alloc_info_t *allocInfo)
+static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t *alloc)
 {
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    CFIndex anIndex = CFArrayBSearchValues(_freeBuffers, range, allocInfo, __FVAllocInfoComparator, NULL);
+    CFIndex anIndex = CFArrayBSearchValues(_freeBuffers, range, alloc, __FVAllocationComparator, NULL);
     if (anIndex >= range.length)
         anIndex = range.length;
     return anIndex;
 }
 
 // alloc_info_t struct always immediately precedes the data pointer
-static inline const fv_alloc_info_t *__FVGetAllocInfoFromPointer(const void *ptr)
+static inline const fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 {
-    const fv_alloc_info_t *allocInfo = ptr - sizeof(fv_alloc_info_t);
+    const fv_allocation_t *alloc = ptr - sizeof(fv_allocation_t);
     // simple check to ensure that this is one of our pointers
-    if (__builtin_expect(_guard != allocInfo->guard, 0)) {
+    if (__builtin_expect(_guard != alloc->guard, 0)) {
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
-    return allocInfo;
+    return alloc;
 }
 
 // CFArrayApplierFunction; ptr argument must point to an alloc_info_t
-static void __FVDeallocateFromSystem(const void *ptr, void *unused)
+static void __FVAllocationFree(const void *ptr, void *unused)
 {
-    const fv_alloc_info_t *allocInfo = ptr;
-    if (__builtin_expect(_guard != allocInfo->guard, 0)) {
+    const fv_allocation_t *alloc = ptr;
+    if (__builtin_expect(_guard != alloc->guard, 0)) {
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
-    if (allocInfo->allocSize != sizeof(fv_alloc_info_t) + allocInfo->ptrSize) {
-        NSCParameterAssert(allocInfo->allocSize >= FV_VM_THRESHOLD);
-        vm_size_t len = allocInfo->allocSize;
-        kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)allocInfo->base, len);
-        if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", allocInfo);        
+    if (alloc->allocSize != sizeof(fv_allocation_t) + alloc->ptrSize) {
+        NSCParameterAssert(alloc->allocSize >= FV_VM_THRESHOLD);
+        vm_size_t len = alloc->allocSize;
+        kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
+        if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", alloc);        
     }
     else {
-        malloc_zone_free(malloc_zone_from_ptr(allocInfo->base), allocInfo->base);
+        malloc_zone_free(malloc_zone_from_ptr(alloc->base), alloc->base);
     }
 }
 
@@ -156,21 +160,21 @@ static void __FVDeallocateFromSystem(const void *ptr, void *unused)
                                |<-- page boundary
                                |<---------- ptrSize ---------->|
                                |<--ptr
-   | padding | fv_alloc_info_t | data data data data data data |
+   | padding | fv_allocation_t | data data data data data data |
              |<-- pointer returned by __FVAllocateFromSystem()
    |<--base                   
    |<------------------------ allocSize ---------------------->|
  
  */
 
-static fv_alloc_info_t *__FVAllocateFromVMSystem(const size_t requestedSize)
+static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
 {
-    // base address of the allocation, including fv_alloc_info_t
+    // base address of the allocation, including fv_allocation_t
     void *memory;
-    fv_alloc_info_t *allocInfo = NULL;
+    fv_allocation_t *alloc = NULL;
     
-    // allocate at least requestedSize + fv_alloc_info_t
-    const size_t actualSize = requestedSize + sizeof(fv_alloc_info_t) + vm_page_size;
+    // allocate at least requestedSize + fv_allocation_t
+    const size_t actualSize = requestedSize + sizeof(fv_allocation_t) + vm_page_size;
     
     // allocations going through this allocator should generally larger than 4K
     kern_return_t ret;
@@ -180,48 +184,48 @@ static fv_alloc_info_t *__FVAllocateFromVMSystem(const size_t requestedSize)
     // set up the data structure
     if (__builtin_expect(NULL != memory, 1)) {
         // align ptr to a page boundary
-        void *ptr = (void *)round_page((uintptr_t)(memory + sizeof(fv_alloc_info_t)));
-        // allocInfo struct immediately precedes ptr so we can find it again
-        allocInfo = ptr - sizeof(fv_alloc_info_t);
-        allocInfo->ptr = ptr;
+        void *ptr = (void *)round_page((uintptr_t)(memory + sizeof(fv_allocation_t)));
+        // alloc struct immediately precedes ptr so we can find it again
+        alloc = ptr - sizeof(fv_allocation_t);
+        alloc->ptr = ptr;
         // ptrSize field is the size of ptr, not including the header or padding; used for array sorting
-        allocInfo->ptrSize = memory + actualSize - allocInfo->ptr;
+        alloc->ptrSize = memory + actualSize - alloc->ptr;
         // record the base address and size for deallocation purposes
-        allocInfo->base = memory;
-        allocInfo->allocSize = actualSize;
-        allocInfo->guard = _guard;
-        NSCParameterAssert(allocInfo->ptrSize >= requestedSize);
+        alloc->base = memory;
+        alloc->allocSize = actualSize;
+        alloc->guard = _guard;
+        NSCParameterAssert(alloc->ptrSize >= requestedSize);
     }
-    return allocInfo;
+    return alloc;
 }
 
-// memory is not page-aligned so there's no padding between the start of the allocated block and the returned fv_alloc_info_t pointer
-static fv_alloc_info_t *__FVAllocateFromMalloc(const size_t requestedSize)
+// memory is not page-aligned so there's no padding between the start of the allocated block and the returned fv_allocation_t pointer
+static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
 {
-    // base address of the allocation, including fv_alloc_info_t
+    // base address of the allocation, including fv_allocation_t
     void *memory;
-    fv_alloc_info_t *allocInfo = NULL;
+    fv_allocation_t *alloc = NULL;
     
-    // allocate at least requestedSize + fv_alloc_info_t
-    const size_t actualSize = requestedSize + sizeof(fv_alloc_info_t);
+    // allocate at least requestedSize + fv_allocation_t
+    const size_t actualSize = requestedSize + sizeof(fv_allocation_t);
     
     // allocations going through this allocator should generally larger than 4K
     memory = malloc_zone_malloc(malloc_default_zone(), actualSize);
     
     // set up the data structure
     if (__builtin_expect(NULL != memory, 1)) {
-        // allocInfo struct immediately precedes ptr so we can find it again
-        allocInfo = memory;
-        allocInfo->ptr = memory + sizeof(fv_alloc_info_t);
+        // alloc struct immediately precedes ptr so we can find it again
+        alloc = memory;
+        alloc->ptr = memory + sizeof(fv_allocation_t);
         // ptrSize field is the size of ptr, not including the header; used for array sorting
-        allocInfo->ptrSize = requestedSize;
+        alloc->ptrSize = requestedSize;
         // record the base address and size for deallocation purposes
-        allocInfo->base = memory;
-        allocInfo->allocSize = actualSize;
-        allocInfo->guard = _guard;
-        NSCParameterAssert(allocInfo->ptrSize >= requestedSize);
+        alloc->base = memory;
+        alloc->allocSize = actualSize;
+        alloc->guard = _guard;
+        NSCParameterAssert(alloc->ptrSize >= requestedSize);
     }
-    return allocInfo;
+    return alloc;
 }
 
 #pragma mark CFAllocatorContext functions
@@ -240,35 +244,35 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     // !!! unlock on each if branch
     OSSpinLockLock(&_freeBufferLock);
     CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(allocSize);
-    const fv_alloc_info_t *allocInfo;
+    const fv_allocation_t *alloc;
     
     // optimistically assume that the cache is effective; for our usage (lots of similarly-sized images), this is correct
     if (__builtin_expect(kCFNotFound == idx, 0)) {
         OSAtomicIncrement32((int32_t *)&_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&_freeBufferLock);
-        allocInfo = (size_t)allocSize >= FV_VM_THRESHOLD ? __FVAllocateFromVMSystem(allocSize) : __FVAllocateFromMalloc(allocSize);
+        alloc = (size_t)allocSize >= FV_VM_THRESHOLD ? __FVAllocationFromVMSystem(allocSize) : __FVAllocationFromMalloc(allocSize);
     }
     else {
         OSAtomicIncrement32((int32_t *)&_cacheHits);
-        allocInfo = CFArrayGetValueAtIndex(_freeBuffers, idx);
+        alloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
         CFArrayRemoveValueAtIndex(_freeBuffers, idx);
         OSSpinLockUnlock(&_freeBufferLock);
-        if (__builtin_expect((size_t)allocSize > allocInfo->ptrSize, 0)) {
-            FVLog(@"FVAllocator: incorrect size %lu (%d expected) in %s", allocInfo->ptrSize, allocSize, __PRETTY_FUNCTION__);
+        if (__builtin_expect((size_t)allocSize > alloc->ptrSize, 0)) {
+            FVLog(@"FVAllocator: incorrect size %lu (%d expected) in %s", alloc->ptrSize, allocSize, __PRETTY_FUNCTION__);
             HALT;
         }
     }
-    return allocInfo ? allocInfo->ptr : NULL;
+    return alloc ? alloc->ptr : NULL;
 }
 
 static void __FVDeallocate(void *ptr, void *info)
 {
-    const fv_alloc_info_t *allocInfo = __FVGetAllocInfoFromPointer(ptr);
+    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
     // add to free list
     OSSpinLockLock(&_freeBufferLock);
-    CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(allocInfo);
-    CFArrayInsertValueAtIndex(_freeBuffers, idx, allocInfo);
+    CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
+    CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
     OSSpinLockUnlock(&_freeBufferLock);
 }
 
@@ -284,8 +288,8 @@ static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, voi
     if (__builtin_expect(NULL == newPtr, 0))
         return NULL;
     
-    const fv_alloc_info_t *allocInfo = __FVGetAllocInfoFromPointer(ptr);
-    memcpy(newPtr, ptr, allocInfo->ptrSize);
+    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
+    memcpy(newPtr, ptr, alloc->ptrSize);
     __FVDeallocate(ptr, info);
     return newPtr;
 }
@@ -293,7 +297,7 @@ static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, voi
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 {
     size_t allocSize = size;
-    return allocSize >= FV_VM_THRESHOLD ? allocSize + sizeof(fv_alloc_info_t) + vm_page_size : allocSize + sizeof(fv_alloc_info_t);
+    return allocSize >= FV_VM_THRESHOLD ? allocSize + sizeof(fv_allocation_t) + vm_page_size : allocSize + sizeof(fv_allocation_t);
 }
 
 #pragma mark API and setup
@@ -303,9 +307,9 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 static size_t __FVTotalAllocationsLocked()
 {
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
-    const fv_alloc_info_t *stackBuf[FV_STACK_MAX];
+    const fv_allocation_t *stackBuf[FV_STACK_MAX];
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const fv_alloc_info_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     size_t totalMemory = 0;
     for (CFIndex i = 0; i < range.length; i++)
@@ -323,7 +327,7 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
     // if we can't lock immediately, wait for another opportunity
     if (OSSpinLockTry(&_freeBufferLock)) {
         if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
-            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVDeallocateFromSystem, NULL);
+            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocationFree, NULL);
             CFArrayRemoveAllValues(_freeBuffers);
         }
         OSSpinLockUnlock(&_freeBufferLock);
@@ -411,7 +415,7 @@ static void __initialize_allocator()
     _allocator_zone->introspect = &__FVAllocatorZoneIntrospect;
     _allocator_zone->version = 0;
     
-    const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocInfoCopyDescription, NULL };
+    const CFArrayCallBacks cb = { 0, NULL, NULL, __FVAllocationCopyDescription, NULL };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &cb);
     
     CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
@@ -488,9 +492,9 @@ void FVAllocatorShowStats()
 {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     OSSpinLockLock(&_freeBufferLock);
-    const fv_alloc_info_t *stackBuf[FV_STACK_MAX];
+    const fv_allocation_t *stackBuf[FV_STACK_MAX];
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const fv_alloc_info_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     OSSpinLockUnlock(&_freeBufferLock);
     size_t totalMemory = 0;
