@@ -50,6 +50,7 @@ typedef struct _fv_allocation_t {
     size_t      allocSize; /* length of entire allocation   */
     void       *ptr;       /* writable region of allocation */
     size_t      ptrSize;   /* writable length of ptr        */
+    const void *zone;      /* CFAllocator or malloc_zone_t  */
     const void *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
@@ -102,7 +103,7 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex allocS
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
     // need a temporary struct for comparison; only the ptrSize field is needed
-    const fv_allocation_t alloc = { NULL, 0, NULL, allocSize, _guard };
+    const fv_allocation_t alloc = { NULL, 0, NULL, allocSize, NULL, _guard };
     
     // !!! This will potentially return a 256K buffer when a 48 byte buffer was requested, which will be pretty inefficient.  Should possibly just exclude anything < 16K from the cache, but we still shouldn't return 256K when 20K is required...need a heuristic for this?
 #warning fixme
@@ -143,14 +144,14 @@ static void __FVAllocationFree(const void *ptr, void *unused)
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
-    if (alloc->allocSize != sizeof(fv_allocation_t) + alloc->ptrSize) {
+    if (alloc->zone == _allocator) {
         NSCParameterAssert(alloc->allocSize >= FV_VM_THRESHOLD);
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", alloc);        
     }
     else {
-        malloc_zone_free(malloc_zone_from_ptr(alloc->base), alloc->base);
+        malloc_zone_free((malloc_zone_t *)alloc->zone, alloc->base);
     }
 }
 
@@ -193,6 +194,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
+        alloc->zone = _allocator;
         alloc->guard = _guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
     }
@@ -223,6 +225,7 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
         alloc->base = memory;
         alloc->allocSize = actualSize;
         alloc->guard = _guard;
+        alloc->zone = malloc_default_zone();
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
     }
     return alloc;
@@ -343,7 +346,7 @@ static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
     const fv_allocation_t *alloc = ptr - sizeof(fv_allocation_t);
     size_t size = 0;
     // simple check to ensure that this is one of our pointers and allocated in this zone; which size to return, though?
-    if (_guard == alloc->guard && (alloc->allocSize != sizeof(fv_allocation_t) + alloc->ptrSize))
+    if (_guard == alloc->guard && alloc->zone == zone)
         size = alloc->ptrSize;
     return size;
 }
