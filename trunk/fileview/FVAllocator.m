@@ -65,7 +65,7 @@ static malloc_zone_t     *_allocator_zone = NULL;
 static CFMutableArrayRef  _freeBuffers = NULL;
 static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
 
-// set of pointers to all blocks allocated in this zone
+// set of pointers to all blocks allocated in this zone with vm_allocate
 static CFMutableSetRef    _vmAllocations = NULL;
 static OSSpinLock         _vmAllocationLock = OS_SPINLOCK_INIT;
 
@@ -142,14 +142,13 @@ static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t
 }
 
 // fv_allocation_t struct always immediately precedes the data pointer
+// returns NULL if the pointer was not allocated in this zone
 static inline const fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 {
-    const fv_allocation_t *alloc = ptr - sizeof(fv_allocation_t);
+    const fv_allocation_t *alloc = NULL == ptr ? NULL : ptr - sizeof(fv_allocation_t);
     // simple check to ensure that this is one of our pointers
-    if (__builtin_expect(_guard != alloc->guard, 0)) {
-        FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
-        HALT;
-    }
+    if (__builtin_expect(_guard != alloc->guard, 0))
+        alloc = NULL;
     return alloc;
 }
 
@@ -333,10 +332,10 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 
 static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
 {
-    const fv_allocation_t *alloc = ptr - sizeof(fv_allocation_t);
+    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
     size_t size = 0;
     // Simple check to ensure that this is one of our pointers; which size to return, though?  Need to return size for values allocated in this zone with malloc, even though malloc_default_zone() is the underlying zone, or else they won't be freed.
-    if (_guard == alloc->guard)
+    if (alloc && _guard == alloc->guard)
         size = alloc->ptrSize;
     return size;
 }
@@ -391,29 +390,42 @@ static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
 
 static void __FVAllocatorZoneFree(malloc_zone_t *zone, void *ptr)
 {
-    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
-    // add to free list
-    OSSpinLockLock(&_freeBufferLock);
-    CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
-    CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
-    OSSpinLockUnlock(&_freeBufferLock);    
+    // ignore NULL
+    if (__builtin_expect(NULL != ptr, 1)) {    
+        const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
+        // error on an invalid pointer
+        if (__builtin_expect(NULL == alloc, 0)) {
+            FVLog(@"FVAllocator: pointer <0x%p> passed to %s not malloced in this zone", ptr, __PRETTY_FUNCTION__);
+            HALT;
+        }
+        // add to free list
+        OSSpinLockLock(&_freeBufferLock);
+        CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
+        CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
+        OSSpinLockUnlock(&_freeBufferLock);    
+    }
 }
 
 static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t size)
 {
     OSAtomicIncrement32((int32_t *)&_reallocCount);
-    // as per documentation for CFAllocatorContext
-    if (__builtin_expect((NULL == ptr || size <= 0), 0))
-        return NULL;
     
     // get a new buffer, copy contents, return original ptr to the pool
     void *newPtr = __FVAllocatorZoneMalloc(zone, size);
     if (__builtin_expect(NULL == newPtr, 0))
         return NULL;
     
-    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
-    memcpy(newPtr, ptr, alloc->ptrSize);
-    __FVAllocatorZoneFree(zone, ptr);
+    // okay to call realloc with a NULL pointer, but should not be the typical usage
+    if (__builtin_expect(NULL != ptr, 1)) {    
+        const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
+        // error on an invalid pointer
+        if (__builtin_expect(NULL == alloc, 0)) {
+            FVLog(@"FVAllocator: pointer <0x%p> passed to %s not malloced in this zone", ptr, __PRETTY_FUNCTION__);
+            HALT;
+        }
+        memcpy(newPtr, ptr, alloc->ptrSize);
+        __FVAllocatorZoneFree(zone, ptr);
+    }
     return newPtr;
 }
 
