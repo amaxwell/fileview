@@ -50,7 +50,7 @@ typedef struct _fv_allocation_t {
     size_t      allocSize; /* length of entire allocation   */
     void       *ptr;       /* writable region of allocation */
     size_t      ptrSize;   /* writable length of ptr        */
-    const void *zone;      /* CFAllocator or malloc_zone_t  */
+    const void *zone;      /* malloc_zone_t                 */
     const void *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
@@ -161,7 +161,8 @@ static void __FVAllocationFree(const void *ptr, void *unused)
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
-    if (alloc->zone == _allocator) {
+    // _allocator_zone indicates is should be freed with vm_deallocate
+    if (alloc->zone == _allocator_zone) {
         NSCParameterAssert(alloc->allocSize >= FV_VM_THRESHOLD);
         OSSpinLockLock(&_vmAllocationLock);
         NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == TRUE);
@@ -215,7 +216,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
-        alloc->zone = _allocator;
+        alloc->zone = _allocator_zone;
         alloc->guard = _guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
         
@@ -333,8 +334,8 @@ static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
 {
     const fv_allocation_t *alloc = ptr - sizeof(fv_allocation_t);
     size_t size = 0;
-    // simple check to ensure that this is one of our pointers and allocated in this zone; which size to return, though?
-    if (_guard == alloc->guard && alloc->zone == zone)
+    // Simple check to ensure that this is one of our pointers; which size to return, though?  Need to return size for values allocated in this zone with malloc, even though malloc_default_zone() is the underlying zone, or else they won't be freed.
+    if (_guard == alloc->guard)
         size = alloc->ptrSize;
     return size;
 }
@@ -468,6 +469,9 @@ static void __initialize_allocator()
     _allocator_zone->introspect = &__FVAllocatorZoneIntrospect;
     _allocator_zone->version = 0;
     
+    // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
+    malloc_zone_register(_allocator_zone);
+    
     const CFArrayCallBacks acb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
     
@@ -496,6 +500,12 @@ static void __initialize_allocator()
 CFAllocatorRef FVAllocatorGetDefault() 
 { 
     return _allocator; 
+}
+
+NSZone *FVDefaultZone()
+{
+    // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
+    return (NSZone *)_allocator_zone;
 }
 
 #pragma mark Statistics

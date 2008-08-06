@@ -56,6 +56,8 @@
  @return The shared allocator instance. */
 FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void);
 
+FV_PRIVATE_EXTERN NSZone *FVDefaultZone(void);
+
 /** @internal @brief Print allocator statistics.
  Logs various information about allocator usage, particularly the number and size of the free blocks currently available.  
  @warning For debugging only.  */
