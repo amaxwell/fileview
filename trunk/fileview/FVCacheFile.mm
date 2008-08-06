@@ -304,7 +304,7 @@ static NSInteger FVCacheLogLevel = 0;
             
             strm.zalloc = (void *(*)(void *, uInt, uInt))NSZoneCalloc;
             strm.zfree = (void (*)(void *, void *))NSZoneFree;
-            strm.opaque = [self zone];
+            strm.opaque = FVDefaultZone();
             strm.total_out = 0;
             strm.next_in = (Bytef *)[data bytes];
             strm.avail_in = location->_decompressedLength;
@@ -384,7 +384,7 @@ static NSInteger FVCacheLogLevel = 0;
             strm.total_out = 0;
             strm.zalloc = (void *(*)(void *, uInt, uInt))NSZoneCalloc;
             strm.zfree = (void (*)(void *, void *))NSZoneFree;
-            strm.opaque = [self zone];
+            strm.opaque = FVDefaultZone();
             
             status = inflateInit(&strm);
             
