@@ -38,6 +38,7 @@
 
 #import "FVImageIcon.h"
 #import "FVFinderIcon.h"
+#import "FVAllocator.h"
 
 @implementation FVImageIcon
 
@@ -122,7 +123,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
 // FVMovieIcon overrides this to provide its TIFF data
 - (CFDataRef)_copyDataForImageSourceWhileLocked
 {
-    return (CFDataRef)[[NSData alloc] initWithContentsOfURL:_fileURL options:NSUncachedRead error:NULL];
+    return (CFDataRef)[[NSData allocWithZone:FVDefaultZone()] initWithContentsOfURL:_fileURL options:NSUncachedRead error:NULL];
 }
 
 - (void)renderOffscreen
