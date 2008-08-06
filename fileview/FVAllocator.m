@@ -153,6 +153,8 @@ static inline const fv_allocation_t *__FVGetAllocationFromPointer(const void *pt
     return alloc;
 }
 
+static inline bool __FVAllocatorUseVMForSize(size_t size) { return size >= FV_VM_THRESHOLD; }
+
 // CFArrayApplierFunction; ptr argument must point to an fv_allocation_t
 static void __FVAllocationFree(const void *ptr, void *unused)
 {
@@ -163,7 +165,7 @@ static void __FVAllocationFree(const void *ptr, void *unused)
     }
     // _allocator_zone indicates is should be freed with vm_deallocate
     if (alloc->zone == _allocator_zone) {
-        NSCParameterAssert(alloc->allocSize >= FV_VM_THRESHOLD);
+        NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
         OSSpinLockLock(&_vmAllocationLock);
         NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == TRUE);
         CFSetRemoveValue(_vmAllocations, alloc);
@@ -351,7 +353,7 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
         OSAtomicIncrement32((int32_t *)&_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&_freeBufferLock);
-        alloc = size >= FV_VM_THRESHOLD ? __FVAllocationFromVMSystem(size) : __FVAllocationFromMalloc(size);
+        alloc = __FVAllocatorUseVMForSize(size) ? __FVAllocationFromVMSystem(size) : __FVAllocationFromMalloc(size);
     }
     else {
         OSAtomicIncrement32((int32_t *)&_cacheHits);
@@ -373,12 +375,18 @@ static void *__FVAllocatorZoneCalloc(malloc_zone_t *zone, size_t num_items, size
     return memory;
 }
 
+// implementation for non-VM case was modified after the implementation in CFBase.c
 static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
 {
-    void *memory = __FVAllocatorZoneMalloc(zone, size + vm_page_size);
+    // this will already be page-aligned if we're using vm
+    const bool useVM = __FVAllocatorUseVMForSize(size);
+    if (false == useVM) size += vm_page_size;
+    void *memory = __FVAllocatorZoneMalloc(zone, size);
     memset(memory, 0, size);
-    memory = (void *)round_page((uintptr_t)memory);
-    return memory;
+    // this should have no effect if we used vm to allocate
+    void *ret = (void *)round_page((uintptr_t)memory);
+    if (useVM) { NSCParameterAssert(memory == ret); }
+    return ret;
 }
 
 static void __FVAllocatorZoneFree(malloc_zone_t *zone, void *ptr)
@@ -437,7 +445,7 @@ static boolean_t __FVAllocatorZoneIntrospectTrue(void) {
 
 static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
 {
-    return size >= FV_VM_THRESHOLD ? size + sizeof(fv_allocation_t) + vm_page_size : size + sizeof(fv_allocation_t);
+    return __FVAllocatorUseVMForSize(size) ? size + sizeof(fv_allocation_t) + vm_page_size : size + sizeof(fv_allocation_t);
 }
 
 static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
