@@ -290,8 +290,7 @@ static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, voi
 
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 {
-    size_t allocSize = size;
-    return allocSize >= FV_VM_THRESHOLD ? allocSize + sizeof(fv_allocation_t) + vm_page_size : allocSize + sizeof(fv_allocation_t);
+    return _allocator_zone->introspect->good_size(_allocator_zone, size);
 }
 
 #pragma mark API and setup
@@ -436,14 +435,14 @@ static boolean_t __FVAllocatorZoneIntrospectTrue(void) {
     return 1;
 }
 
-static size_t __FVAllocatorCustomGoodSize(malloc_zone_t *zone, size_t size)
+static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
 {
-    return size;
+    return size >= FV_VM_THRESHOLD ? size + sizeof(fv_allocation_t) + vm_page_size : size + sizeof(fv_allocation_t);
 }
 
 static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     (void *)__FVAllocatorZoneIntrospectNoOp,
-    (void *)__FVAllocatorCustomGoodSize,
+    (void *)__FVAllocatorZoneGoodSize,
     (void *)__FVAllocatorZoneIntrospectTrue,
     (void *)__FVAllocatorZoneIntrospectNoOp,
     (void *)__FVAllocatorZoneIntrospectNoOp,
