@@ -59,6 +59,7 @@ static const char *_guard = "FVAllocatorGuard";
 
 // single instance of this allocator
 static CFAllocatorRef     _allocator = NULL;
+static malloc_zone_t     *_allocator_zone = NULL;
 
 // array of buffers that are currently free (have been deallocated)
 static CFMutableArrayRef  _freeBuffers = NULL;
@@ -269,57 +270,21 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     if (__builtin_expect(allocSize <= 0, 0))
         return NULL;
     
-    // !!! unlock on each if branch
-    OSSpinLockLock(&_freeBufferLock);
-    CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(allocSize);
-    const fv_allocation_t *alloc;
-    
-    // optimistically assume that the cache is effective; for our usage (lots of similarly-sized images), this is correct
-    if (__builtin_expect(kCFNotFound == idx, 0)) {
-        OSAtomicIncrement32((int32_t *)&_cacheMisses);
-        // nothing found; unlock immediately and allocate a new chunk of memory
-        OSSpinLockUnlock(&_freeBufferLock);
-        alloc = (size_t)allocSize >= FV_VM_THRESHOLD ? __FVAllocationFromVMSystem(allocSize) : __FVAllocationFromMalloc(allocSize);
-    }
-    else {
-        OSAtomicIncrement32((int32_t *)&_cacheHits);
-        alloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
-        CFArrayRemoveValueAtIndex(_freeBuffers, idx);
-        OSSpinLockUnlock(&_freeBufferLock);
-        if (__builtin_expect((size_t)allocSize > alloc->ptrSize, 0)) {
-            FVLog(@"FVAllocator: incorrect size %lu (%d expected) in %s", alloc->ptrSize, allocSize, __PRETTY_FUNCTION__);
-            HALT;
-        }
-    }
-    return alloc ? alloc->ptr : NULL;
+    return malloc_zone_malloc(_allocator_zone, allocSize);
 }
 
 static void __FVDeallocate(void *ptr, void *info)
 {
-    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
-    // add to free list
-    OSSpinLockLock(&_freeBufferLock);
-    CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
-    CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
-    OSSpinLockUnlock(&_freeBufferLock);
+    malloc_zone_free(_allocator_zone, ptr);
 }
 
 static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
 {
-    OSAtomicIncrement32((int32_t *)&_reallocCount);
     // as per documentation for CFAllocatorContext
     if (__builtin_expect((NULL == ptr || newSize <= 0), 0))
         return NULL;
     
-    // get a new buffer, copy contents, return original ptr to the pool
-    void *newPtr = __FVAllocate(newSize, hint, info);
-    if (__builtin_expect(NULL == newPtr, 0))
-        return NULL;
-    
-    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
-    memcpy(newPtr, ptr, alloc->ptrSize);
-    __FVDeallocate(ptr, info);
-    return newPtr;
+    return malloc_zone_realloc(_allocator_zone, ptr, newSize);
 }
 
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
@@ -363,8 +328,6 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 }
 
 #pragma mark Zone implementation
-
-static malloc_zone_t *_allocator_zone = NULL;
 
 static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
 {
