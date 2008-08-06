@@ -38,6 +38,8 @@
 
 #import "FVMovieIcon.h"
 #import "FVFinderIcon.h"
+#import "FVAllocator.h"
+
 #import <QTKit/QTKit.h>
 
 @implementation FVMovieIcon
@@ -99,7 +101,7 @@ static NSInvocation *_movieInvocation = nil;
         NSTimeInterval frameTime = MIN((movieTime.timeValue / movieTime.timeScale) * 0.04, 10);
         timeToGet = QTMakeTimeWithTimeInterval(frameTime);
     }
-    NSData *data = [[[movie frameImageAtTime:timeToGet] TIFFRepresentation] copy];
+    NSData *data = [[[movie frameImageAtTime:timeToGet] TIFFRepresentation] copyWithZone:FVDefaultZone()];
     [movie release];    
     
     return data;

@@ -42,6 +42,8 @@
 #import "FVCacheFile.h"
 #import "FVOperationQueue.h"
 #import "FVConcreteOperation.h"
+#import "FVAllocator.h"
+
 #import <libkern/OSAtomic.h>
 #import <pthread.h>
 
@@ -224,7 +226,7 @@ static CGImageRef FVCreateCGImageWithData(NSData *data)
         toReturn = CGImageSourceCreateImageAtIndex(imsrc, 0, NULL);
     if (imsrc) CFRelease(imsrc);
 #else
-    NSUnarchiver *unarchiver = [[NSUnarchiver alloc] initForReadingWithData:data];
+    NSUnarchiver *unarchiver = [[NSUnarchiver allocWithZone:FVDefaultZone()] initForReadingWithData:data];
     // only retained by unarchiver
     FVCGImageDescription *imageDescription = [unarchiver decodeObject];
     toReturn = [imageDescription newImage];
@@ -244,13 +246,13 @@ static CFDataRef FVCreateDataWithCGImage(CGImageRef image)
     if (dest) CFRelease(dest);
 #else
     CFDataRef data = nil;
-    FVCGImageDescription *imageDescription = [[FVCGImageDescription alloc] initWithImage:image];
+    FVCGImageDescription *imageDescription = [[FVCGImageDescription allocWithZone:FVDefaultZone()] initWithImage:image];
     
     // do not call setLength:, even before writing the archive!
     size_t approximateLength = CGImageGetBytesPerRow(image) * CGImageGetHeight(image) + 20 * sizeof(size_t);
-    NSMutableData *mdata = [[NSMutableData alloc] initWithCapacity:approximateLength];
+    NSMutableData *mdata = [[NSMutableData allocWithZone:FVDefaultZone()] initWithCapacity:approximateLength];
     
-    NSArchiver *archiver = [[NSArchiver alloc] initForWritingWithMutableData:(NSMutableData *)mdata];
+    NSArchiver *archiver = [[NSArchiver allocWithZone:FVDefaultZone()] initForWritingWithMutableData:(NSMutableData *)mdata];
     [archiver encodeObject:imageDescription];
     [imageDescription release];
     [archiver release];
