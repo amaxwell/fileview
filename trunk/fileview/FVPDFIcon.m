@@ -209,14 +209,14 @@ static const size_t FVMaxPDFThumbnailDimension = 310;
 // used to constrain thumbnail size for huge pages
 static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 {
-    CGFloat dimension = MIN(size->width, size->height);
+    CGFloat dimension = MAX(size->width, size->height);
     if (dimension <= FVMaxPDFThumbnailDimension)
         return false;
     
     while (dimension > FVMaxPDFThumbnailDimension) {
         size->width *= 0.9;
         size->height *= 0.9;
-        dimension = MIN(size->width, size->height);
+        dimension = MAX(size->width, size->height);
     }
     return true;
 }
