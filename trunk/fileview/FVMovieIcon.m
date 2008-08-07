@@ -101,7 +101,7 @@ static NSInvocation *_movieInvocation = nil;
         NSTimeInterval frameTime = MIN((movieTime.timeValue / movieTime.timeScale) * 0.04, 10);
         timeToGet = QTMakeTimeWithTimeInterval(frameTime);
     }
-    NSData *data = [[[movie frameImageAtTime:timeToGet] TIFFRepresentation] copyWithZone:FVDefaultZone()];
+    NSData *data = [[[movie frameImageAtTime:timeToGet] TIFFRepresentation] retain];
     [movie release];    
     
     return data;
