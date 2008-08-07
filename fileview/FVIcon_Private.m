@@ -241,28 +241,28 @@ const CGFloat FVTopMargin       = 90.0;
 // used to constrain thumbnail size for huge pages
 bool FVIconLimitThumbnailSize(NSSize *size)
 {
-    CGFloat dimension = MIN(size->width, size->height);
+    CGFloat dimension = MAX(size->width, size->height);
     if (dimension <= FVMaxThumbnailDimension)
         return false;
     
     while (dimension > FVMaxThumbnailDimension) {
         size->width *= 0.9;
         size->height *= 0.9;
-        dimension = MIN(size->width, size->height);
+        dimension = MAX(size->width, size->height);
     }
     return true;
 }
 
 bool FVIconLimitFullImageSize(NSSize *size)
 {
-    CGFloat dimension = MIN(size->width, size->height);
+    CGFloat dimension = MAX(size->width, size->height);
     if (dimension <= FVMaxImageDimension)
         return false;
     
     while (dimension > FVMaxImageDimension) {
         size->width *= 0.9;
         size->height *= 0.9;
-        dimension = MIN(size->width, size->height);
+        dimension = MAX(size->width, size->height);
     }
     return true;
 }
