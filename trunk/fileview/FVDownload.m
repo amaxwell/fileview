@@ -54,7 +54,7 @@
     NSParameterAssert(NSNotFound != indexInView);
     self = [super init];
     if (self) {
-        _downloadURL = [aURL copy];
+        _downloadURL = [aURL copyWithZone:[self zone]];
         _indexInView = indexInView;
         _fileURL = nil;
         _expectedLength = 0;

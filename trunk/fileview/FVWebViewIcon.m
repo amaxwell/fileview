@@ -133,7 +133,7 @@ static const NSSize _webViewSize = { 1000, 900 };
         self = [[FVFinderIcon allocWithZone:zone] initWithURL:aURL];
     }
     else if ((self = [super init])) {
-        _httpURL = [aURL copy];
+        _httpURL = [aURL copyWithZone:[self zone]];
         _fullImage = NULL;
         _thumbnail = NULL;
         _viewImage = NULL;

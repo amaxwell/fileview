@@ -3026,8 +3026,8 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     self = [super init];
     if (self) {
         _observable = [observable retain];
-        _keyPath = [keyPath copy];
-        _options = [options copy];
+        _keyPath = [keyPath copyWithZone:[self zone]];
+        _options = [options copyWithZone:[self zone]];
     }
     return self;
 }
