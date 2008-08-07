@@ -223,7 +223,7 @@ static NSInteger FVCacheLogLevel = 0;
 - (void)setName:(NSString *)name
 {
     [_cacheName autorelease];
-    _cacheName = [name copy];
+    _cacheName = [name copyWithZone:[self zone]];
 }
 
 - (void)_recordCacheEventWithKey:(_FVCacheKey *)key size:(double)kbytes

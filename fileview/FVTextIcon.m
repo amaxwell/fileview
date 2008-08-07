@@ -554,7 +554,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 {
     self = [super init];
     if (self) {
-        _fileURL = [aURL copy];
+        _fileURL = [aURL copyWithZone:[self zone]];
         [self setConcurrent:NO];
     }
     return self;
@@ -573,7 +573,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     NSAssert(pthread_main_np() != 0, @"incorrect thread for _FVAttributedStringOperation");        
     NSDictionary *documentAttributes;
     _attributedString = [[NSMutableAttributedString allocWithZone:[self zone]] initWithURL:_fileURL documentAttributes:&documentAttributes];
-    _documentAttributes = [documentAttributes copy];
+    _documentAttributes = [documentAttributes copyWithZone:[self zone]];
     [self finished];
 }
 

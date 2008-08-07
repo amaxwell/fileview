@@ -437,9 +437,9 @@
         
         if ([aURL isFileURL]) {
             if (noErr != LSCopyDisplayNameForURL((CFURLRef)aURL, (CFStringRef *)&_name))
-                _name = [[[aURL path] lastPathComponent] copy];
+                _name = [[[aURL path] lastPathComponent] copyWithZone:[self zone]];
         } else {
-            _name = [[aURL absoluteString] copy];
+            _name = [[aURL absoluteString] copyWithZone:[self zone]];
         }
         _label = [FVFinderLabel finderLabelForURL:aURL];
     }

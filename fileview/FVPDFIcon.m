@@ -487,7 +487,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 - (void)_setFileURL:(NSURL *)aURL
 {
     [_fileURL autorelease];
-    _fileURL = [aURL copy];
+    _fileURL = [aURL copyWithZone:[self zone]];
 }
 
 @end
