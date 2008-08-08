@@ -198,8 +198,14 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
     fv_allocation_t *alloc = NULL;
     
     // allocate at least requestedSize + fv_allocation_t
-    const size_t actualSize = requestedSize + sizeof(fv_allocation_t) + vm_page_size;
+    size_t actualSize = requestedSize + sizeof(fv_allocation_t) + vm_page_size;
     
+    // !!! Improve this.  Testing indicates that there are lots of allocations in these ranges, so we end up with lots of one-off sizes that aren't very reusable.  Might be able to bin allocations below ~1 MB and use a hash table for lookups, then resort to the array/bsearch for larger values?
+    if (300000 < actualSize && actualSize < 512000)
+        actualSize = round_page(512000);
+    else if (512000 < actualSize && actualSize < 614400)
+        actualSize = round_page(614400);
+
     // allocations going through this allocator should generally larger than 4K
     kern_return_t ret;
     ret = vm_allocate(mach_task_self(), (vm_address_t *)&memory, actualSize, VM_FLAGS_ANYWHERE);
@@ -238,8 +244,8 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
     
     // allocate at least requestedSize + fv_allocation_t
     const size_t actualSize = requestedSize + sizeof(fv_allocation_t);
-    
-    // allocations going through this allocator should generally larger than 4K
+
+    // use the default malloc zone, which is really fast for small allocations
     memory = malloc_zone_malloc(malloc_default_zone(), actualSize);
     
     // set up the data structure
@@ -307,7 +313,7 @@ static size_t __FVTotalAllocationsLocked()
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     size_t totalMemory = 0;
     for (CFIndex i = 0; i < range.length; i++)
-        totalMemory += ptrs[i]->ptrSize;
+        totalMemory += ptrs[i]->allocSize;
     
     if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
     return totalMemory;
@@ -585,8 +591,8 @@ void FVAllocatorShowStats()
     size_t totalMemory = 0;
     NSCountedSet *duplicateAllocations = [NSCountedSet new];
     for (CFIndex i = 0; i < range.length; i++) {
-        totalMemory += ptrs[i]->ptrSize;
-        [duplicateAllocations addObject:[NSNumber numberWithInt:ptrs[i]->ptrSize]];
+        totalMemory += ptrs[i]->allocSize;
+        [duplicateAllocations addObject:[NSNumber numberWithInt:ptrs[i]->allocSize]];
     }
     if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);
     NSEnumerator *dupeEnum = [duplicateAllocations objectEnumerator];
