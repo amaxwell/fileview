@@ -71,8 +71,8 @@ static OSSpinLock         _vmAllocationLock = OS_SPINLOCK_INIT;
 
 // small allocations (below this size) will use malloc
 #define FV_VM_THRESHOLD 16384UL
-// clean up the pool at 50 MB of freed memory
-#define FV_REAP_THRESHOLD 52428800UL
+// clean up the pool at 100 MB of freed memory
+#define FV_REAP_THRESHOLD 104857600UL
 
 #if DEBUG
 #define FV_REAP_TIMEINTERVAL 60
@@ -201,9 +201,19 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
     size_t actualSize = requestedSize + sizeof(fv_allocation_t) + vm_page_size;
     
     // !!! Improve this.  Testing indicates that there are lots of allocations in these ranges, so we end up with lots of one-off sizes that aren't very reusable.  Might be able to bin allocations below ~1 MB and use a hash table for lookups, then resort to the array/bsearch for larger values?
-    if (300000 < actualSize && actualSize < 512000)
+    if (actualSize < 102400) 
+        actualSize = actualSize;
+    else if (actualSize < 143360)
+        actualSize = round_page(143360);
+    else if (actualSize < 204800)
+        actualSize = round_page(204800);
+    else if (actualSize < 262144)
+        actualSize = round_page(262144);
+    else if (actualSize < 307200)
+        actualSize = round_page(307200);
+    else if (actualSize < 512000)
         actualSize = round_page(512000);
-    else if (512000 < actualSize && actualSize < 614400)
+    else if (actualSize < 614400)
         actualSize = round_page(614400);
 
     // allocations going through this allocator should generally larger than 4K
