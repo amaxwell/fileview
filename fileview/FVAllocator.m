@@ -143,9 +143,9 @@ static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t
 
 // fv_allocation_t struct always immediately precedes the data pointer
 // returns NULL if the pointer was not allocated in this zone
-static inline const fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
+static inline fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 {
-    const fv_allocation_t *alloc = NULL == ptr ? NULL : ptr - sizeof(fv_allocation_t);
+    fv_allocation_t *alloc = ((uintptr_t)ptr < sizeof(fv_allocation_t)) ? NULL : (void *)ptr - sizeof(fv_allocation_t);
     // simple check to ensure that this is one of our pointers
     if (__builtin_expect(_guard != alloc->guard, 0))
         alloc = NULL;
@@ -219,7 +219,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
     // allocations going through this allocator should generally larger than 4K
     kern_return_t ret;
     ret = vm_allocate(mach_task_self(), (vm_address_t *)&memory, actualSize, VM_FLAGS_ANYWHERE);
-    if (0 != ret) memory = NULL;
+    if (KERN_SUCCESS != ret) memory = NULL;
     
     // set up the data structure
     if (__builtin_expect(NULL != memory, 1)) {
@@ -425,22 +425,51 @@ static void __FVAllocatorZoneFree(malloc_zone_t *zone, void *ptr)
 static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t size)
 {
     OSAtomicIncrement32((int32_t *)&_reallocCount);
-    
+        
     // get a new buffer, copy contents, return original ptr to the pool
-    void *newPtr = __FVAllocatorZoneMalloc(zone, size);
-    if (__builtin_expect(NULL == newPtr, 0))
-        return NULL;
+    void *newPtr;
     
     // okay to call realloc with a NULL pointer, but should not be the typical usage
     if (__builtin_expect(NULL != ptr, 1)) {    
-        const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
+        
+        // bizarre, but documented behavior of realloc(3)
+        if (__builtin_expect(0 == size, 0)) {
+            __FVAllocatorZoneFree(zone, ptr);
+            return __FVAllocatorZoneMalloc(zone, size);
+        }
+        
+        fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
             FVLog(@"FVAllocator: pointer <0x%p> passed to %s not malloced in this zone", ptr, __PRETTY_FUNCTION__);
             HALT;
         }
-        memcpy(newPtr, ptr, alloc->ptrSize);
-        __FVAllocatorZoneFree(zone, ptr);
+        
+        kern_return_t ret = KERN_FAILURE;
+
+        if (__FVAllocatorUseVMForSize(alloc->allocSize) && __FVAllocatorUseVMForSize(size)) {
+            // pointer to the current end of this region
+            vm_address_t addr = (vm_address_t)alloc->base + alloc->allocSize;
+            // attempt to allocate at a specific address and extend the existing region
+            ret = vm_allocate(mach_task_self(), &addr, round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
+            // if this succeeds, increase sizes
+            if (KERN_SUCCESS == ret) {
+                alloc->allocSize += round_page(size);
+                alloc->ptrSize += round_page(size);
+            }
+        }
+        
+        // if this wasn't a vm region or the region couldn't be extended, allocate a new block
+        if (KERN_SUCCESS != ret) {
+            newPtr = __FVAllocatorZoneMalloc(zone, size);
+            memcpy(newPtr, ptr, alloc->ptrSize);
+            __FVAllocatorZoneFree(zone, ptr);
+        }
+        
+    }
+    else {
+        // original pointer was NULL, so just malloc a new block
+        newPtr = __FVAllocatorZoneMalloc(zone, size);
     }
     return newPtr;
 }
