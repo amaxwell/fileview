@@ -74,6 +74,8 @@ static OSSpinLock         _vmAllocationLock = OS_SPINLOCK_INIT;
 // clean up the pool at 100 MB of freed memory
 #define FV_REAP_THRESHOLD 104857600UL
 
+#define USE_SYSTEM_ZONE 0
+
 #if DEBUG
 #define FV_REAP_TIMEINTERVAL 60
 #else
@@ -115,18 +117,25 @@ static CFHashCode __FVAllocationHash(const void *value)
 }
 
 // returns kCFNotFound if no buffer of sufficient size exists
-static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex allocSize)
+static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex requestedSize)
 {
     NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
     // need a temporary struct for comparison; only the ptrSize field is needed
-    const fv_allocation_t alloc = { NULL, 0, NULL, allocSize, NULL, _guard };
-    
-    // !!! This will potentially return a 256K buffer when a 48 byte buffer was requested, which will be pretty inefficient.  Should possibly just exclude anything < 16K from the cache, but we still shouldn't return 256K when 20K is required...need a heuristic for this?
-#warning fixme
+    const fv_allocation_t alloc = { NULL, 0, NULL, requestedSize, NULL, _guard };
+
     CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &alloc, __FVAllocationSizeComparator, NULL);
-    if (idx >= range.length)
+    if (idx >= range.length) {
         idx = kCFNotFound;
+    }
+    else {
+        const fv_allocation_t *foundAlloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
+        size_t foundSize = foundAlloc->allocSize;
+        if ((float)(foundSize - requestedSize) / requestedSize > 1) {
+            idx = kCFNotFound;
+            // FVLog(@"requested %d, found %d; error = %.2f", requestedSize, foundSize, (float)(foundSize - requestedSize) / requestedSize);
+        }
+    }
     return idx;
 }
 
@@ -147,7 +156,7 @@ static inline fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 {
     fv_allocation_t *alloc = ((uintptr_t)ptr < sizeof(fv_allocation_t)) ? NULL : (void *)ptr - sizeof(fv_allocation_t);
     // simple check to ensure that this is one of our pointers
-    if (__builtin_expect(_guard != alloc->guard, 0))
+    if (NULL != alloc && __builtin_expect(alloc->guard != _guard, 0))
         alloc = NULL;
     return alloc;
 }
@@ -443,6 +452,7 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t siz
         if (__builtin_expect(NULL == alloc, 0)) {
             FVLog(@"FVAllocator: pointer <0x%p> passed to %s not malloced in this zone", ptr, __PRETTY_FUNCTION__);
             HALT;
+            return NULL; /* not reached; keep clang happy */
         }
         
         kern_return_t ret = KERN_FAILURE;
@@ -544,9 +554,10 @@ static void __initialize_allocator()
     
     CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
     // add this to the main thread's runloop, which will always exist
+#if (!USE_SYSTEM_ZONE)
     CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
+#endif
     CFRelease(timer);
-    
     CFAllocatorContext context = { 
         0, 
         NULL, 
@@ -563,13 +574,21 @@ static void __initialize_allocator()
 
 CFAllocatorRef FVAllocatorGetDefault() 
 { 
+#if USE_SYSTEM_ZONE
+    return CFAllocatorGetDefault();
+#else
     return _allocator; 
+#endif
 }
 
 NSZone *FVDefaultZone()
 {
+#if USE_SYSTEM_ZONE
+    return NSDefaultMallocZone();
+#else
     // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
     return (NSZone *)_allocator_zone;
+#endif
 }
 
 #pragma mark Statistics
@@ -630,6 +649,10 @@ void FVAllocatorShowStats()
     size_t totalMemory = 0;
     NSCountedSet *duplicateAllocations = [NSCountedSet new];
     for (CFIndex i = 0; i < range.length; i++) {
+        if (__builtin_expect(_guard != ptrs[i]->guard, 0)) {
+            FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptrs[i], __PRETTY_FUNCTION__);
+            HALT;
+        }
         totalMemory += ptrs[i]->allocSize;
         [duplicateAllocations addObject:[NSNumber numberWithInt:ptrs[i]->allocSize]];
     }
@@ -668,7 +691,7 @@ void FVAllocatorShowStats()
     [pool release];
 }
 
-#if DEBUG
+#if DEBUG && (!USE_SYSTEM_ZONE)
 __attribute__ ((destructor))
 static void __log_stats()
 {
