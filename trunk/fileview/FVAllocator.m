@@ -641,9 +641,9 @@ void FVAllocatorShowStats()
 {
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     OSSpinLockLock(&_freeBufferLock);
-    const fv_allocation_t *stackBuf[FV_STACK_MAX];
+    const fv_allocation_t *stackBuf[FV_STACK_MAX] = { NULL };
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_calloc(malloc_default_zone(), range.length, sizeof(fv_allocation_t *)) : stackBuf;
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     OSSpinLockUnlock(&_freeBufferLock);
     size_t totalMemory = 0;
