@@ -639,30 +639,36 @@ NSZone *FVDefaultZone()
 
 void FVAllocatorShowStats()
 {
-    NSAutoreleasePool *pool = [NSAutoreleasePool new];
+    // use the default zone explicitly; avoid callout to our custom zone(s)
+    NSZone *zone = NSDefaultMallocZone();
+    NSAutoreleasePool *pool = [[NSAutoreleasePool allocWithZone:zone] init];
     OSSpinLockLock(&_freeBufferLock);
     const fv_allocation_t *stackBuf[FV_STACK_MAX] = { NULL };
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_calloc(malloc_default_zone(), range.length, sizeof(fv_allocation_t *)) : stackBuf;
+    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? NSZoneCalloc(zone, range.length, sizeof(fv_allocation_t *)) : stackBuf;
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     OSSpinLockUnlock(&_freeBufferLock);
     size_t totalMemory = 0;
-    NSCountedSet *duplicateAllocations = [NSCountedSet new];
+    NSCountedSet *duplicateAllocations = [[NSCountedSet allocWithZone:zone] init];
+    NSNumber *value;
     for (CFIndex i = 0; i < range.length; i++) {
         if (__builtin_expect(_guard != ptrs[i]->guard, 0)) {
             FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptrs[i], __PRETTY_FUNCTION__);
             HALT;
         }
         totalMemory += ptrs[i]->allocSize;
-        [duplicateAllocations addObject:[NSNumber numberWithInt:ptrs[i]->allocSize]];
+        value = [[NSNumber allocWithZone:zone] initWithInt:ptrs[i]->allocSize];
+        [duplicateAllocations addObject:value];
+        [value release];
     }
-    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);
+    // hold the lock to ensure that it's safe to dereference the allocations
+    OSSpinLockUnlock(&_freeBufferLock);
+    if (stackBuf != ptrs) NSZoneFree(zone, ptrs);
     NSEnumerator *dupeEnum = [duplicateAllocations objectEnumerator];
-    NSMutableArray *sortedDuplicates = [NSMutableArray new];
-    NSNumber *value;
+    NSMutableArray *sortedDuplicates = [[NSMutableArray allocWithZone:zone] init];
     const double totalMemoryMbytes = (double)totalMemory / 1024 / 1024;
     while (value = [dupeEnum nextObject]) {
-        _FVAllocatorStat *stat = [_FVAllocatorStat new];
+        _FVAllocatorStat *stat = [[_FVAllocatorStat allocWithZone:zone] init];
         stat->_allocationSize = [value intValue];
         stat->_allocationCount = [duplicateAllocations countForObject:value];
         stat->_totalMbytes = (double)stat->_allocationSize * stat->_allocationCount / 1024 / 1024;
@@ -670,8 +676,10 @@ void FVAllocatorShowStats()
         [sortedDuplicates addObject:stat];
         [stat release];
     }
-    NSSortDescriptor *sort = [[NSSortDescriptor alloc] initWithKey:@"self" ascending:YES selector:@selector(percentCompare:)];
-    [sortedDuplicates sortUsingDescriptors:[NSArray arrayWithObject:sort]];
+    NSSortDescriptor *sort = [[NSSortDescriptor allocWithZone:zone] initWithKey:@"self" ascending:YES selector:@selector(percentCompare:)];
+    NSArray *sortDescriptors = [[NSArray allocWithZone:zone] initWithObjects:&sort count:1];
+    [sortedDuplicates sortUsingDescriptors:sortDescriptors];
+    [sortDescriptors release];
     FVLog(@"------------------------------------");
     FVLog(@"   Size     Count  Total  Percentage");
     FVLog(@"   (b)       --    (Mb)      ----   ");
@@ -685,9 +693,9 @@ void FVAllocatorShowStats()
     // avoid divide-by-zero
     double cacheRequests = (_cacheHits + _cacheMisses);
     double missRate = cacheRequests > 0 ? (double)_cacheMisses / (_cacheHits + _cacheMisses) * 100 : 0;
-    NSDate *date = [NSDate date];
-    FVLog(@"%@: %d hits and %d misses for a cache failure rate of %.2f%%", date, _cacheHits, _cacheMisses, missRate);
-    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", date, (double)totalMemory / 1024 / 1024, _reallocCount);      
+    NSString *dateDescription = [[NSDate date] description];
+    FVLog(@"%@: %d hits and %d misses for a cache failure rate of %.2f%%", dateDescription, _cacheHits, _cacheMisses, missRate);
+    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", dateDescription, (double)totalMemory / 1024 / 1024, _reallocCount);      
     [pool release];
 }
 
