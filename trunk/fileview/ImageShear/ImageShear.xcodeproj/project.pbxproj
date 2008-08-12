@@ -21,6 +21,8 @@
 		F9A812E70D863113000114B0 /* FVBitmapContext.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812E40D863113000114B0 /* FVBitmapContext.m */; };
 		F9A812E80D863113000114B0 /* FVUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A812E60D863113000114B0 /* FVUtilities.m */; };
 		F9A812EF0D863140000114B0 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F9A812EE0D863140000114B0 /* libz.dylib */; };
+		F9EAE5C30E5106C600143F22 /* FVAllocator.m in Sources */ = {isa = PBXBuildFile; fileRef = F9EAE5C00E5106C600143F22 /* FVAllocator.m */; };
+		F9EAE5C40E5106C600143F22 /* FVObject.m in Sources */ = {isa = PBXBuildFile; fileRef = F9EAE5C20E5106C600143F22 /* FVObject.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -50,6 +52,10 @@
 		F9A812E50D863113000114B0 /* FVUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVUtilities.h; path = ../FVUtilities.h; sourceTree = "<group>"; };
 		F9A812E60D863113000114B0 /* FVUtilities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVUtilities.m; path = ../FVUtilities.m; sourceTree = "<group>"; };
 		F9A812EE0D863140000114B0 /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
+		F9EAE5BF0E5106C600143F22 /* FVAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVAllocator.h; path = ../FVAllocator.h; sourceTree = SOURCE_ROOT; };
+		F9EAE5C00E5106C600143F22 /* FVAllocator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVAllocator.m; path = ../FVAllocator.m; sourceTree = SOURCE_ROOT; };
+		F9EAE5C10E5106C600143F22 /* FVObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVObject.h; path = ../FVObject.h; sourceTree = SOURCE_ROOT; };
+		F9EAE5C20E5106C600143F22 /* FVObject.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVObject.m; path = ../FVObject.m; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -151,6 +157,10 @@
 		F92ABB6E0DCE2DB600F82452 /* FileView classes */ = {
 			isa = PBXGroup;
 			children = (
+				F9EAE5BF0E5106C600143F22 /* FVAllocator.h */,
+				F9EAE5C00E5106C600143F22 /* FVAllocator.m */,
+				F9EAE5C10E5106C600143F22 /* FVObject.h */,
+				F9EAE5C20E5106C600143F22 /* FVObject.m */,
 				F9105FD30D8DE6D200AC32D1 /* FVImageBuffer.h */,
 				F9105FD40D8DE6D200AC32D1 /* FVImageBuffer.m */,
 				F9A812E30D863113000114B0 /* FVBitmapContext.h */,
@@ -227,6 +237,8 @@
 				F9A812E80D863113000114B0 /* FVUtilities.m in Sources */,
 				F9105FD50D8DE6D200AC32D1 /* FVImageBuffer.m in Sources */,
 				F92ABB690DCE2D3100F82452 /* FVImageView.m in Sources */,
+				F9EAE5C30E5106C600143F22 /* FVAllocator.m in Sources */,
+				F9EAE5C40E5106C600143F22 /* FVObject.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -254,29 +266,25 @@
 /* Begin XCBuildConfiguration section */
 		C01FCF4B08A954540054247B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F99C0A930E1EC5E4003255C7 /* Debug.xcconfig */;
 			buildSettings = {
-				COPY_PHASE_STRIP = NO;
-				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_ENABLE_FIX_AND_CONTINUE = YES;
-				GCC_MODEL_TUNING = G5;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SOURCE_ROOT)/../FileView_Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = IMAGE_SHEAR;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					DEBUG,
+					IMAGE_SHEAR,
+				);
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "$(HOME)/Applications";
 				PRODUCT_NAME = ImageShear;
 				WRAPPER_EXTENSION = app;
-				ZERO_LINK = YES;
 			};
 			name = Debug;
 		};
 		C01FCF4C08A954540054247B /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = F99C0A940E1EC5E4003255C7 /* Release.xcconfig */;
 			buildSettings = {
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				GCC_MODEL_TUNING = G5;
-				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREFIX_HEADER = "$(SOURCE_ROOT)/../FileView_Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = IMAGE_SHEAR;
 				INFOPLIST_FILE = Info.plist;
