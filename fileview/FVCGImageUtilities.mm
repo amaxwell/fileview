@@ -418,6 +418,11 @@ static inline size_t __FVMaximumTileHeightForImage(CGImageRef image)
     return std::min((size_t)MAX_TILE_HEIGHT,  CGImageGetHeight(image));
 }
 
+static inline double __FVFractionalError(const double v)
+{
+    return ABS(floor(v) - v);
+}
+
 static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double scale)
 {
     size_t originalHeight = CGImageGetHeight(image);
@@ -432,16 +437,35 @@ static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double s
     
     // need to choose regions so that scale * region.h is as nearly integral as possible
     double v = scale * (double)tileHeight;
-    while (ABS(floor(v) - v) > MAX_INTEGRAL_TOLERANCE && tileHeight >= minimumTileHeight) {
+    double vErrorLeast = v, vError = __FVFractionalError(v);
+    size_t tileHeightOpt = tileHeight;
+    while (vError > MAX_INTEGRAL_TOLERANCE && tileHeight >= minimumTileHeight) {
         tileHeight -= 1;
         v = scale * (double)tileHeight;
+        vError = __FVFractionalError(v);
+        if (vError < vErrorLeast) {
+            vErrorLeast = vError;
+            tileHeightOpt = tileHeight;
+        }    
     }
     
     // if decreasing didn't help, try increasing
-    while (ABS(floor(v) - v) > MAX_INTEGRAL_TOLERANCE && (size_t)tileHeight < __FVMaximumTileHeightForImage(image)) {
+    vError = __FVFractionalError(v);
+    while (vError > MAX_INTEGRAL_TOLERANCE && (size_t)tileHeight < __FVMaximumTileHeightForImage(image)) {
         tileHeight += 1;
         v = scale * (double)tileHeight;
+        vError = __FVFractionalError(v);
+        if (vError < vErrorLeast) {
+            vErrorLeast = vError;
+            tileHeightOpt = tileHeight;
+        }    
     }
+    
+    // if we couldn't get it under tolerance, use the best value we encountered along the way
+    if (vErrorLeast < __FVFractionalError(v)) {
+        tileHeight = tileHeightOpt;
+        v = scale * tileHeight;
+    }    
     
     size_t columns = originalWidth / tileWidth;
     if (columns * tileWidth < originalWidth)
