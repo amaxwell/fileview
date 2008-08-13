@@ -59,7 +59,7 @@ static const char *_guard = "FVAllocatorGuard";
 
 // single instance of this allocator
 static CFAllocatorRef     _allocator = NULL;
-static malloc_zone_t     *_allocator_zone = NULL;
+static malloc_zone_t     *_allocatorZone = NULL;
 
 // array of buffers that are currently free (have been deallocated)
 static CFMutableArrayRef  _freeBuffers = NULL;
@@ -69,8 +69,8 @@ static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
 static CFMutableSetRef    _vmAllocations = NULL;
 static OSSpinLock         _vmAllocationLock = OS_SPINLOCK_INIT;
 
-// small allocations (below this size) will use malloc
-#define FV_VM_THRESHOLD 16384UL
+// small allocations (below 15K) use malloc_default_zone()
+#define FV_VM_THRESHOLD 15360UL
 // clean up the pool at 100 MB of freed memory
 #define FV_REAP_THRESHOLD 104857600UL
 
@@ -171,8 +171,8 @@ static void __FVAllocationFree(const void *ptr, void *unused)
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
-    // _allocator_zone indicates is should be freed with vm_deallocate
-    if (alloc->zone == _allocator_zone) {
+    // _allocatorZone indicates is should be freed with vm_deallocate
+    if (alloc->zone == _allocatorZone) {
         NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
         OSSpinLockLock(&_vmAllocationLock);
         NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == TRUE);
@@ -242,7 +242,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
-        alloc->zone = _allocator_zone;
+        alloc->zone = _allocatorZone;
         alloc->guard = _guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
         
@@ -297,12 +297,12 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     if (__builtin_expect(allocSize <= 0, 0))
         return NULL;
     
-    return malloc_zone_malloc(_allocator_zone, allocSize);
+    return malloc_zone_malloc(_allocatorZone, allocSize);
 }
 
 static void __FVDeallocate(void *ptr, void *info)
 {
-    malloc_zone_free(_allocator_zone, ptr);
+    malloc_zone_free(_allocatorZone, ptr);
 }
 
 static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
@@ -311,46 +311,12 @@ static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, voi
     if (__builtin_expect((NULL == ptr || newSize <= 0), 0))
         return NULL;
     
-    return malloc_zone_realloc(_allocator_zone, ptr, newSize);
+    return malloc_zone_realloc(_allocatorZone, ptr, newSize);
 }
 
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 {
-    return _allocator_zone->introspect->good_size(_allocator_zone, size);
-}
-
-#pragma mark API and setup
-
-#define FV_STACK_MAX 512
-
-static size_t __FVTotalAllocationsLocked()
-{
-    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
-    const fv_allocation_t *stackBuf[FV_STACK_MAX];
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
-    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
-    size_t totalMemory = 0;
-    for (CFIndex i = 0; i < range.length; i++)
-        totalMemory += ptrs[i]->allocSize;
-    
-    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
-    return totalMemory;
-}
-
-static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
-{
-#ifndef IMAGE_SHEAR
-    FVAllocatorShowStats();
-#endif
-    // if we can't lock immediately, wait for another opportunity
-    if (OSSpinLockTry(&_freeBufferLock)) {
-        if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
-            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocationFree, NULL);
-            CFArrayRemoveAllValues(_freeBuffers);
-        }
-        OSSpinLockUnlock(&_freeBufferLock);
-    }
+    return _allocatorZone->introspect->good_size(_allocatorZone, size);
 }
 
 #pragma mark Zone implementation
@@ -526,25 +492,59 @@ static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     (void *)__FVAllocatorZoneIntrospectNoOp
 };
 
+#pragma mark Setup and cleanup
+
+#define FV_STACK_MAX 512
+
+static size_t __FVTotalAllocationsLocked()
+{
+    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
+    const fv_allocation_t *stackBuf[FV_STACK_MAX];
+    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
+    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
+    size_t totalMemory = 0;
+    for (CFIndex i = 0; i < range.length; i++)
+        totalMemory += ptrs[i]->allocSize;
+    
+    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
+    return totalMemory;
+}
+
+static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
+{
+#ifndef IMAGE_SHEAR
+    FVAllocatorShowStats();
+#endif
+    // if we can't lock immediately, wait for another opportunity
+    if (OSSpinLockTry(&_freeBufferLock)) {
+        if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
+            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocationFree, NULL);
+            CFArrayRemoveAllValues(_freeBuffers);
+        }
+        OSSpinLockUnlock(&_freeBufferLock);
+    }
+}
+
 __attribute__ ((constructor))
 static void __initialize_allocator()
 {  
-    _allocator_zone = malloc_zone_malloc(malloc_default_zone(), sizeof(malloc_zone_t));
-    _allocator_zone->size = __FVAllocatorZoneSize;
-    _allocator_zone->malloc = __FVAllocatorZoneMalloc;
-    _allocator_zone->calloc = __FVAllocatorZoneCalloc;
-    _allocator_zone->valloc = __FVAllocatorZoneValloc;
-    _allocator_zone->free = __FVAllocatorZoneFree;
-    _allocator_zone->realloc = __FVAllocatorZoneRealloc;
-    _allocator_zone->destroy = __FVAllocatorZoneDestroy;
-    _allocator_zone->zone_name = "FVAllocatorZone";
-    _allocator_zone->batch_malloc = NULL;
-    _allocator_zone->batch_free = NULL;
-    _allocator_zone->introspect = &__FVAllocatorZoneIntrospect;
-    _allocator_zone->version = 0;
+    _allocatorZone = malloc_zone_malloc(malloc_default_zone(), sizeof(malloc_zone_t));
+    _allocatorZone->size = __FVAllocatorZoneSize;
+    _allocatorZone->malloc = __FVAllocatorZoneMalloc;
+    _allocatorZone->calloc = __FVAllocatorZoneCalloc;
+    _allocatorZone->valloc = __FVAllocatorZoneValloc;
+    _allocatorZone->free = __FVAllocatorZoneFree;
+    _allocatorZone->realloc = __FVAllocatorZoneRealloc;
+    _allocatorZone->destroy = __FVAllocatorZoneDestroy;
+    _allocatorZone->zone_name = "FVAllocatorZone";
+    _allocatorZone->batch_malloc = NULL;
+    _allocatorZone->batch_free = NULL;
+    _allocatorZone->introspect = &__FVAllocatorZoneIntrospect;
+    _allocatorZone->version = 0;
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
-    malloc_zone_register(_allocator_zone);
+    malloc_zone_register(_allocatorZone);
     
     const CFArrayCallBacks acb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual };
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
@@ -552,7 +552,10 @@ static void __initialize_allocator()
     const CFSetCallBacks scb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual, __FVAllocationHash };
     _vmAllocations = CFSetCreateMutable(NULL, 0, &scb);
     
-    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, CFAbsoluteTimeGetCurrent()+FV_REAP_TIMEINTERVAL, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
+    // round to the nearest FV_REAP_TIMEINTERVAL, so fire time is easier to predict by the clock
+    CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL)/ FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
+    
     // add this to the main thread's runloop, which will always exist
 #if (!USE_SYSTEM_ZONE)
     CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
@@ -572,26 +575,16 @@ static void __initialize_allocator()
     _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
 }
 
-CFAllocatorRef FVAllocatorGetDefault() 
-{ 
-#if USE_SYSTEM_ZONE
-    return CFAllocatorGetDefault();
-#else
-    return _allocator; 
-#endif
-}
-
-NSZone *FVDefaultZone()
+#ifndef IMAGE_SHEAR && (!USE_SYSTEM_ZONE)
+__attribute__ ((destructor))
+static void __log_stats()
 {
-#if USE_SYSTEM_ZONE
-    return NSDefaultMallocZone();
-#else
-    // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
-    return (NSZone *)_allocator_zone;
-#endif
+    // !!! artifically high since a bunch of stuff is freed right before this gets called
+    FVAllocatorShowStats();
 }
+#endif
 
-#pragma mark Statistics
+#pragma mark -
 
 @interface _FVAllocatorStat : FVObject
 {
@@ -637,17 +630,20 @@ NSZone *FVDefaultZone()
 
 @end
 
+#pragma mark API
+
 void FVAllocatorShowStats()
 {
     // use the default zone explicitly; avoid callout to our custom zone(s)
     NSZone *zone = NSDefaultMallocZone();
     NSAutoreleasePool *pool = [[NSAutoreleasePool allocWithZone:zone] init];
     OSSpinLockLock(&_freeBufferLock);
+    // record the actual time of this measurement
+    CFAbsoluteTime snapshotTime = CFAbsoluteTimeGetCurrent();
     const fv_allocation_t *stackBuf[FV_STACK_MAX] = { NULL };
     CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
     const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? NSZoneCalloc(zone, range.length, sizeof(fv_allocation_t *)) : stackBuf;
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
-    OSSpinLockUnlock(&_freeBufferLock);
     size_t totalMemory = 0;
     NSCountedSet *duplicateAllocations = [[NSCountedSet allocWithZone:zone] init];
     NSNumber *value;
@@ -661,7 +657,7 @@ void FVAllocatorShowStats()
         [duplicateAllocations addObject:value];
         [value release];
     }
-    // hold the lock to ensure that it's safe to dereference the allocations
+    // held the lock to ensure that it's safe to dereference the allocations
     OSSpinLockUnlock(&_freeBufferLock);
     if (stackBuf != ptrs) NSZoneFree(zone, ptrs);
     NSEnumerator *dupeEnum = [duplicateAllocations objectEnumerator];
@@ -693,17 +689,37 @@ void FVAllocatorShowStats()
     // avoid divide-by-zero
     double cacheRequests = (_cacheHits + _cacheMisses);
     double missRate = cacheRequests > 0 ? (double)_cacheMisses / (_cacheHits + _cacheMisses) * 100 : 0;
-    NSString *dateDescription = [[NSDate date] description];
+    // use a custom formatter to avoid displaying time zone
+    CFAllocatorRef alloc = CFAllocatorGetDefault();
+    CFDateRef date = CFDateCreate(alloc, snapshotTime);
+    static CFDateFormatterRef formatter = NULL;
+    if (NULL == formatter) {
+        formatter = CFDateFormatterCreate(alloc, NULL, kCFDateFormatterShortStyle, kCFDateFormatterShortStyle);
+        CFDateFormatterSetFormat(formatter, CFSTR("yyyy-MM-dd HH:mm:ss"));
+    }
+    CFStringRef dateDescription = CFDateFormatterCreateStringWithDate(alloc, formatter, date);
+    if (NULL != date) CFRelease(date);
     FVLog(@"%@: %d hits and %d misses for a cache failure rate of %.2f%%", dateDescription, _cacheHits, _cacheMisses, missRate);
-    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", dateDescription, (double)totalMemory / 1024 / 1024, _reallocCount);      
+    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", dateDescription, (double)totalMemory / 1024 / 1024, _reallocCount);
+    if (NULL != dateDescription) CFRelease(dateDescription);
     [pool release];
 }
 
-#ifndef IMAGE_SHEAR && (!USE_SYSTEM_ZONE)
-__attribute__ ((destructor))
-static void __log_stats()
-{
-    // !!! artifically high since a bunch of stuff is freed right before this gets called
-    FVAllocatorShowStats();
-}
+CFAllocatorRef FVAllocatorGetDefault() 
+{ 
+#if USE_SYSTEM_ZONE
+    return CFAllocatorGetDefault();
+#else
+    return _allocator; 
 #endif
+}
+
+NSZone *FVDefaultZone()
+{
+#if USE_SYSTEM_ZONE
+    return NSDefaultMallocZone();
+#else
+    // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
+    return (NSZone *)_allocatorZone;
+#endif
+}
