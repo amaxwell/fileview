@@ -513,7 +513,7 @@ static size_t __FVTotalAllocationsLocked()
 
 static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 {
-#ifndef IMAGE_SHEAR
+#if DEBUG && !defined(IMAGE_SHEAR)
     FVAllocatorShowStats();
 #endif
     // if we can't lock immediately, wait for another opportunity
@@ -575,7 +575,7 @@ static void __initialize_allocator()
     _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
 }
 
-#ifndef IMAGE_SHEAR && (!USE_SYSTEM_ZONE)
+#if DEBUG && !defined(IMAGE_SHEAR) && (!USE_SYSTEM_ZONE)
 __attribute__ ((destructor))
 static void __log_stats()
 {
