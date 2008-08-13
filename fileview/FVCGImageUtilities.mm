@@ -47,7 +47,9 @@
 // http://lists.apple.com/archives/perfoptimization-dev/2005/Mar/msg00041.html
 
 // this is a good size for the MBP, and presumably other vector units
-#define MAX_TILE_WIDTH 1024
+#define DEFAULT_TILE_WIDTH 1024
+#define MAX_TILE_WIDTH     2048
+#define MIN_TILE_WIDTH      512
 
 // smaller tile heights give better performance, but we need some latitude to divide the image
 #define MAX_TILE_HEIGHT 256
@@ -423,49 +425,54 @@ static inline double __FVFractionalError(const double v)
     return ABS(floor(v) - v);
 }
 
-static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double scale)
+static inline size_t __FVOptimumTileDimension(size_t minimum, size_t maximum, size_t defaultDim, double scale)
 {
-    size_t originalHeight = CGImageGetHeight(image);
-    size_t originalWidth = CGImageGetWidth(image);
-    
-    size_t tileWidth = __FVMaximumTileWidthForImage(image);
-    
-    const size_t minimumTileHeight = std::min((size_t)MIN_TILE_HEIGHT, originalHeight);
-    
-    // height of 16 is fast, so start searching there
-    size_t tileHeight = std::min((size_t)DEFAULT_TILE_HEIGHT, __FVMaximumTileHeightForImage(image));
-    
+    size_t tileSide = std::min(defaultDim, maximum);
+
     // need to choose regions so that scale * region.h is as nearly integral as possible
-    double v = scale * (double)tileHeight;
+    double v = scale * (double)tileSide;
     double vErrorLeast = v, vError = __FVFractionalError(v);
-    size_t tileHeightOpt = tileHeight;
-    while (vError > MAX_INTEGRAL_TOLERANCE && tileHeight >= minimumTileHeight) {
-        tileHeight -= 1;
-        v = scale * (double)tileHeight;
+    size_t tileSideOpt = tileSide;
+    while (vError > MAX_INTEGRAL_TOLERANCE && tileSide >= minimum) {
+        tileSide -= 1;
+        v = scale * (double)tileSide;
         vError = __FVFractionalError(v);
         if (vError < vErrorLeast) {
             vErrorLeast = vError;
-            tileHeightOpt = tileHeight;
+            tileSideOpt = tileSide;
         }    
     }
     
     // if decreasing didn't help, try increasing
     vError = __FVFractionalError(v);
-    while (vError > MAX_INTEGRAL_TOLERANCE && (size_t)tileHeight < __FVMaximumTileHeightForImage(image)) {
-        tileHeight += 1;
-        v = scale * (double)tileHeight;
+    while (vError > MAX_INTEGRAL_TOLERANCE && tileSide < maximum) {
+        tileSide += 1;
+        v = scale * (double)tileSide;
         vError = __FVFractionalError(v);
         if (vError < vErrorLeast) {
             vErrorLeast = vError;
-            tileHeightOpt = tileHeight;
+            tileSideOpt = tileSide;
         }    
     }
     
     // if we couldn't get it under tolerance, use the best value we encountered along the way
     if (vErrorLeast < __FVFractionalError(v)) {
-        tileHeight = tileHeightOpt;
-        v = scale * tileHeight;
-    }    
+        tileSide = tileSideOpt;
+    }
+    
+    return tileSide;
+}
+
+static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double scale)
+{
+    const size_t originalHeight = CGImageGetHeight(image);
+    const size_t minimumTileHeight = std::min((size_t)MIN_TILE_HEIGHT, originalHeight);
+    // height of 16 is fast, so start searching there
+    const size_t tileHeight = __FVOptimumTileDimension(minimumTileHeight, __FVMaximumTileHeightForImage(image), DEFAULT_TILE_HEIGHT, scale);
+    
+    const size_t originalWidth = CGImageGetWidth(image);
+    const size_t minimumTileWidth = std::min((size_t)MIN_TILE_WIDTH, originalWidth);
+    const size_t tileWidth = __FVOptimumTileDimension(minimumTileWidth, __FVMaximumTileWidthForImage(image), DEFAULT_TILE_WIDTH, scale);
     
     size_t columns = originalWidth / tileWidth;
     if (columns * tileWidth < originalWidth)
