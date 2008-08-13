@@ -224,7 +224,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
 
 bool FVShouldDrawFullImageWithThumbnailSize(const NSSize desiredSize, const NSSize thumbnailSize)
 {
-    return (desiredSize.height > 1.2 * thumbnailSize.height || desiredSize.width > 1.2 * thumbnailSize.width);
+    return (desiredSize.height > 1.4 * thumbnailSize.height || desiredSize.width > 1.4 * thumbnailSize.width);
 }
 
 // these are compromises based on memory constraints and readability at high magnification
