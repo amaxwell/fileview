@@ -49,6 +49,7 @@
 
 - (BOOL)fv_isLoading;
 {
+    // available in 10.4.11 and later
     if ([self respondsToSelector:@selector(isLoading)])
         return [self isLoading];
     
@@ -395,8 +396,8 @@ static const NSSize _webViewSize = { 1000, 900 };
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_handleWebViewAvailableNotification:) name:FVWebIconWebViewAvailableNotificationName object:[self class]];
     }
     else {
-        // always use the WebKit cache, and use a short timeout (default is 60 seconds)
-        NSURLRequest *request = [NSURLRequest requestWithURL:_httpURL cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:10.0];
+        // always use the WebKit cache, and use the default timeout
+        NSURLRequest *request = [NSURLRequest requestWithURL:_httpURL cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:60.0];
         
         // See also http://lists.apple.com/archives/quicklook-dev/2007/Nov/msg00047.html
         // Note: changed from blocking to non-blocking; we now just keep state and rely on the delegate methods.
