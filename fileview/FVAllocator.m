@@ -130,7 +130,7 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex reques
     }
     else {
         const fv_allocation_t *foundAlloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
-        size_t foundSize = foundAlloc->allocSize;
+        size_t foundSize = foundAlloc->ptrSize;
         if ((float)(foundSize - requestedSize) / requestedSize > 1) {
             idx = kCFNotFound;
             // FVLog(@"requested %d, found %d; error = %.2f", requestedSize, foundSize, (float)(foundSize - requestedSize) / requestedSize);
@@ -171,7 +171,7 @@ static void __FVAllocationFree(const void *ptr, void *unused)
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
-    // _allocatorZone indicates is should be freed with vm_deallocate
+    // _allocatorZone indicates it should be freed with vm_deallocate
     if (alloc->zone == _allocatorZone) {
         NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
         OSSpinLockLock(&_vmAllocationLock);
@@ -187,8 +187,41 @@ static void __FVAllocationFree(const void *ptr, void *unused)
     }
 }
 
+// does not include fv_allocation_t header size
+static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *useVM)
+{
+    NSCParameterAssert(NULL != useVM);
+    // allocate at least requestedSize
+    size_t actualSize = requestedSize;
+    *useVM = __FVAllocatorUseVMForSize(actualSize);
+    if (true == *useVM) {
+                
+        if (actualSize < 102400) 
+            actualSize = round_page(actualSize);
+        else if (actualSize < 143360)
+            actualSize = round_page(143360);
+        else if (actualSize < 204800)
+            actualSize = round_page(204800);
+        else if (actualSize < 262144)
+            actualSize = round_page(262144);
+        else if (actualSize < 307200)
+            actualSize = round_page(307200);
+        else if (actualSize < 512000)
+            actualSize = round_page(512000);
+        else if (actualSize < 614400)
+            actualSize = round_page(614400);
+        else 
+            actualSize = round_page(actualSize);
+        
+    }
+    else if (actualSize < 128) {
+        actualSize = 128;
+    }
+    return actualSize;
+}
+
 /*
-   Layout of memory allocated by __FVAllocateFromVMSystem().  The padding at the beginning is for page alignment.
+   Layout of memory allocated by __FVAllocateFromVMSystem().  The padding at the beginning is for page alignment.  Caller is responsible for passing the result of __FVAllocatorRoundSize() to this function.
  
                                |<-- page boundary
                                |<---------- ptrSize ---------->|
@@ -206,26 +239,11 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
     void *memory;
     fv_allocation_t *alloc = NULL;
     
-    // allocate at least requestedSize + fv_allocation_t
-    size_t actualSize = requestedSize + sizeof(fv_allocation_t) + vm_page_size;
-    
-    // !!! Improve this.  Testing indicates that there are lots of allocations in these ranges, so we end up with lots of one-off sizes that aren't very reusable.  Might be able to bin allocations below ~1 MB and use a hash table for lookups, then resort to the array/bsearch for larger values?
-    if (actualSize < 102400) 
-        actualSize = actualSize;
-    else if (actualSize < 143360)
-        actualSize = round_page(143360);
-    else if (actualSize < 204800)
-        actualSize = round_page(204800);
-    else if (actualSize < 262144)
-        actualSize = round_page(262144);
-    else if (actualSize < 307200)
-        actualSize = round_page(307200);
-    else if (actualSize < 512000)
-        actualSize = round_page(512000);
-    else if (actualSize < 614400)
-        actualSize = round_page(614400);
+    // use this space for the header
+    size_t actualSize = requestedSize + vm_page_size;
+    NSCParameterAssert(round_page(actualSize) == actualSize);
 
-    // allocations going through this allocator should generally larger than 4K
+    // allocations going through this allocator will always be larger than 4K
     kern_return_t ret;
     ret = vm_allocate(mach_task_self(), (vm_address_t *)&memory, actualSize, VM_FLAGS_ANYWHERE);
     if (KERN_SUCCESS != ret) memory = NULL;
@@ -260,12 +278,11 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
     // base address of the allocation, including fv_allocation_t
     void *memory;
     fv_allocation_t *alloc = NULL;
-    
-    // allocate at least requestedSize + fv_allocation_t
-    const size_t actualSize = requestedSize + sizeof(fv_allocation_t);
 
     // use the default malloc zone, which is really fast for small allocations
-    memory = malloc_zone_malloc(malloc_default_zone(), actualSize);
+    malloc_zone_t *zone = malloc_default_zone();
+    size_t actualSize = requestedSize + sizeof(fv_allocation_t);
+    memory = malloc_zone_malloc(zone, actualSize);
     
     // set up the data structure
     if (__builtin_expect(NULL != memory, 1)) {
@@ -273,12 +290,13 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
         alloc = memory;
         alloc->ptr = memory + sizeof(fv_allocation_t);
         // ptrSize field is the size of ptr, not including the header; used for array sorting
-        alloc->ptrSize = requestedSize;
+        alloc->ptrSize = memory + actualSize - alloc->ptr;
+        NSCParameterAssert(alloc->ptrSize == actualSize - sizeof(fv_allocation_t));
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
         alloc->guard = _guard;
-        alloc->zone = malloc_default_zone();
+        alloc->zone = zone;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
     }
     return alloc;
@@ -333,6 +351,11 @@ static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
 
 static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
 {
+    const size_t origSize = size;
+    bool useVM;
+    // look for the possibly-rounded-up size, or the tolerance might cause us to create a new block
+    size = __FVAllocatorRoundSize(size, &useVM);
+    
     // !!! unlock on each if branch
     OSSpinLockLock(&_freeBufferLock);
     CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(size);
@@ -343,15 +366,15 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
         OSAtomicIncrement32((int32_t *)&_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&_freeBufferLock);
-        alloc = __FVAllocatorUseVMForSize(size) ? __FVAllocationFromVMSystem(size) : __FVAllocationFromMalloc(size);
+        alloc = useVM ? __FVAllocationFromVMSystem(size) : __FVAllocationFromMalloc(size);
     }
     else {
         OSAtomicIncrement32((int32_t *)&_cacheHits);
         alloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
         CFArrayRemoveValueAtIndex(_freeBuffers, idx);
         OSSpinLockUnlock(&_freeBufferLock);
-        if (__builtin_expect(size > alloc->ptrSize, 0)) {
-            FVLog(@"FVAllocator: incorrect size %lu (%d expected) in %s", alloc->ptrSize, size, __PRETTY_FUNCTION__);
+        if (__builtin_expect(origSize > alloc->ptrSize, 0)) {
+            FVLog(@"FVAllocator: incorrect size %lu (%d expected) in %s", alloc->ptrSize, origSize, __PRETTY_FUNCTION__);
             HALT;
         }
     }
@@ -504,6 +527,7 @@ static size_t __FVTotalAllocationsLocked()
     const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
     CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
     size_t totalMemory = 0;
+    // FIXME: consistent size usage
     for (CFIndex i = 0; i < range.length; i++)
         totalMemory += ptrs[i]->allocSize;
     
@@ -553,7 +577,8 @@ static void __initialize_allocator()
     _vmAllocations = CFSetCreateMutable(NULL, 0, &scb);
     
     // round to the nearest FV_REAP_TIMEINTERVAL, so fire time is easier to predict by the clock
-    CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL)/ FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
+    CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL) / FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
+    fireTime += FV_REAP_TIMEINTERVAL;
     CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
     
     // add this to the main thread's runloop, which will always exist
@@ -652,8 +677,9 @@ void FVAllocatorShowStats()
             FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptrs[i], __PRETTY_FUNCTION__);
             HALT;
         }
+        // FIXME: consistent size usage
         totalMemory += ptrs[i]->allocSize;
-        value = [[NSNumber allocWithZone:zone] initWithInt:ptrs[i]->allocSize];
+        value = [[NSNumber allocWithZone:zone] initWithInt:ptrs[i]->ptrSize];
         [duplicateAllocations addObject:value];
         [value release];
     }
