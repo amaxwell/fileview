@@ -501,7 +501,8 @@ static boolean_t __FVAllocatorZoneIntrospectTrue(void) {
 
 static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
 {
-    return __FVAllocatorUseVMForSize(size) ? size + sizeof(fv_allocation_t) + vm_page_size : size + sizeof(fv_allocation_t);
+    bool ignored;
+    return __FVAllocatorRoundSize(size, &ignored);
 }
 
 static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
