@@ -65,9 +65,9 @@ static malloc_zone_t     *_allocatorZone = NULL;
 static CFMutableArrayRef  _freeBuffers = NULL;
 static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
 
-// set of pointers to all blocks allocated in this zone with vm_allocate
-static CFMutableSetRef    _vmAllocations = NULL;
-static OSSpinLock         _vmAllocationLock = OS_SPINLOCK_INIT;
+// for zone destruction; touched by __FVAllocationFromVMSystem, __FVAllocationFromMalloc and __FVAllocationFree
+static CFMutableSetRef    _allocations = NULL;
+static OSSpinLock         _allocationLock = OS_SPINLOCK_INIT;
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
@@ -163,21 +163,20 @@ static inline fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 
 static inline bool __FVAllocatorUseVMForSize(size_t size) { return size >= FV_VM_THRESHOLD; }
 
-// CFArrayApplierFunction; ptr argument must point to an fv_allocation_t
-static void __FVAllocationFree(const void *ptr, void *unused)
+/*
+ CFSetApplierFunction; ptr argument must point to an fv_allocation_t allocated in this zone.  Caller is responsible for locking the collection and for mutating the _allocations set to keep it consistent.
+ */
+static inline void __FVAllocationDestroy(const void *ptr, void *unused)
 {
     const fv_allocation_t *alloc = ptr;
     if (__builtin_expect(_guard != alloc->guard, 0)) {
         FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
         HALT;
     }
+    
     // _allocatorZone indicates it should be freed with vm_deallocate
     if (alloc->zone == _allocatorZone) {
         NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
-        OSSpinLockLock(&_vmAllocationLock);
-        NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == TRUE);
-        CFSetRemoveValue(_vmAllocations, alloc);
-        OSSpinLockUnlock(&_vmAllocationLock);
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", alloc);        
@@ -185,6 +184,22 @@ static void __FVAllocationFree(const void *ptr, void *unused)
     else {
         malloc_zone_free((malloc_zone_t *)alloc->zone, alloc->base);
     }
+}
+
+/* 
+ CFArrayApplierFunction; ptr argument must point to an fv_allocation_t allocated in this zone.  Caller is responsible for locking the collection.  
+ 
+ !!! Warning: this mutates the _allocations set, so it cannot be used as a CFSetApplierFunction to free all allocations in that set.
+ */
+static void __FVAllocationFree(const void *ptr, void *unused)
+{
+    
+    OSSpinLockLock(&_allocationLock);
+    NSCParameterAssert(CFSetContainsValue(_allocations, ptr) == TRUE);
+    CFSetRemoveValue(_allocations, ptr);
+    OSSpinLockUnlock(&_allocationLock);
+    
+    __FVAllocationDestroy(ptr, unused);
 }
 
 // does not include fv_allocation_t header size
@@ -218,6 +233,15 @@ static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *us
         actualSize = 128;
     }
     return actualSize;
+}
+
+// Record the allocation for zone destruction.
+static inline void __FVRecordAllocation(const fv_allocation_t *alloc)
+{
+    OSSpinLockLock(&_allocationLock);
+    NSCParameterAssert(CFSetContainsValue(_allocations, alloc) == FALSE);
+    CFSetAddValue(_allocations, alloc);
+    OSSpinLockUnlock(&_allocationLock);
 }
 
 /*
@@ -263,11 +287,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
         alloc->zone = _allocatorZone;
         alloc->guard = _guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
-        
-        OSSpinLockLock(&_vmAllocationLock);
-        NSCParameterAssert(CFSetContainsValue(_vmAllocations, alloc) == FALSE);
-        CFSetAddValue(_vmAllocations, alloc);
-        OSSpinLockUnlock(&_vmAllocationLock);
+        __FVRecordAllocation(alloc);
     }
     return alloc;
 }
@@ -298,6 +318,7 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
         alloc->guard = _guard;
         alloc->zone = zone;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
+        __FVRecordAllocation(alloc);
     }
     return alloc;
 }
@@ -480,14 +501,14 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *zone)
     CFArrayRemoveAllValues(_freeBuffers);
     OSSpinLockUnlock(&_freeBufferLock);    
 
-    // now deallocate all buffers
-    OSSpinLockLock(&_vmAllocationLock);
-    CFSetApplyFunction(_vmAllocations, __FVAllocationFree, NULL);
-    CFSetRemoveAllValues(_vmAllocations);
-    OSSpinLockUnlock(&_vmAllocationLock);
+    // now deallocate all buffers allocated using this zone, regardless of underlying call
+    OSSpinLockLock(&_allocationLock);
+    CFSetApplyFunction(_allocations, __FVAllocationDestroy, NULL);
+    CFSetRemoveAllValues(_allocations);
+    OSSpinLockUnlock(&_allocationLock);
     
-    // free the zone itself
-    malloc_zone_free(malloc_default_zone(), zone);
+    // free the zone itself (must have been allocated with malloc!)
+    malloc_zone_free(malloc_zone_from_ptr(zone), zone);
 }
 
 // All of the introspection stuff was copied from CFBase.c
@@ -575,7 +596,7 @@ static void __initialize_allocator()
     _freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
     
     const CFSetCallBacks scb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual, __FVAllocationHash };
-    _vmAllocations = CFSetCreateMutable(NULL, 0, &scb);
+    _allocations = CFSetCreateMutable(NULL, 0, &scb);
     
     // round to the nearest FV_REAP_TIMEINTERVAL, so fire time is easier to predict by the clock
     CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL) / FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
