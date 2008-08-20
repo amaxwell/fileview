@@ -142,7 +142,7 @@ static volatile int32_t _threadCount = 0;
 @end
 
 #define USE_THREADS 1
-#define THREADCOUNT 3
+#define THREADCOUNT 6
 #define USE_FVALLOCATOR 1
 #define USE_CFALLOCATOR 1
 
@@ -156,17 +156,18 @@ int main (int argc, const char * argv[]) {
         [NSThread detachNewThreadSelector:@selector(run) toTarget:[ThreadObject1 new] withObject:nil];
     }
     while (0 < _threadCount) {
-        [NSThread sleepForTimeInterval:0.1];
+        [NSThread sleepForTimeInterval:1.0];
     }
 #endif /* USE_FVALLOCATOR */
+
+    FVLog(@"xxxx");
     
 #if USE_CFALLOCATOR  
     for (int i = 0; i < THREADCOUNT; i++) {
         [NSThread detachNewThreadSelector:@selector(run) toTarget:[ThreadObject2 new] withObject:nil];
     }
-    FVLog(@"xxxx");
     while (0 < _threadCount) {
-        [NSThread sleepForTimeInterval:0.1];
+        [NSThread sleepForTimeInterval:1.0];
     }
 #endif /* USE_CFALLOCATOR */
 #else
