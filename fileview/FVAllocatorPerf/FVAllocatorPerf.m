@@ -74,6 +74,7 @@ static void func1()
         CGImageRelease(anImage);
         if (i % 200 == 0) [array removeAllObjects];
     }
+    [array release];
     t2 = CFAbsoluteTimeGetCurrent();
     FVLog(@"FVAllocator: %.2f seconds for %d iterations", t2 - t1, NUM_IMAGES);    
 }
@@ -103,6 +104,7 @@ static void func2()
         CGImageRelease(anImage);
         if (i % 200 == 0) [array removeAllObjects];
     }
+    [array release];
     t2 = CFAbsoluteTimeGetCurrent();
     FVLog(@"CFAllocator: %.2f seconds for %d iterations", t2 - t1, NUM_IMAGES);
 }
@@ -142,7 +144,7 @@ static volatile int32_t _threadCount = 0;
 @end
 
 #define USE_THREADS 1
-#define THREADCOUNT 6
+#define THREADCOUNT 3
 #define USE_FVALLOCATOR 1
 #define USE_CFALLOCATOR 1
 
@@ -150,24 +152,28 @@ int main (int argc, const char * argv[]) {
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
     
 #if USE_THREADS
-    
+    for (int j = THREADCOUNT; j <= THREADCOUNT; j++) {
+    FVLog(@"Number of threads: %d", j);
 #if USE_FVALLOCATOR
-    for (int i = 0; i < THREADCOUNT; i++) {
-        [NSThread detachNewThreadSelector:@selector(run) toTarget:[ThreadObject1 new] withObject:nil];
+    for (int i = 0; i < j; i++) {
+        [NSThread detachNewThreadSelector:@selector(run) toTarget:[[ThreadObject1 new] autorelease] withObject:nil];
     }
     while (0 < _threadCount) {
         [NSThread sleepForTimeInterval:1.0];
     }
+    [pool drain];
+    pool = [NSAutoreleasePool new];
 #endif /* USE_FVALLOCATOR */
-
-    FVLog(@"xxxx");
     
 #if USE_CFALLOCATOR  
-    for (int i = 0; i < THREADCOUNT; i++) {
-        [NSThread detachNewThreadSelector:@selector(run) toTarget:[ThreadObject2 new] withObject:nil];
+    for (int i = 0; i < j; i++) {
+        [NSThread detachNewThreadSelector:@selector(run) toTarget:[[ThreadObject2 new] autorelease] withObject:nil];
     }
     while (0 < _threadCount) {
         [NSThread sleepForTimeInterval:1.0];
+    }
+    [pool drain];
+    pool = [NSAutoreleasePool new];
     }
 #endif /* USE_CFALLOCATOR */
 #else
