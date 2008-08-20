@@ -3,6 +3,7 @@
 #import "FVBitmapContext.h"
 #import "FVAllocator.h"
 #import "FVUtilities.h"
+#import <libkern/OSAtomic.h>
 
 CGContextRef FVCFIconBitmapContextCreateWithSize(size_t width, size_t height)
 {
@@ -106,10 +107,79 @@ static void func2()
     FVLog(@"CFAllocator: %.2f seconds for %d iterations", t2 - t1, NUM_IMAGES);
 }
 
+static volatile int32_t _threadCount = 0;
+
+@interface ThreadObject1 : NSObject
+@end
+
+@implementation ThreadObject1
+
+- (id)init
+{
+    OSAtomicIncrement32Barrier(&_threadCount);
+    return [super init];
+}
+
+- (void)run
+{
+    func1();
+    OSAtomicDecrement32Barrier(&_threadCount);
+}
+
+@end
+
+@interface ThreadObject2 : ThreadObject1
+@end
+
+@implementation ThreadObject2
+
+- (void)run
+{
+    func2();
+    OSAtomicDecrement32Barrier(&_threadCount);
+}
+
+@end
+
+#define USE_THREADS 1
+#define THREADCOUNT 3
+#define USE_FVALLOCATOR 1
+#define USE_CFALLOCATOR 1
+
 int main (int argc, const char * argv[]) {
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
+    
+#if USE_THREADS
+    
+#if USE_FVALLOCATOR
+    for (int i = 0; i < THREADCOUNT; i++) {
+        [NSThread detachNewThreadSelector:@selector(run) toTarget:[ThreadObject1 new] withObject:nil];
+    }
+    while (0 < _threadCount) {
+        [NSThread sleepForTimeInterval:0.1];
+    }
+#endif /* USE_FVALLOCATOR */
+    
+#if USE_CFALLOCATOR  
+    for (int i = 0; i < THREADCOUNT; i++) {
+        [NSThread detachNewThreadSelector:@selector(run) toTarget:[ThreadObject2 new] withObject:nil];
+    }
+    FVLog(@"xxxx");
+    while (0 < _threadCount) {
+        [NSThread sleepForTimeInterval:0.1];
+    }
+#endif /* USE_CFALLOCATOR */
+#else
+#if USE_FVALLOCATOR
     func1();
+#endif /* USE_FVALLOCATOR */
+    
+#if USE_CFALLOCATOR  
     func2();
+#endif /* USE_CFALLOCATOR */
+
+#endif /* USE_THREADS */
+    
     [pool drain];
     return 0;
 }
