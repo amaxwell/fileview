@@ -1944,7 +1944,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     while ((aURL = [e nextObject])) {
         if ([aURL isEqual:[FVIcon missingFileURL]] == NO &&
             ([[self delegate] respondsToSelector:@selector(fileView:shouldOpenURL:)] == NO ||
-             [[self delegate] fileView:self shouldOpenURL:aURL] == YES))
+             [[self delegate] fileView:self shouldOpenURL:aURL]))
             [[NSWorkspace sharedWorkspace] openURL:aURL];
     }
 }
