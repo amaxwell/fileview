@@ -221,7 +221,7 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
     OSSpinLockLock(&_bufferCacheLock);
     // if previously cached, return to the cache; otherwise, release
     if ([_workingBuffers containsObject:self]) {
-        NSAssert(YES == _freeBufferOnDealloc, @"returning buffer to cache after transferring contents ownership");
+        NSAssert(_freeBufferOnDealloc, @"returning buffer to cache after transferring contents ownership");
         [_availableBuffers addObject:self];
         [_workingBuffers removeObject:self];
     } else {

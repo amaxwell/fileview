@@ -108,7 +108,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
     // trylock needed for scrolling, though
     BOOL needsRender = NO;
     if ([self tryLock]) {
-        if (YES == _loadFailed)
+        if (_loadFailed)
             needsRender = [_fallbackIcon needsRenderForSize:size];
         else if (FVShouldDrawFullImageWithThumbnailSize(size, _thumbnailSize))
             needsRender = (NULL == _fullImage);
@@ -247,7 +247,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
 {
     if ([self tryLock]) {
         
-        if (YES == _loadFailed && nil != _fallbackIcon) {
+        if (_loadFailed && nil != _fallbackIcon) {
             [_fallbackIcon fastDrawInRect:dstRect ofContext:context];
             if (_drawsLinkBadge)
                 [self _badgeIconInRect:dstRect ofContext:context];
@@ -288,7 +288,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
             
             CGContextDrawImage(context, drawRect, image);
         } 
-        else if (YES == _loadFailed && nil != _fallbackIcon) {
+        else if (_loadFailed && nil != _fallbackIcon) {
             [_fallbackIcon drawInRect:dstRect ofContext:context];
         }
         else {

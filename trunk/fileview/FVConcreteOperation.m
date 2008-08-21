@@ -148,7 +148,7 @@ struct FVOpFlags {
         [NSException raise:NSInternalInconsistencyException format:@"attempt to modify a previously executed operation"];
     
     bool didSwap;
-    int32_t val = (YES == flag) ? 1 : 0;
+    int32_t val = flag ? 1 : 0;
     do {
         didSwap = OSAtomicCompareAndSwap32Barrier(_flags->_concurrent, val, &(_flags->_concurrent));
     } while (false == didSwap);

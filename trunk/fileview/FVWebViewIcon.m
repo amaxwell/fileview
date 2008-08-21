@@ -432,7 +432,7 @@ static const NSSize _webViewSize = { 1000, 900 };
 
 - (NSString *)debugDescription
 {
-    NSAssert1([self tryLock] == YES, @"*** threading violation *** failed to lock before %@", NSStringFromSelector(_cmd));
+    NSAssert1([self tryLock], @"*** threading violation *** failed to lock before %@", NSStringFromSelector(_cmd));
     return [NSString stringWithFormat:@"%@: { \n\tURL = %@\n\tWebView = %@\n\tFull image = %@\n\tThumbnail = %@\n }", [self description], _httpURL, _webView, _fullImage, _thumbnail];
 }
     
