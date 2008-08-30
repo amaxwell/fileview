@@ -559,7 +559,7 @@ static size_t __FVTotalAllocationsLocked()
 
 static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 {
-#if DEBUG && !defined(IMAGE_SHEAR)
+#if 0 && DEBUG && !defined(IMAGE_SHEAR)
     FVAllocatorShowStats();
 #endif
     // if we can't lock immediately, wait for another opportunity
