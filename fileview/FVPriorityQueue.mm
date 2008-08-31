@@ -329,9 +329,9 @@ static inline id *__FVPriorityQueueHeapEnd(FVPriorityQueue *self)
 
 void FVPriorityQueueApplyFunction(FVPriorityQueue *queue, FVPriorityQueueApplierFunction applier, void *context)
 {
-    const void **values = (const void **)__FVPriorityQueueHeapStart(queue);
-    CFArrayRef array = CFArrayCreate(CFAllocatorGetDefault(), values, __FVPriorityQueueCount(queue), NULL);
     [queue _sortQueueForEnumeration];
+    const void **values = (const void **)__FVPriorityQueueHeapStart(queue);
+    CFArrayRef array = CFArrayCreate(CFGetAllocator(queue), values, __FVPriorityQueueCount(queue), NULL);
     CFArrayApplyFunction(array, CFRangeMake(0, CFArrayGetCount(array)), applier, context);
     CFRelease(array);
 }
