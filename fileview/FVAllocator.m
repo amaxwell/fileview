@@ -546,15 +546,67 @@ static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
     return __FVAllocatorRoundSize(size, &ignored);
 }
 
+static void __FVAllocatorSumAllocations(const void *value, void *context)
+{
+    size_t *size = context;
+    const fv_allocation_t *alloc = value;
+    *size += alloc->ptrSize;
+}
+
+static size_t __FVAllocatorTotalSize()
+{
+    size_t sizeTotal;
+    OSSpinLockLock(&_allocationLock);
+    CFSetApplyFunction(_allocations, __FVAllocatorSumAllocations, &sizeTotal);
+    OSSpinLockUnlock(&_allocationLock);
+    return sizeTotal;
+}
+
+static size_t __FVAllocatorGetSizeInUse()
+{
+    size_t sizeTotal, sizeFree;
+    OSSpinLockLock(&_allocationLock);
+    OSSpinLockLock(&_freeBufferLock);
+    CFSetApplyFunction(_allocations, __FVAllocatorSumAllocations, &sizeTotal);
+    CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocatorSumAllocations, &sizeFree);
+    OSSpinLockUnlock(&_allocationLock);
+    OSSpinLockUnlock(&_freeBufferLock);
+    if (sizeTotal < sizeFree) {
+        malloc_printf("inconsistent allocation record; free list exceeds allocation count\n");
+        HALT;
+    }
+    return (sizeTotal - sizeFree);
+}
+
+static void __FVAllocatorZoneStatistics(malloc_zone_t *zone, malloc_statistics_t *stats)
+{
+    stats->blocks_in_use = CFSetGetCount(_allocations) - CFArrayGetCount(_freeBuffers);
+    stats->size_in_use = __FVAllocatorGetSizeInUse();
+    stats->max_size_in_use = __FVAllocatorTotalSize();
+    stats->size_allocated = stats->max_size_in_use;
+}
+
+static void __FVAllocatorForceLock(malloc_zone_t *zone)
+{
+    OSSpinLockLock(&_allocationLock);
+    OSSpinLockLock(&_freeBufferLock);
+}
+
+static void __FVAllocatorForceUnlock(malloc_zone_t *zone)
+{
+    OSSpinLockUnlock(&_freeBufferLock);
+    OSSpinLockUnlock(&_allocationLock);
+}
+
 static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     (void *)__FVAllocatorZoneIntrospectNoOp,
     (void *)__FVAllocatorZoneGoodSize,
     (void *)__FVAllocatorZoneIntrospectTrue,
     (void *)__FVAllocatorZoneIntrospectNoOp,
     (void *)__FVAllocatorZoneIntrospectNoOp,
-    (void *)__FVAllocatorZoneIntrospectNoOp,
-    (void *)__FVAllocatorZoneIntrospectNoOp,
-    (void *)__FVAllocatorZoneIntrospectNoOp
+    (void *)__FVAllocatorForceLock,
+    (void *)__FVAllocatorForceUnlock,
+    (void *)__FVAllocatorZoneStatistics
 };
 
 #pragma mark Setup and cleanup
