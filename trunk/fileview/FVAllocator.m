@@ -170,7 +170,8 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
 {
     const fv_allocation_t *alloc = ptr;
     if (__builtin_expect(_guard != alloc->guard, 0)) {
-        FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptr, __PRETTY_FUNCTION__);
+        malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptr);
+        malloc_printf("Break on malloc_printf to debug.\n");
         HALT;
     }
     
@@ -179,7 +180,10 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
         NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
-        if (0 != ret) FVLog(@"*** ERROR *** vm_deallocate failed at address 0x%p", alloc);        
+        if (__builtin_expect(0 != ret, 0)) {
+            malloc_printf("vm_deallocate failed to deallocate object %p", alloc);        
+            malloc_printf("Break on malloc_printf to debug.\n");
+        }
     }
     else {
         malloc_zone_free((malloc_zone_t *)alloc->zone, alloc->base);
@@ -231,6 +235,11 @@ static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *us
     }
     else if (actualSize < 128) {
         actualSize = 128;
+    }
+    if (__builtin_expect(requestedSize > actualSize, 0)) {
+        malloc_printf("%s: invalid size %y after rounding %y to page boundary\n", __PRETTY_FUNCTION__, actualSize, requestedSize);
+        malloc_printf("Break on malloc_printf to debug.\n");
+        HALT;
     }
     return actualSize;
 }
@@ -395,7 +404,8 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
         CFArrayRemoveValueAtIndex(_freeBuffers, idx);
         OSSpinLockUnlock(&_freeBufferLock);
         if (__builtin_expect(origSize > alloc->ptrSize, 0)) {
-            FVLog(@"FVAllocator: incorrect size %lu (%d expected) in %s", alloc->ptrSize, origSize, __PRETTY_FUNCTION__);
+            malloc_printf("incorrect size %y (%y expected) in %s\n", alloc->ptrSize, origSize, malloc_get_zone_name(zone));
+            malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
     }
@@ -430,13 +440,22 @@ static void __FVAllocatorZoneFree(malloc_zone_t *zone, void *ptr)
         const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
-            FVLog(@"FVAllocator: pointer <0x%p> passed to %s not malloced in this zone", ptr, __PRETTY_FUNCTION__);
+            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(zone));
+            malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
         // add to free list
         OSSpinLockLock(&_freeBufferLock);
-        CFIndex idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
-        CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
+        // check to ensure that it's not already in the free list
+        CFIndex idx = CFArrayGetFirstIndexOfValue(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), alloc);
+        if (__builtin_expect(kCFNotFound == idx, 1)) {
+            idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
+            CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
+        }
+        else {
+            malloc_printf("double free() of pointer %p\n in zone %s\n", ptr, malloc_get_zone_name(zone));
+            malloc_printf("Break on malloc_printf to debug.\n");
+        }
         OSSpinLockUnlock(&_freeBufferLock);    
     }
 }
@@ -460,7 +479,8 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t siz
         fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
-            FVLog(@"FVAllocator: pointer <0x%p> passed to %s not malloced in this zone", ptr, __PRETTY_FUNCTION__);
+            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(zone));
+            malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
             return NULL; /* not reached; keep clang happy */
         }
@@ -696,7 +716,8 @@ void FVAllocatorShowStats()
     NSNumber *value;
     for (CFIndex i = 0; i < range.length; i++) {
         if (__builtin_expect(_guard != ptrs[i]->guard, 0)) {
-            FVLog(@"FVAllocator: invalid allocation pointer <0x%p> passed to %s", ptrs[i], __PRETTY_FUNCTION__);
+            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptrs[i]);
+            malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
         // FIXME: consistent size usage
