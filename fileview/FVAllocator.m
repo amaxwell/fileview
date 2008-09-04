@@ -50,24 +50,20 @@ typedef struct _fv_allocation_t {
     size_t      allocSize; /* length of entire allocation   */
     void       *ptr;       /* writable region of allocation */
     size_t      ptrSize;   /* writable length of ptr        */
-    const void *zone;      /* malloc_zone_t                 */
+    const void *zone;      /* fv_zone_t                     */
     const void *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
 // used as guard field in allocation struct; do not rely on the value
 static const char *_guard = "FVAllocatorGuard";
 
-// single instance of this allocator
-static CFAllocatorRef     _allocator = NULL;
-static malloc_zone_t     *_allocatorZone = NULL;
-
-// array of buffers that are currently free (have been deallocated)
-static CFMutableArrayRef  _freeBuffers = NULL;
-static OSSpinLock         _freeBufferLock = OS_SPINLOCK_INIT;
-
-// for zone destruction; touched by __FVAllocationFromVMSystem, __FVAllocationFromMalloc and __FVAllocationFree
-static CFMutableSetRef    _allocations = NULL;
-static OSSpinLock         _allocationLock = OS_SPINLOCK_INIT;
+typedef struct _fv_zone_t {
+    malloc_zone_t     _basic_zone;
+    CFMutableArrayRef _freeBuffers;
+    OSSpinLock        _freeBufferLock;
+    CFMutableSetRef   _allocations;
+    OSSpinLock        _allocationLock;
+} fv_zone_t;
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
@@ -117,19 +113,19 @@ static CFHashCode __FVAllocationHash(const void *value)
 }
 
 // returns kCFNotFound if no buffer of sufficient size exists
-static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex requestedSize)
+static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex requestedSize, fv_zone_t *zone)
 {
-    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    NSCParameterAssert(OSSpinLockTry(&zone->_freeBufferLock) == false);
+    CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
     // need a temporary struct for comparison; only the ptrSize field is needed
     const fv_allocation_t alloc = { NULL, 0, NULL, requestedSize, NULL, _guard };
 
-    CFIndex idx = CFArrayBSearchValues(_freeBuffers, range, &alloc, __FVAllocationSizeComparator, NULL);
+    CFIndex idx = CFArrayBSearchValues(zone->_freeBuffers, range, &alloc, __FVAllocationSizeComparator, NULL);
     if (idx >= range.length) {
         idx = kCFNotFound;
     }
     else {
-        const fv_allocation_t *foundAlloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
+        const fv_allocation_t *foundAlloc = CFArrayGetValueAtIndex(zone->_freeBuffers, idx);
         size_t foundSize = foundAlloc->ptrSize;
         if ((float)(foundSize - requestedSize) / requestedSize > 1) {
             idx = kCFNotFound;
@@ -140,11 +136,16 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex reques
 }
 
 // always insert at the correct index, so we maintain heap order
-static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t *alloc)
+static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t *alloc, fv_zone_t *zone)
 {
-    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
-    CFIndex anIndex = CFArrayBSearchValues(_freeBuffers, range, alloc, __FVAllocationSizeComparator, NULL);
+    NSCParameterAssert(OSSpinLockTry(&zone->_freeBufferLock) == false);
+    if (alloc->zone != zone) {
+        fv_zone_t *z = (fv_zone_t *)alloc->zone;
+        malloc_printf("add to free list in wrong zone: %s should be %s\n", malloc_get_zone_name(&z->_basic_zone), malloc_get_zone_name(&zone->_basic_zone));
+        HALT;
+    }
+    CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
+    CFIndex anIndex = CFArrayBSearchValues(zone->_freeBuffers, range, alloc, __FVAllocationSizeComparator, NULL);
     if (anIndex >= range.length)
         anIndex = range.length;
     return anIndex;
@@ -176,8 +177,7 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
     }
     
     // _allocatorZone indicates it should be freed with vm_deallocate
-    if (alloc->zone == _allocatorZone) {
-        NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
+    if (__FVAllocatorUseVMForSize(alloc->allocSize)) {
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (__builtin_expect(0 != ret, 0)) {
@@ -186,7 +186,8 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
         }
     }
     else {
-        malloc_zone_free((malloc_zone_t *)alloc->zone, alloc->base);
+        // !!! FIXME: change this back to be the zone member
+        malloc_zone_free(malloc_default_zone(), alloc->base);
     }
 }
 
@@ -195,15 +196,15 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
  
  !!! Warning: this mutates the _allocations set, so it cannot be used as a CFSetApplierFunction to free all allocations in that set.
  */
-static void __FVAllocationFree(const void *ptr, void *unused)
+static void __FVAllocationFree(const void *ptr, void *context)
 {
+    fv_zone_t *zone = context;
+    OSSpinLockLock(&zone->_allocationLock);
+    NSCParameterAssert(CFSetContainsValue(zone->_allocations, ptr) == TRUE);
+    CFSetRemoveValue(zone->_allocations, ptr);
+    OSSpinLockUnlock(&zone->_allocationLock);
     
-    OSSpinLockLock(&_allocationLock);
-    NSCParameterAssert(CFSetContainsValue(_allocations, ptr) == TRUE);
-    CFSetRemoveValue(_allocations, ptr);
-    OSSpinLockUnlock(&_allocationLock);
-    
-    __FVAllocationDestroy(ptr, unused);
+    __FVAllocationDestroy(ptr, NULL);
 }
 
 // does not include fv_allocation_t header size
@@ -245,12 +246,12 @@ static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *us
 }
 
 // Record the allocation for zone destruction.
-static inline void __FVRecordAllocation(const fv_allocation_t *alloc)
+static inline void __FVRecordAllocation(const fv_allocation_t *alloc, fv_zone_t *zone)
 {
-    OSSpinLockLock(&_allocationLock);
-    NSCParameterAssert(CFSetContainsValue(_allocations, alloc) == FALSE);
-    CFSetAddValue(_allocations, alloc);
-    OSSpinLockUnlock(&_allocationLock);
+    OSSpinLockLock(&zone->_allocationLock);
+    NSCParameterAssert(CFSetContainsValue(zone->_allocations, alloc) == FALSE);
+    CFSetAddValue(zone->_allocations, alloc);
+    OSSpinLockUnlock(&zone->_allocationLock);
 }
 
 /*
@@ -266,7 +267,7 @@ static inline void __FVRecordAllocation(const fv_allocation_t *alloc)
  
  */
 
-static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
+static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, fv_zone_t *zone)
 {
     // base address of the allocation, including fv_allocation_t
     void *memory;
@@ -293,25 +294,25 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize)
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
-        alloc->zone = _allocatorZone;
+        alloc->zone = zone;
         alloc->guard = _guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
-        __FVRecordAllocation(alloc);
+        __FVRecordAllocation(alloc, zone);
     }
     return alloc;
 }
 
 // memory is not page-aligned so there's no padding between the start of the allocated block and the returned fv_allocation_t pointer
-static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
+static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_zone_t *zone)
 {
     // base address of the allocation, including fv_allocation_t
     void *memory;
     fv_allocation_t *alloc = NULL;
 
     // use the default malloc zone, which is really fast for small allocations
-    malloc_zone_t *zone = malloc_default_zone();
+    malloc_zone_t *underlyingZone = malloc_default_zone();
     size_t actualSize = requestedSize + sizeof(fv_allocation_t);
-    memory = malloc_zone_malloc(zone, actualSize);
+    memory = malloc_zone_malloc(underlyingZone, actualSize);
     
     // set up the data structure
     if (__builtin_expect(NULL != memory, 1)) {
@@ -327,7 +328,7 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
         alloc->guard = _guard;
         alloc->zone = zone;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
-        __FVRecordAllocation(alloc);
+        __FVRecordAllocation(alloc, zone);
     }
     return alloc;
 }
@@ -336,7 +337,7 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize)
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), _allocator);
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), info);
 }
 
 // return an available buffer of sufficient size or create a new one
@@ -345,12 +346,12 @@ static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
     if (__builtin_expect(allocSize <= 0, 0))
         return NULL;
     
-    return malloc_zone_malloc(_allocatorZone, allocSize);
+    return malloc_zone_malloc(info, allocSize);
 }
 
 static void __FVDeallocate(void *ptr, void *info)
 {
-    malloc_zone_free(_allocatorZone, ptr);
+    malloc_zone_free(info, ptr);
 }
 
 static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
@@ -359,17 +360,18 @@ static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, voi
     if (__builtin_expect((NULL == ptr || newSize <= 0), 0))
         return NULL;
     
-    return malloc_zone_realloc(_allocatorZone, ptr, newSize);
+    return malloc_zone_realloc(info, ptr, newSize);
 }
 
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 {
-    return _allocatorZone->introspect->good_size(_allocatorZone, size);
+    malloc_zone_t *zone = info;
+    return zone->introspect->good_size(zone, size);
 }
 
 #pragma mark Zone implementation
 
-static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
+static size_t __FVAllocatorZoneSize(fv_zone_t *zone, const void *ptr)
 {
     const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
     size_t size = 0;
@@ -379,7 +381,7 @@ static size_t __FVAllocatorZoneSize(malloc_zone_t *zone, const void *ptr)
     return size;
 }
 
-static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
+static void *__FVAllocatorZoneMalloc(fv_zone_t *zone, size_t size)
 {
     const size_t origSize = size;
     bool useVM;
@@ -387,24 +389,24 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
     size = __FVAllocatorRoundSize(size, &useVM);
     
     // !!! unlock on each if branch
-    OSSpinLockLock(&_freeBufferLock);
-    CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(size);
+    OSSpinLockLock(&zone->_freeBufferLock);
+    CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(size, zone);
     const fv_allocation_t *alloc;
     
     // optimistically assume that the cache is effective; for our usage (lots of similarly-sized images), this is correct
     if (__builtin_expect(kCFNotFound == idx, 0)) {
         OSAtomicIncrement32((int32_t *)&_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
-        OSSpinLockUnlock(&_freeBufferLock);
-        alloc = useVM ? __FVAllocationFromVMSystem(size) : __FVAllocationFromMalloc(size);
+        OSSpinLockUnlock(&zone->_freeBufferLock);
+        alloc = useVM ? __FVAllocationFromVMSystem(size, zone) : __FVAllocationFromMalloc(size, zone);
     }
     else {
         OSAtomicIncrement32((int32_t *)&_cacheHits);
-        alloc = CFArrayGetValueAtIndex(_freeBuffers, idx);
-        CFArrayRemoveValueAtIndex(_freeBuffers, idx);
-        OSSpinLockUnlock(&_freeBufferLock);
+        alloc = CFArrayGetValueAtIndex(zone->_freeBuffers, idx);
+        CFArrayRemoveValueAtIndex(zone->_freeBuffers, idx);
+        OSSpinLockUnlock(&zone->_freeBufferLock);
         if (__builtin_expect(origSize > alloc->ptrSize, 0)) {
-            malloc_printf("incorrect size %y (%y expected) in %s\n", alloc->ptrSize, origSize, malloc_get_zone_name(zone));
+            malloc_printf("incorrect size %y (%y expected) in %s\n", alloc->ptrSize, origSize, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
@@ -412,7 +414,7 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *zone, size_t size)
     return alloc ? alloc->ptr : NULL;    
 }
 
-static void *__FVAllocatorZoneCalloc(malloc_zone_t *zone, size_t num_items, size_t size)
+static void *__FVAllocatorZoneCalloc(fv_zone_t *zone, size_t num_items, size_t size)
 {
     void *memory = __FVAllocatorZoneMalloc(zone, num_items * size);
     memset(memory, 0, num_items * size);
@@ -420,7 +422,7 @@ static void *__FVAllocatorZoneCalloc(malloc_zone_t *zone, size_t num_items, size
 }
 
 // implementation for non-VM case was modified after the implementation in CFBase.c
-static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
+static void *__FVAllocatorZoneValloc(fv_zone_t *zone, size_t size)
 {
     // this will already be page-aligned if we're using vm
     const bool useVM = __FVAllocatorUseVMForSize(size);
@@ -433,34 +435,34 @@ static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
     return ret;
 }
 
-static void __FVAllocatorZoneFree(malloc_zone_t *zone, void *ptr)
+static void __FVAllocatorZoneFree(fv_zone_t *zone, void *ptr)
 {
     // ignore NULL
     if (__builtin_expect(NULL != ptr, 1)) {    
         const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
-            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(zone));
+            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
         // add to free list
-        OSSpinLockLock(&_freeBufferLock);
+        OSSpinLockLock(&zone->_freeBufferLock);
         // check to ensure that it's not already in the free list
-        CFIndex idx = CFArrayGetFirstIndexOfValue(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), alloc);
+        CFIndex idx = CFArrayGetFirstIndexOfValue(zone->_freeBuffers, CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers)), alloc);
         if (__builtin_expect(kCFNotFound == idx, 1)) {
-            idx = __FVAllocatorGetInsertionIndexForAllocation(alloc);
-            CFArrayInsertValueAtIndex(_freeBuffers, idx, alloc);
+            idx = __FVAllocatorGetInsertionIndexForAllocation(alloc, zone);
+            CFArrayInsertValueAtIndex(zone->_freeBuffers, idx, alloc);
         }
         else {
-            malloc_printf("double free() of pointer %p\n in zone %s\n", ptr, malloc_get_zone_name(zone));
+            malloc_printf("double free() of pointer %p\n in zone %s\n", ptr, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
         }
-        OSSpinLockUnlock(&_freeBufferLock);    
+        OSSpinLockUnlock(&zone->_freeBufferLock);    
     }
 }
 
-static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t size)
+static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
 {
     OSAtomicIncrement32((int32_t *)&_reallocCount);
         
@@ -479,7 +481,7 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t siz
         fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
-            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(zone));
+            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
             return NULL; /* not reached; keep clang happy */
@@ -514,18 +516,18 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *zone, void *ptr, size_t siz
     return newPtr;
 }
 
-static void __FVAllocatorZoneDestroy(malloc_zone_t *zone)
+static void __FVAllocatorZoneDestroy(fv_zone_t *zone)
 {
     // remove all the free buffers
-    OSSpinLockLock(&_freeBufferLock);
-    CFArrayRemoveAllValues(_freeBuffers);
-    OSSpinLockUnlock(&_freeBufferLock);    
+    OSSpinLockLock(&zone->_freeBufferLock);
+    CFArrayRemoveAllValues(zone->_freeBuffers);
+    OSSpinLockUnlock(&zone->_freeBufferLock);    
 
     // now deallocate all buffers allocated using this zone, regardless of underlying call
-    OSSpinLockLock(&_allocationLock);
-    CFSetApplyFunction(_allocations, __FVAllocationDestroy, NULL);
-    CFSetRemoveAllValues(_allocations);
-    OSSpinLockUnlock(&_allocationLock);
+    OSSpinLockLock(&zone->_allocationLock);
+    CFSetApplyFunction(zone->_allocations, __FVAllocationDestroy, NULL);
+    CFSetRemoveAllValues(zone->_allocations);
+    OSSpinLockUnlock(&zone->_allocationLock);
     
     // free the zone itself (must have been allocated with malloc!)
     malloc_zone_free(malloc_zone_from_ptr(zone), zone);
@@ -533,44 +535,50 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *zone)
 
 // All of the introspection stuff was copied from CFBase.c
 static kern_return_t __FVAllocatorZoneIntrospectNoOp(void) {
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     return 0;
 }
 
 static boolean_t __FVAllocatorZoneIntrospectTrue(void) {
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     return 1;
 }
 
-static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
+static size_t __FVAllocatorZoneGoodSize(fv_zone_t *zone, size_t size)
 {
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     bool ignored;
     return __FVAllocatorRoundSize(size, &ignored);
 }
 
 static void __FVAllocatorSumAllocations(const void *value, void *context)
 {
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     size_t *size = context;
     const fv_allocation_t *alloc = value;
     *size += alloc->ptrSize;
 }
 
-static size_t __FVAllocatorTotalSize()
+static size_t __FVAllocatorTotalSize(fv_zone_t *zone)
 {
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     size_t sizeTotal;
-    OSSpinLockLock(&_allocationLock);
-    CFSetApplyFunction(_allocations, __FVAllocatorSumAllocations, &sizeTotal);
-    OSSpinLockUnlock(&_allocationLock);
+    OSSpinLockLock(&zone->_allocationLock);
+    CFSetApplyFunction(zone->_allocations, __FVAllocatorSumAllocations, &sizeTotal);
+    OSSpinLockUnlock(&zone->_allocationLock);
     return sizeTotal;
 }
 
-static size_t __FVAllocatorGetSizeInUse()
+static size_t __FVAllocatorGetSizeInUse(fv_zone_t *zone)
 {
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     size_t sizeTotal, sizeFree;
-    OSSpinLockLock(&_allocationLock);
-    OSSpinLockLock(&_freeBufferLock);
-    CFSetApplyFunction(_allocations, __FVAllocatorSumAllocations, &sizeTotal);
-    CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocatorSumAllocations, &sizeFree);
-    OSSpinLockUnlock(&_allocationLock);
-    OSSpinLockUnlock(&_freeBufferLock);
+    OSSpinLockLock(&zone->_allocationLock);
+    OSSpinLockLock(&zone->_freeBufferLock);
+    CFSetApplyFunction(zone->_allocations, __FVAllocatorSumAllocations, &sizeTotal);
+    CFArrayApplyFunction(zone->_freeBuffers, CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers)), __FVAllocatorSumAllocations, &sizeFree);
+    OSSpinLockUnlock(&zone->_allocationLock);
+    OSSpinLockUnlock(&zone->_freeBufferLock);
     if (sizeTotal < sizeFree) {
         malloc_printf("inconsistent allocation record; free list exceeds allocation count\n");
         HALT;
@@ -578,25 +586,140 @@ static size_t __FVAllocatorGetSizeInUse()
     return (sizeTotal - sizeFree);
 }
 
-static void __FVAllocatorZoneStatistics(malloc_zone_t *zone, malloc_statistics_t *stats)
+static void __FVAllocatorZoneStatistics(fv_zone_t *zone, malloc_statistics_t *stats)
 {
-    stats->blocks_in_use = CFSetGetCount(_allocations) - CFArrayGetCount(_freeBuffers);
-    stats->size_in_use = __FVAllocatorGetSizeInUse();
-    stats->max_size_in_use = __FVAllocatorTotalSize();
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    stats->blocks_in_use = CFSetGetCount(zone->_allocations) - CFArrayGetCount(zone->_freeBuffers);
+    stats->size_in_use = __FVAllocatorGetSizeInUse(zone);
+    stats->max_size_in_use = __FVAllocatorTotalSize(zone);
     stats->size_allocated = stats->max_size_in_use;
 }
 
-static void __FVAllocatorForceLock(malloc_zone_t *zone)
+static void __FVAllocatorForceLock(fv_zone_t *zone)
 {
-    OSSpinLockLock(&_allocationLock);
-    OSSpinLockLock(&_freeBufferLock);
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    OSSpinLockLock(&zone->_allocationLock);
+    OSSpinLockLock(&zone->_freeBufferLock);
 }
 
-static void __FVAllocatorForceUnlock(malloc_zone_t *zone)
+static void __FVAllocatorForceUnlock(fv_zone_t *zone)
 {
-    OSSpinLockUnlock(&_freeBufferLock);
-    OSSpinLockUnlock(&_allocationLock);
+    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    OSSpinLockUnlock(&zone->_freeBufferLock);
+    OSSpinLockUnlock(&zone->_allocationLock);
 }
+
+#if 0
+
+static kern_return_t __FVAllocatorZoneDefaultReader(task_t task, vm_address_t address, vm_size_t size, void **ptr)
+{
+    *ptr = __FVGetAllocationFromPointer((const void *)address);
+    return 0;
+}
+
+/* enumerates all the malloc pointers in use */
+static kern_return_t __FVAllocatorEnumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
+{
+    szone_t		*szone;
+    kern_return_t	err;
+    
+    if (!reader) reader = __FVAllocatorZoneDefaultReader;
+    err = reader(task, zone_address, sizeof(szone_t), (void **)&szone);
+    if (err) return err;
+
+    huge_entry_t	*entries;
+    
+    /* given a task, "reads" the memory at the given address and size
+     local_memory: set to a contiguous chunk of memory; validity of local_memory is assumed to be limited (until next call) */
+    err = reader(task, huge_entries_address, sizeof(huge_entry_t) * num_entries, (void **)&entries);
+    if (err)
+        return err;
+    
+    /* given a task and context, "records" the specified addresses */
+    if (num_entries)
+        recorder(task, context, MALLOC_PTR_IN_USE_RANGE_TYPE | MALLOC_PTR_REGION_RANGE_TYPE, entries, num_entries);
+
+    return err;
+}
+
+#define MAX_RECORDER_BUFFER	256
+static kern_return_t __FVAllocatorEnumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
+{
+    size_t num_regions = szone->num_small_regions_allocated;
+    void *last_small_free = szone->last_small_free; 
+    size_t	index;
+    region_t	*regions;
+    vm_range_t		buffer[MAX_RECORDER_BUFFER];
+    unsigned		count = 0;
+    kern_return_t	err;
+    region_t	region;
+    vm_range_t		range;
+    vm_range_t		admin_range;
+    vm_range_t		ptr_range;
+    unsigned char	*mapped_region;
+    msize_t		*block_header;
+    unsigned		block_index;
+    unsigned		block_limit;
+    msize_t		msize_and_free;
+    msize_t		msize;
+    vm_address_t last_small_free_ptr = 0;
+    msize_t last_small_free_msize = 0;
+    
+    if (last_small_free) {
+        last_small_free_ptr = (uintptr_t)last_small_free & ~(SMALL_QUANTUM - 1);
+        last_small_free_msize = (uintptr_t)last_small_free & (SMALL_QUANTUM - 1);
+    }
+    
+    err = reader(task, (vm_address_t)szone->small_regions, sizeof(region_t) * num_regions, (void **)&regions);
+    if (err) return err;
+    for (index = 0; index < num_regions; ++index) {
+        region = regions[index];
+        if (region) {
+            range.address = (vm_address_t)SMALL_REGION_ADDRESS(region);
+            range.size = SMALL_REGION_SIZE;
+            if (type_mask & MALLOC_ADMIN_REGION_RANGE_TYPE) {
+                admin_range.address = range.address + SMALL_HEADER_START;
+                admin_range.size = SMALL_ARRAY_SIZE;
+                recorder(task, context, MALLOC_ADMIN_REGION_RANGE_TYPE, &admin_range, 1);
+            }
+            if (type_mask & (MALLOC_PTR_REGION_RANGE_TYPE | MALLOC_ADMIN_REGION_RANGE_TYPE)) {
+                ptr_range.address = range.address;
+                ptr_range.size = NUM_SMALL_BLOCKS * SMALL_QUANTUM;
+                recorder(task, context, MALLOC_PTR_REGION_RANGE_TYPE, &ptr_range, 1);
+            }
+            if (type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE) {
+                err = reader(task, range.address, range.size, (void **)&mapped_region);
+                if (err) return err;
+                block_header = (msize_t *)(mapped_region + SMALL_HEADER_START);
+                block_index = 0;
+                block_limit = NUM_SMALL_BLOCKS;
+                if (region == szone->last_small_region)
+                    block_limit -= SMALL_MSIZE_FOR_BYTES(szone->small_bytes_free_at_end);
+                while (block_index < block_limit) {
+                    msize_and_free = block_header[block_index];
+                    msize = msize_and_free & ~ SMALL_IS_FREE;
+                    if (! (msize_and_free & SMALL_IS_FREE) &&
+                        range.address + SMALL_BYTES_FOR_MSIZE(block_index) != last_small_free_ptr) {
+                        // Block in use
+                        buffer[count].address = range.address + SMALL_BYTES_FOR_MSIZE(block_index);
+                        buffer[count].size = SMALL_BYTES_FOR_MSIZE(msize);
+                        count++;
+                        if (count >= MAX_RECORDER_BUFFER) {
+                            recorder(task, context, MALLOC_PTR_IN_USE_RANGE_TYPE, buffer, count);
+                            count = 0;
+                        }
+                    }
+                    block_index += msize;
+                }
+            }
+        }
+    }
+    if (count) {
+        recorder(task, context, MALLOC_PTR_IN_USE_RANGE_TYPE, buffer, count);
+    }
+    return 0;
+}
+#endif
 
 static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     (void *)__FVAllocatorZoneIntrospectNoOp,
@@ -613,13 +736,13 @@ static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
 
 #define FV_STACK_MAX 512
 
-static size_t __FVTotalAllocationsLocked()
+static size_t __FVTotalAllocationsLocked(fv_zone_t *zone)
 {
-    NSCParameterAssert(OSSpinLockTry(&_freeBufferLock) == false);
+    NSCParameterAssert(OSSpinLockTry(&zone->_freeBufferLock) == false);
     const fv_allocation_t *stackBuf[FV_STACK_MAX];
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
     const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
-    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
+    CFArrayGetValues(zone->_freeBuffers, range, (const void **)ptrs);
     size_t totalMemory = 0;
     // FIXME: consistent size usage
     for (CFIndex i = 0; i < range.length; i++)
@@ -631,49 +754,60 @@ static size_t __FVTotalAllocationsLocked()
 
 static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 {
+    fv_zone_t *zone = info;
 #if 0 && DEBUG && !defined(IMAGE_SHEAR)
-    FVAllocatorShowStats();
+    FVAllocatorShowStats(zone);
 #endif
     // if we can't lock immediately, wait for another opportunity
-    if (OSSpinLockTry(&_freeBufferLock)) {
-        if (__FVTotalAllocationsLocked() > FV_REAP_THRESHOLD) {
-            CFArrayApplyFunction(_freeBuffers, CFRangeMake(0, CFArrayGetCount(_freeBuffers)), __FVAllocationFree, NULL);
-            CFArrayRemoveAllValues(_freeBuffers);
+    if (OSSpinLockTry(&zone->_freeBufferLock)) {
+        if (__FVTotalAllocationsLocked(zone) > FV_REAP_THRESHOLD) {
+            CFArrayApplyFunction(zone->_freeBuffers, CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers)), __FVAllocationFree, zone);
+            CFArrayRemoveAllValues(zone->_freeBuffers);
         }
-        OSSpinLockUnlock(&_freeBufferLock);
+        OSSpinLockUnlock(&zone->_freeBufferLock);
     }
 }
 
+// single instance of this allocator
+static CFAllocatorRef  _allocator = NULL;
+static fv_zone_t      *_allocatorZone = NULL;
+
 __attribute__ ((constructor))
 static void __initialize_allocator()
-{  
-    _allocatorZone = malloc_zone_malloc(malloc_default_zone(), sizeof(malloc_zone_t));
-    _allocatorZone->size = __FVAllocatorZoneSize;
-    _allocatorZone->malloc = __FVAllocatorZoneMalloc;
-    _allocatorZone->calloc = __FVAllocatorZoneCalloc;
-    _allocatorZone->valloc = __FVAllocatorZoneValloc;
-    _allocatorZone->free = __FVAllocatorZoneFree;
-    _allocatorZone->realloc = __FVAllocatorZoneRealloc;
-    _allocatorZone->destroy = __FVAllocatorZoneDestroy;
-    _allocatorZone->zone_name = "FVAllocatorZone";
-    _allocatorZone->batch_malloc = NULL;
-    _allocatorZone->batch_free = NULL;
-    _allocatorZone->introspect = &__FVAllocatorZoneIntrospect;
-    _allocatorZone->version = 0;
+{    
+    _allocatorZone = malloc_zone_malloc(malloc_default_zone(), sizeof(fv_zone_t));
+    memset(_allocatorZone, 0, sizeof(fv_zone_t));
+    _allocatorZone->_basic_zone.size = (void *)__FVAllocatorZoneSize;
+    _allocatorZone->_basic_zone.malloc = (void *)__FVAllocatorZoneMalloc;
+    _allocatorZone->_basic_zone.calloc = (void *)__FVAllocatorZoneCalloc;
+    _allocatorZone->_basic_zone.valloc = (void *)__FVAllocatorZoneValloc;
+    _allocatorZone->_basic_zone.free = (void *)__FVAllocatorZoneFree;
+    _allocatorZone->_basic_zone.realloc = (void *)__FVAllocatorZoneRealloc;
+    _allocatorZone->_basic_zone.destroy = (void *)__FVAllocatorZoneDestroy;
+    _allocatorZone->_basic_zone.zone_name = NULL;
+    _allocatorZone->_basic_zone.batch_malloc = NULL;
+    _allocatorZone->_basic_zone.batch_free = NULL;
+    _allocatorZone->_basic_zone.introspect = &__FVAllocatorZoneIntrospect;
+    _allocatorZone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
     
-    // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
-    malloc_zone_register(_allocatorZone);
-    
+    // malloc_set_zone_name calls out to this zone, so we need the array/set to exist
     const CFArrayCallBacks acb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual };
-    _freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
+    _allocatorZone->_freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
     
     const CFSetCallBacks scb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual, __FVAllocationHash };
-    _allocations = CFSetCreateMutable(NULL, 0, &scb);
+    _allocatorZone->_allocations = CFSetCreateMutable(NULL, 0, &scb);    
+    
+    // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
+    malloc_zone_register((malloc_zone_t *)_allocatorZone);
+    malloc_set_zone_name((malloc_zone_t *)_allocatorZone, "FVAllocatorZone");
+    
+    // create timer after zone is fully set up
     
     // round to the nearest FV_REAP_TIMEINTERVAL, so fire time is easier to predict by the clock
     CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL) / FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
     fireTime += FV_REAP_TIMEINTERVAL;
-    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, NULL);
+    CFRunLoopTimerContext ctxt = { 0, _allocatorZone, NULL, NULL, NULL };
+    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, &ctxt);
     
     // add this to the main thread's runloop, which will always exist
 #if (!USE_SYSTEM_ZONE)
@@ -682,7 +816,7 @@ static void __initialize_allocator()
     CFRelease(timer);
     CFAllocatorContext context = { 
         0, 
-        NULL, 
+        _allocatorZone, 
         NULL, 
         NULL, 
         __FVAllocatorCopyDescription, 
@@ -699,7 +833,7 @@ __attribute__ ((destructor))
 static void __log_stats()
 {
     // !!! artifically high since a bunch of stuff is freed right before this gets called
-    FVAllocatorShowStats();
+    FVAllocatorShowStats((NSZone *)_allocatorZone);
 }
 #endif
 
@@ -751,18 +885,19 @@ static void __log_stats()
 
 #pragma mark API
 
-void FVAllocatorShowStats()
+void FVAllocatorShowStats(NSZone *z)
 {
+    fv_zone_t *fvzone = (fv_zone_t *)z;
     // use the default zone explicitly; avoid callout to our custom zone(s)
     NSZone *zone = NSDefaultMallocZone();
     NSAutoreleasePool *pool = [[NSAutoreleasePool allocWithZone:zone] init];
-    OSSpinLockLock(&_freeBufferLock);
+    OSSpinLockLock(&fvzone->_freeBufferLock);
     // record the actual time of this measurement
     CFAbsoluteTime snapshotTime = CFAbsoluteTimeGetCurrent();
     const fv_allocation_t *stackBuf[FV_STACK_MAX] = { NULL };
-    CFRange range = CFRangeMake(0, CFArrayGetCount(_freeBuffers));
+    CFRange range = CFRangeMake(0, CFArrayGetCount(fvzone->_freeBuffers));
     const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? NSZoneCalloc(zone, range.length, sizeof(fv_allocation_t *)) : stackBuf;
-    CFArrayGetValues(_freeBuffers, range, (const void **)ptrs);
+    CFArrayGetValues(fvzone->_freeBuffers, range, (const void **)ptrs);
     size_t totalMemory = 0;
     NSCountedSet *duplicateAllocations = [[NSCountedSet allocWithZone:zone] init];
     NSNumber *value;
@@ -779,7 +914,7 @@ void FVAllocatorShowStats()
         [value release];
     }
     // held the lock to ensure that it's safe to dereference the allocations
-    OSSpinLockUnlock(&_freeBufferLock);
+    OSSpinLockUnlock(&fvzone->_freeBufferLock);
     if (stackBuf != ptrs) NSZoneFree(zone, ptrs);
     NSEnumerator *dupeEnum = [duplicateAllocations objectEnumerator];
     NSMutableArray *sortedDuplicates = [[NSMutableArray allocWithZone:zone] init];

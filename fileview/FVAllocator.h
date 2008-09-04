@@ -61,4 +61,4 @@ FV_PRIVATE_EXTERN NSZone *FVDefaultZone(void);
 /** @internal @brief Print allocator statistics.
  Logs various information about allocator usage, particularly the number and size of the free blocks currently available.  
  @warning For debugging only.  */
-FV_PRIVATE_EXTERN void FVAllocatorShowStats(void);
+FV_PRIVATE_EXTERN void FVAllocatorShowStats(NSZone *z);
