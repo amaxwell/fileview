@@ -63,6 +63,7 @@ typedef struct _fv_zone_t {
     OSSpinLock        _freeBufferLock;
     CFMutableSetRef   _allocations;
     OSSpinLock        _allocationLock;
+    CFRunLoopTimerRef _timer;
 } fv_zone_t;
 
 // small allocations (below 15K) use malloc_default_zone()
@@ -333,42 +334,6 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_
     return alloc;
 }
 
-#pragma mark CFAllocatorContext functions
-
-static CFStringRef __FVAllocatorCopyDescription(const void *info)
-{
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), info);
-}
-
-// return an available buffer of sufficient size or create a new one
-static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
-{
-    if (__builtin_expect(allocSize <= 0, 0))
-        return NULL;
-    
-    return malloc_zone_malloc(info, allocSize);
-}
-
-static void __FVDeallocate(void *ptr, void *info)
-{
-    malloc_zone_free(info, ptr);
-}
-
-static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
-{
-    // as per documentation for CFAllocatorContext
-    if (__builtin_expect((NULL == ptr || newSize <= 0), 0))
-        return NULL;
-    
-    return malloc_zone_realloc(info, ptr, newSize);
-}
-
-static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
-{
-    malloc_zone_t *zone = info;
-    return zone->introspect->good_size(zone, size);
-}
-
 #pragma mark Zone implementation
 
 static size_t __FVAllocatorZoneSize(fv_zone_t *zone, const void *ptr)
@@ -516,8 +481,14 @@ static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
     return newPtr;
 }
 
+// this may not be perfectly (thread) safe, but the caller is responsible for whatever happens...
 static void __FVAllocatorZoneDestroy(fv_zone_t *zone)
 {
+    CFRunLoopTimerRef t = zone->_timer;
+    zone->_timer = NULL;
+    OSMemoryBarrier();
+    CFRunLoopTimerInvalidate(t);
+    
     // remove all the free buffers
     OSSpinLockLock(&zone->_freeBufferLock);
     CFArrayRemoveAllValues(zone->_freeBuffers);
@@ -721,7 +692,7 @@ static kern_return_t __FVAllocatorEnumerator(task_t task, void *context, unsigne
 }
 #endif
 
-static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
+static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     (void *)__FVAllocatorZoneIntrospectNoOp,
     (void *)__FVAllocatorZoneGoodSize,
     (void *)__FVAllocatorZoneIntrospectTrue,
@@ -731,8 +702,6 @@ static struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     (void *)__FVAllocatorForceUnlock,
     (void *)__FVAllocatorZoneStatistics
 };
-
-#pragma mark Setup and cleanup
 
 #define FV_STACK_MAX 512
 
@@ -768,52 +737,96 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
     }
 }
 
-// single instance of this allocator
-static CFAllocatorRef  _allocator = NULL;
-static fv_zone_t      *_allocatorZone = NULL;
-
-__attribute__ ((constructor))
-static void __initialize_allocator()
-{    
-    _allocatorZone = malloc_zone_malloc(malloc_default_zone(), sizeof(fv_zone_t));
-    memset(_allocatorZone, 0, sizeof(fv_zone_t));
-    _allocatorZone->_basic_zone.size = (void *)__FVAllocatorZoneSize;
-    _allocatorZone->_basic_zone.malloc = (void *)__FVAllocatorZoneMalloc;
-    _allocatorZone->_basic_zone.calloc = (void *)__FVAllocatorZoneCalloc;
-    _allocatorZone->_basic_zone.valloc = (void *)__FVAllocatorZoneValloc;
-    _allocatorZone->_basic_zone.free = (void *)__FVAllocatorZoneFree;
-    _allocatorZone->_basic_zone.realloc = (void *)__FVAllocatorZoneRealloc;
-    _allocatorZone->_basic_zone.destroy = (void *)__FVAllocatorZoneDestroy;
-    _allocatorZone->_basic_zone.zone_name = NULL;
-    _allocatorZone->_basic_zone.batch_malloc = NULL;
-    _allocatorZone->_basic_zone.batch_free = NULL;
-    _allocatorZone->_basic_zone.introspect = &__FVAllocatorZoneIntrospect;
-    _allocatorZone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
+static malloc_zone_t *__FVCreateZone()
+{
+    fv_zone_t *zone = malloc_zone_malloc(malloc_default_zone(), sizeof(fv_zone_t));
+    memset(zone, 0, sizeof(fv_zone_t));
+    zone->_basic_zone.size = (void *)__FVAllocatorZoneSize;
+    zone->_basic_zone.malloc = (void *)__FVAllocatorZoneMalloc;
+    zone->_basic_zone.calloc = (void *)__FVAllocatorZoneCalloc;
+    zone->_basic_zone.valloc = (void *)__FVAllocatorZoneValloc;
+    zone->_basic_zone.free = (void *)__FVAllocatorZoneFree;
+    zone->_basic_zone.realloc = (void *)__FVAllocatorZoneRealloc;
+    zone->_basic_zone.destroy = (void *)__FVAllocatorZoneDestroy;
+    zone->_basic_zone.zone_name = NULL;
+    zone->_basic_zone.batch_malloc = NULL;
+    zone->_basic_zone.batch_free = NULL;
+    zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__FVAllocatorZoneIntrospect;
+    zone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
     
     // malloc_set_zone_name calls out to this zone, so we need the array/set to exist
     const CFArrayCallBacks acb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual };
-    _allocatorZone->_freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
+    zone->_freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
     
     const CFSetCallBacks scb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual, __FVAllocationHash };
-    _allocatorZone->_allocations = CFSetCreateMutable(NULL, 0, &scb);    
+    zone->_allocations = CFSetCreateMutable(NULL, 0, &scb);    
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
-    malloc_zone_register((malloc_zone_t *)_allocatorZone);
-    malloc_set_zone_name((malloc_zone_t *)_allocatorZone, "FVAllocatorZone");
+    malloc_zone_register((malloc_zone_t *)zone);
     
     // create timer after zone is fully set up
     
     // round to the nearest FV_REAP_TIMEINTERVAL, so fire time is easier to predict by the clock
     CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL) / FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
     fireTime += FV_REAP_TIMEINTERVAL;
-    CFRunLoopTimerContext ctxt = { 0, _allocatorZone, NULL, NULL, NULL };
-    CFRunLoopTimerRef timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, &ctxt);
-    
+    CFRunLoopTimerContext ctxt = { 0, zone, NULL, NULL, NULL };
+    zone->_timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, &ctxt);
     // add this to the main thread's runloop, which will always exist
-#if (!USE_SYSTEM_ZONE)
-    CFRunLoopAddTimer(CFRunLoopGetMain(), timer, kCFRunLoopCommonModes);
-#endif
-    CFRelease(timer);
+    CFRunLoopAddTimer(CFRunLoopGetMain(), zone->_timer, kCFRunLoopCommonModes);
+    CFRelease(zone->_timer);
+    
+    return (malloc_zone_t *)zone;
+}
+
+#pragma mark CFAllocatorContext functions
+
+static CFStringRef __FVAllocatorCopyDescription(const void *info)
+{
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), info);
+}
+
+// return an available buffer of sufficient size or create a new one
+static void * __FVAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
+{
+    if (__builtin_expect(allocSize <= 0, 0))
+        return NULL;
+    
+    return malloc_zone_malloc(info, allocSize);
+}
+
+static void __FVDeallocate(void *ptr, void *info)
+{
+    malloc_zone_free(info, ptr);
+}
+
+static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
+{
+    // as per documentation for CFAllocatorContext
+    if (__builtin_expect((NULL == ptr || newSize <= 0), 0))
+        return NULL;
+    
+    return malloc_zone_realloc(info, ptr, newSize);
+}
+
+static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
+{
+    malloc_zone_t *zone = info;
+    return zone->introspect->good_size(zone, size);
+}
+
+#pragma mark Setup and cleanup
+
+// single instance of this allocator
+static CFAllocatorRef  _allocator = NULL;
+static malloc_zone_t  *_allocatorZone = NULL;
+
+__attribute__ ((constructor))
+static void __initialize_allocator()
+{    
+    
+    _allocatorZone = __FVCreateZone();
+    malloc_set_zone_name(_allocatorZone, "FVAllocatorZone");
+    
     CFAllocatorContext context = { 
         0, 
         _allocatorZone, 
