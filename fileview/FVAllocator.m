@@ -45,18 +45,6 @@
 #import <mach/mach.h>
 #import <mach/vm_map.h>
 
-typedef struct _fv_allocation_t {
-    void       *base;      /* base of entire allocation     */
-    size_t      allocSize; /* length of entire allocation   */
-    void       *ptr;       /* writable region of allocation */
-    size_t      ptrSize;   /* writable length of ptr        */
-    const void *zone;      /* fv_zone_t                     */
-    const void *guard;     /* pointer to a check variable   */
-} fv_allocation_t;
-
-// used as guard field in allocation struct; do not rely on the value
-static const char *_guard;
-
 typedef struct _fv_zone_t {
     malloc_zone_t     _basic_zone;
     CFMutableArrayRef _freeBuffers;
@@ -65,6 +53,19 @@ typedef struct _fv_zone_t {
     OSSpinLock        _allocationLock;
     CFRunLoopTimerRef _timer;
 } fv_zone_t;
+
+typedef struct _fv_allocation_t {
+    void            *base;      /* base of entire allocation     */
+    size_t           allocSize; /* length of entire allocation   */
+    void            *ptr;       /* writable region of allocation */
+    size_t           ptrSize;   /* writable length of ptr        */
+    const fv_zone_t *zone;      /* fv_zone_t                     */
+    const void      *guard;     /* pointer to a check variable   */
+} fv_allocation_t;
+
+// used as guard field in allocation struct; do not rely on the value
+static const char *_malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
+static const char *_vm_guard;      /* indicates vm_allocate was used for this block           */
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
@@ -119,7 +120,7 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex reques
     NSCParameterAssert(OSSpinLockTry(&zone->_freeBufferLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
     // need a temporary struct for comparison; only the ptrSize field is needed
-    const fv_allocation_t alloc = { NULL, 0, NULL, requestedSize, NULL, &_guard };
+    const fv_allocation_t alloc = { NULL, 0, NULL, requestedSize, NULL, NULL };
 
     CFIndex idx = CFArrayBSearchValues(zone->_freeBuffers, range, &alloc, __FVAllocationSizeComparator, NULL);
     if (idx >= range.length) {
@@ -158,7 +159,7 @@ static inline fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
 {
     fv_allocation_t *alloc = ((uintptr_t)ptr < sizeof(fv_allocation_t)) ? NULL : (void *)ptr - sizeof(fv_allocation_t);
     // simple check to ensure that this is one of our pointers
-    if (NULL != alloc && __builtin_expect(alloc->guard != &_guard, 0))
+    if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard)
         alloc = NULL;
     return alloc;
 }
@@ -171,14 +172,15 @@ static inline bool __FVAllocatorUseVMForSize(size_t size) { return size >= FV_VM
 static inline void __FVAllocationDestroy(const void *ptr, void *unused)
 {
     const fv_allocation_t *alloc = ptr;
-    if (__builtin_expect(&_guard != alloc->guard, 0)) {
+    if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
         malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptr);
         malloc_printf("Break on malloc_printf to debug.\n");
         HALT;
     }
     
-    // _allocatorZone indicates it should be freed with vm_deallocate
-    if (__FVAllocatorUseVMForSize(alloc->allocSize)) {
+    // _vm_guard indicates it should be freed with vm_deallocate
+    if (__builtin_expect(&_vm_guard == alloc->guard, 1)) {
+        NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (__builtin_expect(0 != ret, 0)) {
@@ -187,7 +189,6 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
         }
     }
     else {
-        // !!! FIXME: change this back to be the zone member
         malloc_zone_free(malloc_default_zone(), alloc->base);
     }
 }
@@ -296,7 +297,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, f
         alloc->base = memory;
         alloc->allocSize = actualSize;
         alloc->zone = zone;
-        alloc->guard = &_guard;
+        alloc->guard = &_vm_guard;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
         __FVRecordAllocation(alloc, zone);
     }
@@ -326,7 +327,7 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
-        alloc->guard = &_guard;
+        alloc->guard = &_malloc_guard;
         alloc->zone = zone;
         NSCParameterAssert(alloc->ptrSize >= requestedSize);
         __FVRecordAllocation(alloc, zone);
@@ -341,7 +342,7 @@ static size_t __FVAllocatorZoneSize(fv_zone_t *zone, const void *ptr)
     const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
     size_t size = 0;
     // Simple check to ensure that this is one of our pointers; which size to return, though?  Need to return size for values allocated in this zone with malloc, even though malloc_default_zone() is the underlying zone, or else they won't be freed.
-    if (alloc && &_guard == alloc->guard)
+    if (alloc && (alloc->guard == &_vm_guard || alloc->guard == &_malloc_guard))
         size = alloc->ptrSize;
     return size;
 }
@@ -915,7 +916,7 @@ void FVAllocatorShowStats(NSZone *z)
     NSCountedSet *duplicateAllocations = [[NSCountedSet allocWithZone:zone] init];
     NSNumber *value;
     for (CFIndex i = 0; i < range.length; i++) {
-        if (__builtin_expect(&_guard != ptrs[i]->guard, 0)) {
+        if (__builtin_expect((ptrs[i]->guard != &_vm_guard && ptrs[i]->guard != &_malloc_guard), 0)) {
             malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptrs[i]);
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
