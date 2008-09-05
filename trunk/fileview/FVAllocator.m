@@ -441,7 +441,6 @@ static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
 {
     OSAtomicIncrement32((int32_t *)&_reallocCount);
         
-    // get a new buffer, copy contents, return original ptr to the pool
     void *newPtr;
     
     // okay to call realloc with a NULL pointer, but should not be the typical usage
@@ -464,20 +463,26 @@ static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
         
         kern_return_t ret = KERN_FAILURE;
 
-        if (__FVAllocatorUseVMForSize(alloc->allocSize) && __FVAllocatorUseVMForSize(size)) {
+        // See if it's already large enough, due to padding, or the caller requesting a smaller block (so we never resize downwards).
+        if (alloc->ptrSize >= size) {
+            newPtr = ptr;
+        }
+        else if (alloc->guard == &_vm_guard) {
             // pointer to the current end of this region
             vm_address_t addr = (vm_address_t)alloc->base + alloc->allocSize;
             // attempt to allocate at a specific address and extend the existing region
             ret = vm_allocate(mach_task_self(), &addr, round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
-            // if this succeeds, increase sizes
+            // if this succeeds, increase sizes and assign newPtr to the original parameter
             if (KERN_SUCCESS == ret) {
                 alloc->allocSize += round_page(size);
                 alloc->ptrSize += round_page(size);
+                newPtr = ptr;
             }
         }
         
-        // if this wasn't a vm region or the region couldn't be extended, allocate a new block
+        // if this wasn't a vm region or the vm region couldn't be extended, allocate a new block
         if (KERN_SUCCESS != ret) {
+            // get a new buffer, copy contents, return original ptr to the pool; should try to use vm_copy here
             newPtr = __FVAllocatorZoneMalloc(zone, size);
             memcpy(newPtr, ptr, alloc->ptrSize);
             __FVAllocatorZoneFree(zone, ptr);
