@@ -597,7 +597,7 @@ typedef struct _applier_context {
     void               *context;
     unsigned            type_mask;
     fv_zone_t          *zone;
-    kern_return_t     (*reader)(task_t remote_task, vm_address_t remote_address, vm_size_t size, void **local_memory);
+    kern_return_t     (*reader)(task_t, vm_address_t, vm_size_t, void **);
     void              (*recorder)(task_t, void *, unsigned type, vm_range_t *, unsigned);
     kern_return_t      *ret;
 } applier_context;
