@@ -583,16 +583,16 @@ static void __FVAllocatorZoneStatistics(fv_zone_t *zone, malloc_statistics_t *st
     stats->size_allocated = stats->max_size_in_use;
 }
 
+// called when preparing for a fork() (see _malloc_fork_prepare() in malloc.c)
 static void __FVAllocatorForceLock(fv_zone_t *zone)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     OSSpinLockLock(&zone->_allocationLock);
     OSSpinLockLock(&zone->_freeBufferLock);
 }
 
+// called in parent and child after fork() (see _malloc_fork_parent() and _malloc_fork_child() in malloc.c)
 static void __FVAllocatorForceUnlock(fv_zone_t *zone)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     OSSpinLockUnlock(&zone->_freeBufferLock);
     OSSpinLockUnlock(&zone->_allocationLock);
 }
