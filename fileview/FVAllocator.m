@@ -101,7 +101,7 @@ static CFComparisonResult __FVAllocationSizeComparator(const void *val1, const v
 static CFStringRef __FVAllocationCopyDescription(const void *value)
 {
     const fv_allocation_t *alloc = value;
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %d"), alloc->ptr, alloc->ptrSize);
+    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %lu"), alloc->ptr, (unsigned long)alloc->ptrSize);
 }
 
 static Boolean __FVAllocationEqual(const void *val1, const void *val2)
