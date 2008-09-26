@@ -48,11 +48,23 @@
 
 #pragma mark FVIcon abstract class
 
+/* 
+ Placeholder class to allow correct allocation behavior with multiple zones.
+ */
+@interface FVPlaceholderIcon : FVIcon
+@end
+@implementation FVPlaceholderIcon
+- (void)dealloc { /* do nothing */ if (0) [super dealloc]; }
+@end
+
 // FVIcon abstract class stuff
-static FVIcon *defaultPlaceholderIcon = nil;
 static Class FVIconClass = Nil;
+static Class FVPlaceholderIconClass = Nil;
 static Class FVQLIconClass = Nil;
-static NSURL *missingFileURL = nil;
+static NSURL *_missingFileURL = nil;
+
+static NSMapTable *_placeholders = NULL;
+static FVPlaceholderIcon *_defaultPlaceholderIcon = nil;
 
 @implementation FVIcon
 
@@ -64,14 +76,37 @@ static NSURL *missingFileURL = nil;
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4)
         FVQLIconClass = [FVQuickLookIcon self];
     
-    defaultPlaceholderIcon = (FVIcon *)NSAllocateObject(FVIconClass, 0, [self zone]);
-    missingFileURL = [[NSURL alloc] initWithScheme:@"x-fileview" host:@"localhost" path:@"/missing"];
+    // Non-owned callbacks allow a negligible leak if multithreaded; avoids locking.
+    _placeholders = NSCreateMapTableWithZone(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 4, NSDefaultMallocZone());
+    // Set up a fast path for the default zone
+    FVPlaceholderIconClass = [FVPlaceholderIcon self];
+    _defaultPlaceholderIcon = (FVPlaceholderIcon *)NSAllocateObject(FVPlaceholderIconClass, 0, NSDefaultMallocZone());
+    _missingFileURL = [[NSURL alloc] initWithScheme:@"x-fileview" host:@"localhost" path:@"/missing"];
     [self _initializeCategory];
+}
+
+static inline id _placeholderForZone(NSZone *aZone)
+{
+    id placeholder;
+
+    if (NULL == aZone || aZone == NSDefaultMallocZone()) {
+        placeholder = _defaultPlaceholderIcon;
+    }
+    else {
+        placeholder = NSMapGet(_placeholders, aZone);
+        if (NULL == placeholder) {
+            // Use pointer callbacks, since if the zone is destroyed the object will become invalid.
+            placeholder = NSAllocateObject(FVPlaceholderIconClass, 0, aZone);
+            NSMapInsert(_placeholders, aZone, placeholder);
+            NSCParameterAssert(NULL != placeholder);
+        }
+    }
+    return placeholder;
 }
 
 + (id)allocWithZone:(NSZone *)aZone
 {
-    return FVIconClass == self ? defaultPlaceholderIcon : NSAllocateObject(self, 0, aZone);
+    return FVIconClass == self ? _placeholderForZone(aZone) : NSAllocateObject(self, 0, aZone);
 }
 
 // ensure that alloc always calls through to allocWithZone:
@@ -80,30 +115,32 @@ static NSURL *missingFileURL = nil;
     return [self allocWithZone:NULL];
 }
 
-- (void)dealloc
-{
-    if ([self class] != FVIconClass)
-        [super dealloc];
-}
-
 + (NSURL *)missingFileURL;
 {
-    return missingFileURL;
+    return _missingFileURL;
 }
 
 + (id)iconWithURL:(NSURL *)representedURL;
 {
+    return [[[self allocWithZone:NULL] initWithURL:representedURL] autorelease];
+}
+
+- (id)initWithURL:(NSURL *)representedURL;
+{
     // CFURLGetFSRef won't like a nil URL
     NSParameterAssert(nil != representedURL);
+    // Subclassers must not call super, or we'd end up with an endless loop
+    FVAPIAssert2([self isMemberOfClass:FVPlaceholderIconClass], @"Invalid to invoke %@ on object of class %@", NSStringFromSelector(_cmd), [self class]);
+    NSZone *zone = [self zone];
     
     NSString *scheme = [representedURL scheme];
     
     // initWithURLScheme requires a scheme, so there's not much we can do without it
-    if ([representedURL isEqual:missingFileURL] || nil == scheme) {
-        return [[[FVFinderIcon allocWithZone:[self zone]] initWithURL:nil] autorelease];
+    if ([representedURL isEqual:_missingFileURL] || nil == scheme) {
+        return [[FVFinderIcon allocWithZone:zone] initWithURL:nil];
     }
     else if (NO == [representedURL isFileURL]) {
-        return [[[FVWebViewIcon allocWithZone:[self zone]] initWithURL:representedURL] autorelease];
+        return [[FVWebViewIcon allocWithZone:zone] initWithURL:representedURL];
     }
     
     OSStatus err = noErr;
@@ -116,7 +153,7 @@ static NSURL *missingFileURL = nil;
     
     // return missing file icon if we can't convert the path to an FSRef
     if (noErr != err)
-        return [[[FVFinderIcon allocWithZone:[self zone]] initWithURL:nil] autorelease];    
+        return [[FVFinderIcon allocWithZone:zone] initWithURL:nil];    
     
     // kLSItemContentType returns a CFStringRef, according to the header
     CFStringRef theUTI = NULL;
@@ -156,48 +193,48 @@ static NSURL *missingFileURL = nil;
     
     // Problems here.  TextMate claims a lot of plain text types but doesn't declare a UTI for any of them, so I end up with a dynamic UTI, and Spotlight ignores the files.  That's broken behavior on TextMate's part, and it sucks for my purposes.
     if ((NULL == theUTI) && dataPhysicalSize < maximumTextDataSize && [FVTextIcon canInitWithURL:representedURL]) {
-        anIcon = [[FVTextIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVTextIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypePDF)) {
-        anIcon = [[FVPDFIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVPDFIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, CFSTR("com.adobe.postscript"))) {
-        anIcon = [[FVPostScriptIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVPostScriptIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, CFSTR("net.sourceforge.skim-app.pdfd"))) {
-        anIcon = [[FVPDFDIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVPDFDIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeImage) && dataPhysicalSize < maximumImageDataSize) {
-        anIcon = [[FVImageIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVImageIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeEqual(theUTI, CFSTR("com.microsoft.windows-media-wmv")) && Nil != FVQLIconClass) {
         // Flip4Mac WMV plugin puts up a stupid progress bar and calls into WebCore, and it gives nothing if you uncheck "Open local files immediately" in its pref pane.  Bypass it entirely if we have Quick Look.  No idea if this is a QT bug or Flip4Mac bug, so I suppose I should file something...
-        anIcon = [[FVQLIconClass allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVQLIconClass allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeMovie) && [FVMovieIcon canInitWithURL:representedURL]) {
-        anIcon = [[FVMovieIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVMovieIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeHTML) || UTTypeConformsTo(theUTI, kUTTypeWebArchive)) {
-        anIcon = [[FVWebViewIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVWebViewIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (dataPhysicalSize < maximumTextDataSize && [FVTextIcon canInitWithUTI:(NSString *)theUTI]) {
-        anIcon = [[FVTextIcon allocWithZone:[self zone]] initWithURL:representedURL isPlainText:(UTTypeConformsTo(theUTI, kUTTypePlainText))];
+        anIcon = [[FVTextIcon allocWithZone:zone] initWithURL:representedURL isPlainText:(UTTypeConformsTo(theUTI, kUTTypePlainText))];
     }
     else if (Nil != FVQLIconClass) {
-        anIcon = [[FVQLIconClass allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVQLIconClass allocWithZone:zone] initWithURL:representedURL];
     }
     
     // In case some subclass returns nil, fall back to Quick Look.  If disabled, it returns nil.
     if (nil == anIcon && Nil != FVQLIconClass)
-        anIcon = [[FVQLIconClass allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVQLIconClass allocWithZone:zone] initWithURL:representedURL];
     
     // In case all subclasses failed, fall back to a Finder icon.
     if (nil == anIcon)
-        anIcon = [[FVFinderIcon allocWithZone:[self zone]] initWithURL:representedURL];
+        anIcon = [[FVFinderIcon allocWithZone:zone] initWithURL:representedURL];
     
     [(id)theUTI release];
     
-    return [anIcon autorelease];    
+    return anIcon;    
 }
 
 // we only want to encode the public superclass

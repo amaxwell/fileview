@@ -79,11 +79,6 @@
  @return YES if the file at aURL needs a badge. */
 + (BOOL)_shouldDrawBadgeForURL:(NSURL *)aURL copyTargetURL:(NSURL **)linkTarget;
 
-/** @internal override in subclasses
- For FVIcon::iconWithURL: usage.  Do not call -[super initWithURL:] ([super init] is superclass initializer).
- @param aURL Any NSURL instance. */
-- (id)initWithURL:(NSURL *)aURL;
-
 /** @internal
  @return FVIcon::size should only be used for computing an aspect ratio; don't rely on it as a pixel size. */
 - (NSSize)size;
