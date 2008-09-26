@@ -60,6 +60,11 @@
  @return A file thumbnail, file icon, or appropriate icon for the given URL scheme. */
 + (id)iconWithURL:(NSURL *)representedURL;
 
+/** Initializer.
+ In subclasses, do not call -[super initWithURL:] ([super init] is superclass initializer).
+ @param aURL Any NSURL instance. */
+- (id)initWithURL:(NSURL *)aURL;
+
 /** Releases cached resources.
  
  Send this to icons that won't be displayed "soon."  The only way to guarantee a decrease in memory usage is to release all references to the object, though, as this call may be a noop for some subclasses. */

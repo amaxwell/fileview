@@ -174,8 +174,6 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
     return drawBadge;
 }
 
-- (id)initWithURL:(NSURL *)aURL { [self doesNotRecognizeSelector:_cmd]; return nil; }
-
 - (NSSize)size { [self doesNotRecognizeSelector:_cmd]; return NSZeroSize; }
 
 - (void)_badgeIconInRect:(NSRect)dstRect ofContext:(CGContextRef)context;
