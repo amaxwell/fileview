@@ -76,7 +76,7 @@ static FVPlaceholderIcon *_defaultPlaceholderIcon = nil;
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4)
         FVQLIconClass = [FVQuickLookIcon self];
     
-    // Non-owned callbacks allow a negligible leak if multithreaded; avoids locking.
+    // Use pointer callbacks, since if the zone is destroyed the placeholder object will become invalid.  Non-owned callbacks allow a negligible leak if multithreaded, but avoids locking.
     _placeholders = NSCreateMapTableWithZone(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 4, NSDefaultMallocZone());
     // Set up a fast path for the default zone
     FVPlaceholderIconClass = [FVPlaceholderIcon self];
@@ -95,7 +95,6 @@ static inline id _placeholderForZone(NSZone *aZone)
     else {
         placeholder = NSMapGet(_placeholders, aZone);
         if (NULL == placeholder) {
-            // Use pointer callbacks, since if the zone is destroyed the object will become invalid.
             placeholder = NSAllocateObject(FVPlaceholderIconClass, 0, aZone);
             NSMapInsert(_placeholders, aZone, placeholder);
             NSCParameterAssert(NULL != placeholder);

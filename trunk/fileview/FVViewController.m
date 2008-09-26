@@ -315,8 +315,9 @@
     NSParameterAssert([aURL isKindOfClass:[NSURL class]]);
     FVIcon *icon = [_iconCache objectForKey:aURL];
     if (nil == icon) {
-        icon = [FVIcon iconWithURL:aURL];
+        icon = [[FVIcon allocWithZone:NULL] initWithURL:aURL];
         [_iconCache setObject:icon forKey:aURL];
+        [icon release];
     }
     return icon;
 }
