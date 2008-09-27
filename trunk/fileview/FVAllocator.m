@@ -103,7 +103,7 @@ static CFComparisonResult __FVAllocationSizeComparator(const void *val1, const v
 static CFStringRef __FVAllocationCopyDescription(const void *value)
 {
     const fv_allocation_t *alloc = value;
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %lu"), alloc->ptr, (unsigned long)alloc->ptrSize);
+    return CFStringCreateWithFormat(NULL, NULL, FVSTR("<0x%x>,\t size = %lu"), alloc->ptr, (unsigned long)alloc->ptrSize);
 }
 
 static Boolean __FVAllocationEqual(const void *val1, const void *val2)
@@ -760,7 +760,7 @@ static malloc_zone_t *__FVCreateZoneWithName(const char *name)
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), info);
+    return CFStringCreateWithFormat(NULL, NULL, FVSTR("FVAllocator <%p>"), info);
 }
 
 // return an available buffer of sufficient size or create a new one
@@ -943,7 +943,7 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     static CFDateFormatterRef formatter = NULL;
     if (NULL == formatter) {
         formatter = CFDateFormatterCreate(alloc, NULL, kCFDateFormatterShortStyle, kCFDateFormatterShortStyle);
-        CFDateFormatterSetFormat(formatter, CFSTR("yyyy-MM-dd HH:mm:ss"));
+        CFDateFormatterSetFormat(formatter, FVSTR("yyyy-MM-dd HH:mm:ss"));
     }
     CFStringRef dateDescription = CFDateFormatterCreateStringWithDate(alloc, formatter, date);
     if (NULL != date) CFRelease(date);
