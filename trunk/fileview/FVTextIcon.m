@@ -384,7 +384,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     CGContextSaveGState(ctxt);
     
     CGContextSetRGBFillColor(ctxt, backgroundComps[0], backgroundComps[1], backgroundComps[2], backgroundComps[3]);
-    CGContextFillRect(ctxt, *(CGRect *)&stringRect);
+    CGContextFillRect(ctxt, NSRectToCGRect(stringRect));
     
     CGContextConcatCTM(ctxt, pageTransform);
     

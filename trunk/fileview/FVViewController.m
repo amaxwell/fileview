@@ -437,8 +437,11 @@
     if (self) {
         
         if ([aURL isFileURL]) {
-            if (noErr != LSCopyDisplayNameForURL((CFURLRef)aURL, (CFStringRef *)&_name))
+            CFStringRef name;
+            if (noErr != LSCopyDisplayNameForURL((CFURLRef)aURL, &name))
                 _name = [[[aURL path] lastPathComponent] copyWithZone:[self zone]];
+            else
+                _name = (NSString *)name;
         } else {
             _name = [[aURL absoluteString] copyWithZone:[self zone]];
         }

@@ -155,9 +155,9 @@ static CFStringRef _savedSearchUTI = NULL;
         [targetURL release];
                 
         // see if this is a plain folder; we don't want to show FVGenericFolderIcon for a package/app/custom icon
-        CFStringRef targetUTI = NULL;
+        CFTypeRef targetUTI = NULL;
         if (noErr == err)
-            err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&targetUTI);
+            err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &targetUTI);
                 
         FSCatalogInfo catInfo;
         HFSUniStr255 name;

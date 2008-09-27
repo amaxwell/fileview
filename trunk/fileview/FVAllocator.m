@@ -273,7 +273,7 @@ static inline void __FVRecordAllocation(const fv_allocation_t *alloc, fv_zone_t 
 static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, fv_zone_t *zone)
 {
     // base address of the allocation, including fv_allocation_t
-    void *memory;
+    vm_address_t memory;
     fv_allocation_t *alloc = NULL;
     
     // use this space for the header
@@ -282,20 +282,20 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, f
 
     // allocations going through this allocator will always be larger than 4K
     kern_return_t ret;
-    ret = vm_allocate(mach_task_self(), (vm_address_t *)&memory, actualSize, VM_FLAGS_ANYWHERE);
-    if (KERN_SUCCESS != ret) memory = NULL;
+    ret = vm_allocate(mach_task_self(), &memory, actualSize, VM_FLAGS_ANYWHERE);
+    if (KERN_SUCCESS != ret) memory = 0;
     
     // set up the data structure
-    if (__builtin_expect(NULL != memory, 1)) {
+    if (__builtin_expect(0 != memory, 1)) {
         // align ptr to a page boundary
         void *ptr = (void *)round_page((uintptr_t)(memory + sizeof(fv_allocation_t)));
         // alloc struct immediately precedes ptr so we can find it again
         alloc = ptr - sizeof(fv_allocation_t);
         alloc->ptr = ptr;
         // ptrSize field is the size of ptr, not including the header or padding; used for array sorting
-        alloc->ptrSize = memory + actualSize - alloc->ptr;
+        alloc->ptrSize = (void *)memory + actualSize - alloc->ptr;
         // record the base address and size for deallocation purposes
-        alloc->base = memory;
+        alloc->base = (void *)memory;
         alloc->allocSize = actualSize;
         alloc->zone = zone;
         alloc->free = true;

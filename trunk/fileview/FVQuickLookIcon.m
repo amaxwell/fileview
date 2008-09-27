@@ -57,8 +57,8 @@ static BOOL FVQLIconDisabled = NO;
     FSRef fileRef;
     if (CFURLGetFSRef((CFURLRef)aURL, &fileRef)) {
         
-        CFStringRef theUTI = NULL;
-        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+        CFTypeRef theUTI = NULL;
+        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
         
         // just set pure alpha for now
         if (theUTI && (UTTypeConformsTo(theUTI, kUTTypeMovie) || UTTypeConformsTo(theUTI, kUTTypeAudiovisualContent))) {
@@ -175,7 +175,7 @@ static inline bool __FVQLShouldDrawFullImageWithSize(NSSize desiredSize, NSSize 
             }
             
             if (NULL == _fullImage) {
-                requestedSize = *(CGSize *)&_desiredSize;
+                requestedSize = NSSizeToCGSize(_desiredSize);
                 _fullImage = QLThumbnailImageCreate(NULL, (CFURLRef)_fileURL, requestedSize, NULL);
             }
             

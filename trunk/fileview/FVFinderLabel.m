@@ -275,7 +275,7 @@ static const CGFunctionCallbacks linearFunctionCallbacks = {0, &linearColorBlend
     static const CGFloat domainAndRange[8] = { 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0 };
     CGFunctionRef linearBlendFunctionRef = CGFunctionCreate(gradientColor, 1, domainAndRange, 4, domainAndRange, &linearFunctionCallbacks);    
     CGContextSaveGState(context); 
-    CGContextClipToRect(context, *(CGRect *)&rect);
+    CGContextClipToRect(context, NSRectToCGRect(rect));
     CGShadingRef cgShading = CGShadingCreateAxial(colorSpace, CGPointMake(0, NSMinY(rect)), CGPointMake(0, NSMaxY(rect)), linearBlendFunctionRef, NO, NO);
     CGContextDrawShading(context, cgShading);
     CGShadingRelease(cgShading);
@@ -397,7 +397,7 @@ static void ClipContextToCircleCappedPathInRect(CGContextRef context, CGRect rec
 + (void)drawFinderLabel:(NSUInteger)label inRect:(NSRect)rect roundEnds:(BOOL)flag;
 {
     NSGraphicsContext *nsContext = [NSGraphicsContext currentContext];
-    [self drawFinderLabel:label inRect:*(CGRect *)&rect ofContext:[nsContext graphicsPort] flipped:[nsContext isFlipped] roundEnds:flag];
+    [self drawFinderLabel:label inRect:NSRectToCGRect(rect) ofContext:[nsContext graphicsPort] flipped:[nsContext isFlipped] roundEnds:flag];
 }
 
 + (NSUInteger)finderLabelForURL:(NSURL *)aURL;

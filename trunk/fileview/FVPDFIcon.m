@@ -54,8 +54,8 @@ static CGLayerRef   _pageLayer = NULL;
     FVINITIALIZE(FVPDFIcon);
     _releaseableIcons = [_FVSplitSet new];
     
-    CGSize layerSize = CGSizeMake(1, 1);
-    CGContextRef context = [FVWindowGraphicsContextWithSize(*(NSSize *)&layerSize) graphicsPort];
+    const CGSize layerSize = { 1, 1 };
+    CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
     _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
     context = CGLayerGetContext(_pageLayer);
     CGFloat components[4] = { 1, 1 };
@@ -313,7 +313,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             // these may have been bogus before
             int rotation = CGPDFPageGetRotationAngle(_pdfPage);
             if (0 == rotation || 180 == rotation)
-                _fullSize = ((NSRect *)&pageRect)->size;
+                _fullSize = NSRectFromCGRect(pageRect).size;
             else
                 _fullSize = NSMakeSize(pageRect.size.height, pageRect.size.width);
             

@@ -155,10 +155,10 @@ static inline id _placeholderForZone(NSZone *aZone)
         return [[FVFinderIcon allocWithZone:zone] initWithURL:nil];    
     
     // kLSItemContentType returns a CFStringRef, according to the header
-    CFStringRef theUTI = NULL;
+    CFTypeRef theUTI = NULL;
     // theUTI will be NULL if this fails
     if (noErr == err)
-        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
     
     // For a link/alias, get the target's UTI in order to determine which concrete subclass to create.  Subclasses that are file-based need to check the URL to see if it should be badged using _shouldDrawBadgeForURL, and then call _resolvedURLWithURL in order to actually load the file's content.
     
@@ -171,7 +171,7 @@ static inline id _placeholderForZone(NSZone *aZone)
             CFRelease(theUTI);
             theUTI = NULL;
             // theUTI will be NULL if this fails
-            LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+            LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
         }
     }
     

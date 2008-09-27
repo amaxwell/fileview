@@ -57,6 +57,13 @@ FV_PRIVATE_EXTERN const CFSetCallBacks FVNSObjectSetCallBacks;
  For NSObject subclasses in a CFSet using pointer equality.  Compatible with toll-free bridging. */
 FV_PRIVATE_EXTERN const CFSetCallBacks FVNSObjectPointerSetCallBacks;
 
+/** @internal @brief For use with integer-valued dictionaries.
+ @param dict CFDictionary with integer values.
+ @param key Key of interest.
+ @param value Pointer in which to return the value.
+ @return TRUE if the key was present, FALSE if not present */  
+FV_PRIVATE_EXTERN Boolean FVCFDictionaryGetIntegerIfPresent(CFDictionaryRef dict, const void *key, NSInteger *value);
+
 /** @internal @brief Nonretaining timer.
  Creates a timer that does not retain its target; does not schedule the timer in a runloop.
  @param interval Fire interval.

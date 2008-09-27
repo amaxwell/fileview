@@ -310,7 +310,15 @@ static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef alloc
     if (MACH_PORT_NULL == _threadPort) HALT;
     
     CFRunLoopRef rl = CFRunLoopGetCurrent();
-    CFRunLoopSourceRef source = CFRunLoopSourceCreate(NULL, 0, (CFRunLoopSourceContext *)&context);
+    union { 
+        CFRunLoopSourceContext c; 
+        struct _v1 {
+            CFRunLoopSourceContext1 c1; 
+            unsigned long padding;
+        } v1;
+    } ctxt_u;
+    ctxt_u.v1.c1 = context;
+    CFRunLoopSourceRef source = CFRunLoopSourceCreate(NULL, 0, &ctxt_u.c);
     CFRunLoopAddSource(rl, source, kCFRunLoopDefaultMode);
     CFRelease(source);
     
