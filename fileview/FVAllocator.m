@@ -63,7 +63,9 @@ typedef struct _fv_allocation_t {
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
+#if DEBUG && !defined(IMAGE_SHEAR)
 static void __FVAllocatorShowStats(fv_zone_t *fvzone);
+#endif
 
 // used as guard field in allocation struct; do not rely on the value
 static const char *_malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
@@ -873,6 +875,8 @@ static void __log_stats()
 
 #pragma mark API
 
+#if DEBUG && !defined(IMAGE_SHEAR)
+
 // can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
 static void __FVAllocatorShowStats(fv_zone_t *fvzone)
 {
@@ -948,6 +952,8 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     if (NULL != dateDescription) CFRelease(dateDescription);
     [pool release];
 }
+
+#endif
 
 CFAllocatorRef FVAllocatorGetDefault() 
 { 
