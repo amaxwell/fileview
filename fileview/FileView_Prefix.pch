@@ -39,6 +39,9 @@ _FVAPIAssertBody((condition), (desc), (arg1), (arg2), (arg3))
 #define FVAPIParameterAssert(condition)			\
 _FVAPIAssertBody((condition), @"Invalid parameter not satisfying: %s", #condition, 0, 0)
 
+/* workaround for gcc warning about CFSTR usage when using strict aliasing */
+#define FVSTR(cStr) ((CFStringRef)@cStr)
+
 #endif /* __OBJC__ */
 
 // copied from AppKit
