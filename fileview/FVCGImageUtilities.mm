@@ -293,7 +293,7 @@ static vImage_Error __FVConvertIndexedImageRegionToPlanar8_buffers(CGImageRef im
         const uint8_t *srcRow = srcBytes + rowBytes * (region.y + rowIndex) + region.x * indexedImageBytesPerSample;        
         
         // we're converting the indexed image to ARGB8888
-        uint8_t *dstAlpha = (uint8_t *)planarBuffers[0]->buffer->data + planarBuffers[0]->buffer->rowBytes * rowIndex;
+        uint8_t * dstAlpha = (uint8_t *)planarBuffers[0]->buffer->data + planarBuffers[0]->buffer->rowBytes * rowIndex;
         uint8_t *dstRed = (uint8_t *)planarBuffers[1]->buffer->data + planarBuffers[1]->buffer->rowBytes * rowIndex;
         uint8_t *dstGreen = (uint8_t *)planarBuffers[2]->buffer->data + planarBuffers[2]->buffer->rowBytes * rowIndex;
         uint8_t *dstBlue = (uint8_t *)planarBuffers[3]->buffer->data + planarBuffers[3]->buffer->rowBytes * rowIndex;

@@ -146,11 +146,11 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
     if (absolutePath) CFRelease(absolutePath);
     
     // kLSItemContentType returns a CFStringRef, according to the header
-    CFStringRef theUTI = NULL;
+    CFTypeRef theUTI = NULL;
     
     // theUTI will be NULL on error
     if (noErr == err)
-        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
+        LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
     
     BOOL drawBadge = (NULL != theUTI && UTTypeConformsTo(theUTI, kUTTypeResolvable));
     
@@ -178,7 +178,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
 
 - (void)_badgeIconInRect:(NSRect)dstRect ofContext:(CGContextRef)context;
 {
-    CGContextDrawLayerInRect(context, *(CGRect *)&dstRect, [FVAliasBadge aliasBadgeWithSize:dstRect.size]);
+    CGContextDrawLayerInRect(context, NSRectToCGRect(dstRect), [FVAliasBadge aliasBadgeWithSize:dstRect.size]);
 }
 
 // handles centering and aspect ratio, since most of our icons have weird sizes, but they'll be drawn in a square box
@@ -195,7 +195,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
     if (s.width <= 0 || s.height <= 0) s = (NSSize) { 1, 1 };
     
     CGFloat ratio = MIN(NSWidth(iconRect) / s.width, NSHeight(iconRect) / s.height);
-    CGRect dstRect = *(CGRect *)&iconRect;
+    CGRect dstRect = NSRectToCGRect(iconRect);
     dstRect.size.width = ratio * s.width;
     dstRect.size.height = ratio * s.height;
     
@@ -212,7 +212,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
 {
     CGContextSaveGState(context);
     CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
-    CGContextDrawLayerInRect(context, *(CGRect *)&dstRect, [FVPlaceholderImage placeholderWithSize:dstRect.size]);
+    CGContextDrawLayerInRect(context, NSRectToCGRect(dstRect), [FVPlaceholderImage placeholderWithSize:dstRect.size]);
     CGContextRestoreGState(context);
 }
 

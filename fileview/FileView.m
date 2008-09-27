@@ -1202,7 +1202,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         CGSize layerSize = CGLayerGetSize(_selectionOverlay);
         imageRect.size.height = layerSize.height;
         imageRect.size.width = layerSize.width;
-        CGContextClearRect(layerContext, *(CGRect *)&imageRect);
+        CGContextClearRect(layerContext, NSRectToCGRect(imageRect));
         
         [NSGraphicsContext saveGraphicsState];
         NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithGraphicsPort:layerContext flipped:YES];
@@ -1226,7 +1226,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     // make sure we use source over for drawing the image
     CGContextSaveGState(drawingContext);
     CGContextSetBlendMode(drawingContext, kCGBlendModeNormal);
-    CGContextDrawLayerInRect(drawingContext, *(CGRect *)&aRect, _selectionOverlay);
+    CGContextDrawLayerInRect(drawingContext, NSRectToCGRect(aRect), _selectionOverlay);
     CGContextRestoreGState(drawingContext);
 }
 
@@ -1596,7 +1596,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     NSStringDrawingOptions stringOptions = NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingOneShot;
                     
                     if (label > 0) {
-                        CGRect labelRect = *(CGRect *)&textRect;
+                        CGRect labelRect = NSRectToCGRect(textRect);
                         labelRect.size.height = _titleHeight;                        
                         [FVFinderLabel drawFinderLabel:label inRect:labelRect ofContext:cgContext flipped:YES roundEnds:YES];
                         
@@ -1888,11 +1888,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 - (void)mouseEntered:(NSEvent *)event;
 {
     const NSTrackingRectTag tag = [event trackingNumber];
-    NSUInteger anIndex;
+    NSInteger anIndex;
     
     // Finder doesn't show buttons unless it's the front app.  If Finder is the front app, it shows them for any window, regardless of main/key state, so we'll do the same.
     if ([NSApp isActive]) {
-        if (CFDictionaryGetValueIfPresent(_trackingRectMap, (const void *)tag, (const void **)&anIndex))
+        if (FVCFDictionaryGetIntegerIfPresent(_trackingRectMap, (const void *)tag, &anIndex))
             [self _showArrowsForIconAtIndex:anIndex];
         else if ([self _showsSlider] && [event userData] == _sliderWindow) {
             
@@ -1952,12 +1952,12 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 - (NSString *)view:(NSView *)view stringForToolTip:(NSToolTipTag)tag point:(NSPoint)point userData:(void *)userData
 {
     NSURL *theURL = [self _URLAtPoint:point];
-    NSString *name;
-    if ([theURL isFileURL] && noErr == LSCopyDisplayNameForURL((CFURLRef)theURL, (CFStringRef *)&name))
-        name = [name autorelease];
+    CFStringRef name;
+    if ([theURL isFileURL] && noErr == LSCopyDisplayNameForURL((CFURLRef)theURL, &name))
+        name = (CFStringRef)[(id)name autorelease];
     else
-        name = [theURL absoluteString];
-    return name;
+        name = (CFStringRef)[theURL absoluteString];
+    return (NSString *)name;
 }
 
 // this method and shouldDelayWindowOrderingForEvent: are overriden to allow dragging from the view without making our window key

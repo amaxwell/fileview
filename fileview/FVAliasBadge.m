@@ -59,7 +59,7 @@ static const NSUInteger _sizes[] = { 32, 64, 128, 256, 512 };
         
         CGRect dstRect = CGRectMake(0, 0, _sizes[i], _sizes[i]);
         
-        NSGraphicsContext *windowContext = FVWindowGraphicsContextWithSize(((NSRect *)&dstRect)->size);
+        NSGraphicsContext *windowContext = FVWindowGraphicsContextWithSize(NSRectFromCGRect(dstRect).size);
         NSParameterAssert(nil != windowContext);
         
         CGLayerRef layer = CGLayerCreateWithContext([windowContext graphicsPort], dstRect.size, NULL);

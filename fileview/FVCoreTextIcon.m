@@ -49,7 +49,7 @@ static CGRect _textRect;
     FVAPIParameterAssert(pthread_main_np() != 0);
     
     _paperRect.origin = CGPointZero;
-    _paperRect.size = *(CGSize *)&FVDefaultPaperSize;
+    _paperRect.size = NSSizeToCGSize(FVDefaultPaperSize);
     
     // use a symmetric margin
     _textRect.origin = CGPointZero;

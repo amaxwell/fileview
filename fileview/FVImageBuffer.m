@@ -72,7 +72,7 @@ static void * FVImageBufferReallocate(void *ptr, CFIndex newSize, CFOptionFlags 
 {
     OSSpinLockLock(&_monitorLock);
     NSInteger oldSize;
-    if (CFDictionaryGetValueIfPresent(_monitoredPointers, ptr, (const void **)&oldSize))
+    if (FVCFDictionaryGetIntegerIfPresent(_monitoredPointers, ptr, &oldSize))
         CFDictionaryRemoveValue(_monitoredPointers, ptr);
     else
         oldSize = 0;
@@ -87,7 +87,7 @@ static void FVImageBufferDeallocate(void *ptr, void *info)
 {
     OSSpinLockLock(&_monitorLock);
     NSInteger oldSize;
-    if (CFDictionaryGetValueIfPresent(_monitoredPointers, ptr, (const void **)&oldSize)) {
+    if (FVCFDictionaryGetIntegerIfPresent(_monitoredPointers, ptr, &oldSize)) {
         CFDictionaryRemoveValue(_monitoredPointers, ptr);
         _allocatedBytes -= oldSize;
     }
@@ -235,7 +235,7 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
     if (NO == flag) {
         OSSpinLockLock(&_monitorLock);
         NSInteger oldSize;
-        if (CFDictionaryGetValueIfPresent(_monitoredPointers, self->buffer->data, (const void **)&oldSize)) {
+        if (FVCFDictionaryGetIntegerIfPresent(_monitoredPointers, self->buffer->data, &oldSize)) {
             CFDictionaryRemoveValue(_monitoredPointers, self->buffer->data);
             _allocatedBytes -= oldSize;
         }

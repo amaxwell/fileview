@@ -54,6 +54,16 @@ const CFDictionaryValueCallBacks FVIntegerValueDictionaryCallBacks = { 0, NULL, 
 const CFSetCallBacks FVNSObjectSetCallBacks = { 0, __FVObjectRetain, __FVObjectRelease, __FVObjectCopyDescription, __FVObjectEqual, __FVObjectHash };
 const CFSetCallBacks FVNSObjectPointerSetCallBacks = { 0, __FVObjectRetain, __FVObjectRelease, __FVObjectCopyDescription, NULL, NULL };
 
+Boolean FVCFDictionaryGetIntegerIfPresent(CFDictionaryRef dict, const void *key, NSInteger *value)
+{
+    union { const void *pv; const NSInteger iv; } u;
+    if (CFDictionaryGetValueIfPresent(dict, key, &u.pv)) {
+        *value = u.iv;
+        return TRUE;
+    }
+    return FALSE;
+}
+
 #pragma mark Timer
 
 // Object that can be retained and released by the timer, but does not retain its ivars
