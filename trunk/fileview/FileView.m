@@ -188,13 +188,13 @@ static CGColorRef _shadowColor = NULL;
     _padding = [self _defaultPaddingForScale:1.0];
     _lastMouseDownLocInView = NSZeroPoint;
     _dropRectForHighlight = NSZeroRect;
-    _isRescaling = NO;
-    _scheduledLiveResize = NO;
+    _fvFlags.isRescaling = NO;
+    _fvFlags.scheduledLiveResize = NO;
     _selectedIndexes = [[NSMutableIndexSet alloc] init];
     _lastClickedIndex = NSNotFound;
     _rubberBandRect = NSZeroRect;
-    _isMouseDown = NO;
-    _isEditable = NO;
+    _fvFlags.isMouseDown = NO;
+    _fvFlags.isEditable = NO;
     [self setBackgroundColor:[[self class] defaultBackgroundColor]];
     _selectionOverlay = NULL;
         
@@ -232,7 +232,7 @@ static CGColorRef _shadowColor = NULL;
     
     _contentBinding = nil;
     _selectionBinding = nil;
-    _isObservingSelectionIndexes = NO;
+    _fvFlags.isObservingSelectionIndexes = NO;
     
 }
 
@@ -296,7 +296,7 @@ static CGColorRef _shadowColor = NULL;
 
 - (NSColor *)backgroundColor
 { 
-    return _isDrawingDragImage ? [NSColor clearColor] : _backgroundColor;
+    return _fvFlags.isDrawingDragImage ? [NSColor clearColor] : _backgroundColor;
 }
 
 #pragma mark API
@@ -402,8 +402,8 @@ static CGColorRef _shadowColor = NULL;
     
     // Schedule a reload so we always have the correct quality icons, but don't do it while scaling in response to a slider.
     // This will also scroll to the first selected icon; maintaining scroll position while scaling is too jerky.
-    if (NO == _isRescaling) {
-        _isRescaling = YES;
+    if (NO == _fvFlags.isRescaling) {
+        _fvFlags.isRescaling = YES;
         // this is only sent in the default runloop mode, so it's not sent during event tracking
         [self performSelector:@selector(_rescaleComplete) withObject:nil afterDelay:0.0];
     }
@@ -416,7 +416,7 @@ static CGColorRef _shadowColor = NULL;
     
 - (void)_registerForDraggedTypes
 {
-    if (_isEditable && _dataSource) {
+    if (_fvFlags.isEditable && _dataSource) {
         const SEL selectors[] = 
         { 
             @selector(fileView:insertURLs:atIndexes:),
@@ -479,13 +479,13 @@ static CGColorRef _shadowColor = NULL;
 
 - (BOOL)isEditable 
 { 
-    return _isEditable;
+    return _fvFlags.isEditable;
 }
 
 - (void)setEditable:(BOOL)flag 
 {
-    if (_isEditable != flag) {
-        _isEditable = flag;
+    if (_fvFlags.isEditable != flag) {
+        _fvFlags.isEditable = flag;
         
         [self _registerForDraggedTypes];
     }
@@ -893,7 +893,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     // Mmalc's example unbinds here for a nil superview, and that's the only way I see at present to unbind without having the client do it explicitly, for instance in a windowWillClose:.  Perhaps it would be better for register for that in the view?   Old comment: this causes problems if you remove the view and add it back in later (and also can cause crashes as a side effect, if we're not careful with the datasource).
     if (nil == newSuperview) {
         
-        if (_isObservingSelectionIndexes) 
+        if (_fvFlags.isObservingSelectionIndexes) 
             [self removeObserver:self forKeyPath:@"selectionIndexes"];
         
         [self unbindExposedBindings];
@@ -906,7 +906,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     }
     else {
         
-        if (NO == _isObservingSelectionIndexes)
+        if (NO == _fvFlags.isObservingSelectionIndexes)
             [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:self];
         
         // bind here (noop if we don't have a slider)
@@ -1110,7 +1110,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [self scrollRectToVisible:[self _rectOfIconInRow:r column:c]];
     }
     [self setNeedsDisplay:YES];
-    _isRescaling = NO;
+    _fvFlags.isRescaling = NO;
 }
 
 - (void)iconUpdated:(FVIcon *)updatedIcon;
@@ -1373,7 +1373,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 - (void)viewDidEndLiveResize
 {
     [self setNeedsDisplay:YES];
-    _scheduledLiveResize = NO;
+    _fvFlags.scheduledLiveResize = NO;
 }
 
 // only invoked when autoscrolling or in response to user action
@@ -1503,7 +1503,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     CGContextSetBlendMode(cgContext, kCGBlendModeNormal);
     
     // don't limit quality based on scrolling unless we really need to
-    if (isResizing || _isRescaling) {
+    if (isResizing || _fvFlags.isRescaling) {
         CGContextSetInterpolationQuality(cgContext, kCGInterpolationNone);
         CGContextSetShouldAntialias(cgContext, false);
     }
@@ -1517,18 +1517,18 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     }
     
     // http://lists.apple.com/archives/Cocoa-dev/2008/Jul/msg02539.html indicates this is a good idea; I don't see a difference
-    if (_isDrawingDragImage)
+    if (_fvFlags.isDrawingDragImage)
         CGContextSetShouldSmoothFonts(cgContext, false);
             
     BOOL isDrawingToScreen = [ctxt isDrawingToScreen];
     
     // we should use the fast path when scrolling at small sizes; PDF sucks in that case...
     
-    BOOL useFastDrawingPath = (isResizing || _isRescaling || ([self _isFastScrolling] && _iconSize.height <= 256));
+    BOOL useFastDrawingPath = (isResizing || _fvFlags.isRescaling || ([self _isFastScrolling] && _iconSize.height <= 256));
     
     // redraw at high quality after scrolling
-    if (useFastDrawingPath && NO == _scheduledLiveResize && [self _isFastScrolling]) {
-        _scheduledLiveResize = YES;
+    if (useFastDrawingPath && NO == _fvFlags.scheduledLiveResize && [self _isFastScrolling]) {
+        _fvFlags.scheduledLiveResize = YES;
         [self performSelector:@selector(viewDidEndLiveResize) withObject:nil afterDelay:0 inModes:[NSArray arrayWithObject:NSDefaultRunLoopMode]];
     }
     
@@ -1542,14 +1542,14 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         for (c = cMin; c < cMax && NSNotFound != (i = [self _indexForGridRow:r column:c]); c++) 
         {
             // if we're creating a drag image, only draw selected icons
-            if (NO == _isDrawingDragImage || [_selectedIndexes containsIndex:i]) {
+            if (NO == _fvFlags.isDrawingDragImage || [_selectedIndexes containsIndex:i]) {
             
                 NSRect fileRect = [self _rectOfIconInRow:r column:c];
                 NSURL *aURL = [_controller URLAtIndex:i];
                 NSRect textRect = [self _rectOfTextForIconRect:fileRect];
                 
                 // always draw icon and text together, as they may overlap due to shadow and finder label, and redrawing a part may look odd
-                BOOL willDrawIcon = _isDrawingDragImage || [self needsToDrawRect:NSUnionRect(NSInsetRect(fileRect, -2.0 * [self iconScale], 0), textRect)];
+                BOOL willDrawIcon = _fvFlags.isDrawingDragImage || [self needsToDrawRect:NSUnionRect(NSInsetRect(fileRect, -2.0 * [self iconScale], 0), textRect)];
 
                 if (willDrawIcon) {
 
@@ -1631,7 +1631,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     // avoid hitting the cache thread while a live resize is in progress, but allow cache updates while scrolling
     // use the same range criteria that we used in iterating icons
     NSUInteger iMin = indexRange.location, iMax = NSMaxRange(indexRange);
-    if (NO == isResizing && NO == _isRescaling && isDrawingToScreen)
+    if (NO == isResizing && NO == _fvFlags.isRescaling && isDrawingToScreen)
         [self _scheduleIconsInRange:NSMakeRange(iMin, iMax - iMin)];
 }
 
@@ -1705,7 +1705,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     
     if (isDrawingToScreen) {
         
-        if ([self _hasArrows] && _isDrawingDragImage == NO) {
+        if ([self _hasArrows] && _fvFlags.isDrawingDragImage == NO) {
             if (NSIntersectsRect(rect, _leftArrowFrame))
                 [_leftArrow drawWithFrame:_leftArrowFrame inView:self];
             if (NSIntersectsRect(rect, _rightArrowFrame))
@@ -1765,9 +1765,9 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     NSBitmapImageRep *imageRep = [scrollView bitmapImageRepForCachingDisplayInRect:boundsRect];
     
     // set a flag so only the selected icons are drawn and background is set to clear
-    _isDrawingDragImage = YES;    
+    _fvFlags.isDrawingDragImage = YES;    
     [scrollView cacheDisplayInRect:boundsRect toBitmapImageRep:imageRep];
-    _isDrawingDragImage = NO;
+    _fvFlags.isDrawingDragImage = NO;
 
     NSImage *newImage = [[[NSImage alloc] initWithSize:boundsRect.size] autorelease];
     [newImage addRepresentation:imageRep];
@@ -1997,7 +1997,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 
 - (void)mouseDown:(NSEvent *)event
 {
-    _isMouseDown = YES;
+    _fvFlags.isMouseDown = YES;
     
     NSPoint p = [event locationInWindow];
     p = [self convertPoint:p fromView:nil];
@@ -2163,7 +2163,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 - (void)mouseUp:(NSEvent *)event
 {
-    _isMouseDown = NO;
+    _fvFlags.isMouseDown = NO;
     if (NO == NSIsEmptyRect(_rubberBandRect)) {
         [self setNeedsDisplayInRect:_rubberBandRect];
         _rubberBandRect = NSZeroRect;
@@ -2179,7 +2179,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     
     // _isMouseDown tells us if the mouseDown: event originated in this view; if not, just ignore it
     
-    if (NSEqualRects(_rubberBandRect, NSZeroRect) && nil != pointURL && _isMouseDown) {
+    if (NSEqualRects(_rubberBandRect, NSZeroRect) && nil != pointURL && _fvFlags.isMouseDown) {
         // No previous rubber band selection, so check to see if we're dragging an icon at this point.
         // The condition is also false when we're getting a repeated call to mouseDragged: for rubber band drawing.
         
@@ -2219,7 +2219,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
         }
         
     }
-    else if (_isMouseDown) {   
+    else if (_fvFlags.isMouseDown) {   
         // no icons to drag, so we must draw the rubber band rectangle
         _rubberBandRect = NSIntersectionRect(_rectWithCorners(_lastMouseDownLocInView, p), [self bounds]);
         [self setSelectionIndexes:[self _allIndexesInRubberBandRect]];
@@ -2962,7 +2962,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 {    
     NSSize size = NSZeroSize;
     size.height = _titleHeight + 4.0;
-    if ([_dataSource respondsToSelector:@selector(fileView:subtitleAtIndex:)])
+    if ([[self dataSource] respondsToSelector:@selector(fileView:subtitleAtIndex:)])
         size.height += _subtitleHeight;
     return size;
 }

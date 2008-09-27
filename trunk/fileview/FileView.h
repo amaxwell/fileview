@@ -64,7 +64,11 @@ enum {
  */
 @interface FileView : NSView 
 {
+    /* all instance variables are private */
 @protected
+    NSSize                  _padding;
+    NSSize                  _iconSize;
+@private
     id                      _delegate;
     id                      _dataSource;
     id                      _controller;
@@ -74,17 +78,18 @@ enum {
     CGLayerRef              _selectionOverlay;
     NSUInteger              _lastClickedIndex;
     NSRect                  _rubberBandRect;
-    BOOL                    _isMouseDown;
+    struct __fvFlags {
+        unsigned int isMouseDown : 1;
+        unsigned int isEditable : 1;
+        unsigned int isRescaling: 1;
+        unsigned int scheduledLiveResize : 1;
+        unsigned int isDrawingDragImage : 1;
+        unsigned int isObservingSelectionIndexes : 1;
+    } _fvFlags;
     NSRect                  _dropRectForHighlight;
-    NSSize                  _padding;
-    NSSize                  _iconSize;
     double                  _maxScale;
     double                  _minScale;
     NSPoint                 _lastMouseDownLocInView;
-    BOOL                    _isEditable;
-    BOOL                    _isRescaling;
-    BOOL                    _scheduledLiveResize;
-    BOOL                    _isDrawingDragImage;
     CFAbsoluteTime          _timeOfLastOrigin;
     NSPoint                 _lastOrigin;
     CFMutableDictionaryRef  _trackingRectMap;
@@ -97,7 +102,6 @@ enum {
     
     id                      _contentBinding;
     id                      _selectionBinding;
-    BOOL                    _isObservingSelectionIndexes;
 }
 
 /** Currently selected indexes.
