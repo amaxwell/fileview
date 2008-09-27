@@ -296,7 +296,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         [pdfView setDocument:pdfDoc];
         [pdfDoc release];
     }
-    else if (UTTypeConformsTo(theUTI, CFSTR("com.adobe.postscript"))) {
+    else if (UTTypeConformsTo(theUTI, FVSTR("com.adobe.postscript"))) {
         theView = pdfView;
         PDFDocument *pdfDoc = [[PDFDocument alloc] initWithData:PDFDataWithPostScriptDataAtURL(representedURL)];
         [pdfView setDocument:pdfDoc];
@@ -315,7 +315,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
             [movie release];
         }
     }
-    else if (UTTypeConformsTo(theUTI, CFSTR("public.composite-content")) || UTTypeConformsTo(theUTI, kUTTypeText)) {
+    else if (UTTypeConformsTo(theUTI, FVSTR("public.composite-content")) || UTTypeConformsTo(theUTI, kUTTypeText)) {
         theView = textView;
         NSDictionary *attrs;
         NSAttributedString *string = [[NSAttributedString alloc] initWithURL:representedURL documentAttributes:&attrs];

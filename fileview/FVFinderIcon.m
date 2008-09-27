@@ -79,7 +79,7 @@ static CFStringRef _savedSearchUTI = NULL;
     [[FVGenericFolderIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
     [[FVSavedSearchIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
 
-    _savedSearchUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, CFSTR("savedSearch"), NULL);
+    _savedSearchUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, FVSTR("savedSearch"), NULL);
 }
 
 + (BOOL)_isSavedSearchURL:(NSURL *)aURL
@@ -522,7 +522,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
         _icon = NULL;
         
         IconRef icon;
-        err = GetIconRefFromTypeInfo(0, 0, CFSTR("savedSearch"), NULL, kIconServicesNormalUsageFlag, &icon);
+        err = GetIconRefFromTypeInfo(0, 0, FVSTR("savedSearch"), NULL, kIconServicesNormalUsageFlag, &icon);
         if (noErr == err) {
             _thumbnail = __FVCreateThumbnailWithIcon(icon);
             _fullImage = __FVCreateFullImageWithIcon(icon);

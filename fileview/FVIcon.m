@@ -197,16 +197,16 @@ static inline id _placeholderForZone(NSZone *aZone)
     else if (UTTypeConformsTo(theUTI, kUTTypePDF)) {
         anIcon = [[FVPDFIcon allocWithZone:zone] initWithURL:representedURL];
     }
-    else if (UTTypeConformsTo(theUTI, CFSTR("com.adobe.postscript"))) {
+    else if (UTTypeConformsTo(theUTI, FVSTR("com.adobe.postscript"))) {
         anIcon = [[FVPostScriptIcon allocWithZone:zone] initWithURL:representedURL];
     }
-    else if (UTTypeConformsTo(theUTI, CFSTR("net.sourceforge.skim-app.pdfd"))) {
+    else if (UTTypeConformsTo(theUTI, FVSTR("net.sourceforge.skim-app.pdfd"))) {
         anIcon = [[FVPDFDIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeImage) && dataPhysicalSize < maximumImageDataSize) {
         anIcon = [[FVImageIcon allocWithZone:zone] initWithURL:representedURL];
     }
-    else if (UTTypeEqual(theUTI, CFSTR("com.microsoft.windows-media-wmv")) && Nil != FVQLIconClass) {
+    else if (UTTypeEqual(theUTI, FVSTR("com.microsoft.windows-media-wmv")) && Nil != FVQLIconClass) {
         // Flip4Mac WMV plugin puts up a stupid progress bar and calls into WebCore, and it gives nothing if you uncheck "Open local files immediately" in its pref pane.  Bypass it entirely if we have Quick Look.  No idea if this is a QT bug or Flip4Mac bug, so I suppose I should file something...
         anIcon = [[FVQLIconClass allocWithZone:zone] initWithURL:representedURL];
     }
