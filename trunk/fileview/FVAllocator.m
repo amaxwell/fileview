@@ -51,6 +51,9 @@ typedef struct _fv_zone_t {
     OSSpinLock        _spinLock;
     CFMutableSetRef   _allocations;
     CFRunLoopTimerRef _timer;
+    volatile uint32_t _cacheHits;
+    volatile uint32_t _cacheMisses;
+    volatile uint32_t _reallocCount;
 } fv_zone_t;
 
 typedef struct _fv_allocation_t {
@@ -83,10 +86,6 @@ static const char *_vm_guard;      /* indicates vm_allocate was used for this bl
 #else
 #define FV_REAP_TIMEINTERVAL 300
 #endif
-
-static volatile uint32_t _cacheHits = 0;
-static volatile uint32_t _cacheMisses = 0;
-static volatile uint32_t _reallocCount = 0;
 
 static CFComparisonResult __FVAllocationSizeComparator(const void *val1, const void *val2, void *context)
 {
@@ -367,13 +366,13 @@ static void *__FVAllocatorZoneMalloc(fv_zone_t *zone, size_t size)
     
     // optimistically assume that the cache is effective; for our usage (lots of similarly-sized images), this is correct
     if (__builtin_expect(kCFNotFound == idx, 0)) {
-        OSAtomicIncrement32((int32_t *)&_cacheMisses);
+        OSAtomicIncrement32((int32_t *)&zone->_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&zone->_spinLock);
         alloc = useVM ? __FVAllocationFromVMSystem(size, zone) : __FVAllocationFromMalloc(size, zone);
     }
     else {
-        OSAtomicIncrement32((int32_t *)&_cacheHits);
+        OSAtomicIncrement32((int32_t *)&zone->_cacheHits);
         alloc = (void *)CFArrayGetValueAtIndex(zone->_freeBuffers, idx);
         CFArrayRemoveValueAtIndex(zone->_freeBuffers, idx);
         OSSpinLockUnlock(&zone->_spinLock);
@@ -441,7 +440,7 @@ static void __FVAllocatorZoneFree(fv_zone_t *zone, void *ptr)
 
 static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
 {
-    OSAtomicIncrement32((int32_t *)&_reallocCount);
+    OSAtomicIncrement32((int32_t *)&zone->_reallocCount);
         
     void *newPtr;
     
@@ -935,8 +934,8 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     [sortedDuplicates release];
     [sort release];
     // avoid divide-by-zero
-    double cacheRequests = (_cacheHits + _cacheMisses);
-    double missRate = cacheRequests > 0 ? (double)_cacheMisses / (_cacheHits + _cacheMisses) * 100 : 0;
+    double cacheRequests = (fvzone->_cacheHits + fvzone->_cacheMisses);
+    double missRate = cacheRequests > 0 ? (double)fvzone->_cacheMisses / (fvzone->_cacheHits + fvzone->_cacheMisses) * 100 : 0;
     // use a custom formatter to avoid displaying time zone
     CFAllocatorRef alloc = CFAllocatorGetDefault();
     CFDateRef date = CFDateCreate(alloc, snapshotTime);
@@ -947,8 +946,8 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     }
     CFStringRef dateDescription = CFDateFormatterCreateStringWithDate(alloc, formatter, date);
     if (NULL != date) CFRelease(date);
-    FVLog(@"%@: %d hits and %d misses for a cache failure rate of %.2f%%", dateDescription, _cacheHits, _cacheMisses, missRate);
-    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", dateDescription, (double)totalMemory / 1024 / 1024, _reallocCount);
+    FVLog(@"%@: %d hits and %d misses for a cache failure rate of %.2f%%", dateDescription, fvzone->_cacheHits, fvzone->_cacheMisses, missRate);
+    FVLog(@"%@: total memory used: %.2f Mbytes, %d reallocations", dateDescription, (double)totalMemory / 1024 / 1024, fvzone->_reallocCount);
     if (NULL != dateDescription) CFRelease(dateDescription);
     [pool release];
 }
