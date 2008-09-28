@@ -924,6 +924,7 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     [sortedDuplicates sortUsingDescriptors:sortDescriptors];
     [sortDescriptors release];
     FVLog(@"------------------------------------");
+    FVLog(@"Zone name: %s", malloc_get_zone_name((malloc_zone_t *)fvzone));
     FVLog(@"   Size     Count  Total  Percentage");
     FVLog(@"   (b)       --    (Mb)      ----   ");
     for (NSUInteger i = 0; i < [sortedDuplicates count]; i++) {
