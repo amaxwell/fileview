@@ -66,7 +66,7 @@ struct FVOpFlags {
 
 - (void)dealloc
 {
-    NSZoneFree([self zone], _flags);
+    NSZoneFree([self zone], (void *)_flags);
     [_queue release];
     [super dealloc];
 }
