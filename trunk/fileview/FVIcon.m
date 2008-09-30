@@ -51,10 +51,7 @@
 /* 
  Placeholder class to allow correct allocation behavior with multiple zones.
  */
-@interface FVPlaceholderIcon : FVIcon
-@end
-@implementation FVPlaceholderIcon
-- (void)dealloc { /* do nothing */ if (0) [super dealloc]; }
+@interface FVPlaceholderIcon : FVIcon 
 @end
 
 // FVIcon abstract class stuff
@@ -66,6 +63,28 @@ static NSURL *_missingFileURL = nil;
 static NSMapTable *_placeholders = NULL;
 static FVPlaceholderIcon *_defaultPlaceholderIcon = nil;
 
+@implementation FVPlaceholderIcon
+/*
+ Allocate the actual object in the default zone.  If the zone is recycled and its pointer is reused as a zone, 
+ the map table will still have a valid placeholder for the zone (which is all we need it for).
+ */
++ (id)allocWithZone:(NSZone *)aZone 
+{
+    FVPlaceholderIcon *icon = NSAllocateObject(FVPlaceholderIconClass, sizeof(NSZone *), NSDefaultMallocZone());
+    NSZone **storage = object_getIndexedIvars(icon);
+    storage[0] = aZone;
+    return icon;
+}
++ (id)alloc { [NSException raise:NSInvalidArgumentException format:@"Must use allocWithZone: and a valid NSZone"]; return nil; }
+/* 
+ This will not be equivalent to malloc_zone_from_ptr(), except in the case of the default zone.
+ Since NSDeallocateObject() is never called, this should not be a problem; it's just a convenience for the replacement initializer.  */
+- (NSZone *)zone { return *(NSZone **)object_getIndexedIvars(self); }
+- (void)dealloc { /* do nothing */ if (0) [super dealloc]; }
+- (NSString *)description { return [NSString stringWithFormat:@"%@: placeholder for zone %@", [super description], NSZoneName([self zone])]; }
+@end
+
+
 @implementation FVIcon
 
 + (void)initialize
@@ -76,18 +95,18 @@ static FVPlaceholderIcon *_defaultPlaceholderIcon = nil;
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4)
         FVQLIconClass = [FVQuickLookIcon self];
     
-    // Use pointer callbacks, since if the zone is destroyed the placeholder object will become invalid.  Non-owned callbacks allow a negligible leak if multithreaded, but avoids locking.
-    _placeholders = NSCreateMapTableWithZone(NSNonOwnedPointerMapKeyCallBacks, NSNonOwnedPointerMapValueCallBacks, 4, NSDefaultMallocZone());
+    // Non-owned callbacks allow a negligible leak if multithreaded, but avoids locking.
+    _placeholders = NSCreateMapTableWithZone(NSNonOwnedPointerMapKeyCallBacks, NSNonRetainedObjectMapValueCallBacks, 4, NSDefaultMallocZone());
     // Set up a fast path for the default zone
     FVPlaceholderIconClass = [FVPlaceholderIcon self];
-    _defaultPlaceholderIcon = (FVPlaceholderIcon *)NSAllocateObject(FVPlaceholderIconClass, 0, NSDefaultMallocZone());
+    _defaultPlaceholderIcon = [FVPlaceholderIcon allocWithZone:NSDefaultMallocZone()];
     _missingFileURL = [[NSURL alloc] initWithScheme:@"x-fileview" host:@"localhost" path:@"/missing"];
     [self _initializeCategory];
 }
 
 static inline id _placeholderForZone(NSZone *aZone)
 {
-    id placeholder;
+    FVPlaceholderIcon * placeholder;
 
     if (NULL == aZone || aZone == NSDefaultMallocZone()) {
         placeholder = _defaultPlaceholderIcon;
@@ -95,7 +114,7 @@ static inline id _placeholderForZone(NSZone *aZone)
     else {
         placeholder = NSMapGet(_placeholders, aZone);
         if (NULL == placeholder) {
-            placeholder = NSAllocateObject(FVPlaceholderIconClass, 0, aZone);
+            placeholder = [FVPlaceholderIcon allocWithZone:aZone];
             NSMapInsert(_placeholders, aZone, placeholder);
             NSCParameterAssert(NULL != placeholder);
         }
