@@ -420,6 +420,7 @@ static void __FVAllocatorZoneFree(fv_zone_t *zone, void *ptr)
             malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
+            return; /* not reached; keep clang happy */
         }
         // add to free list
         OSSpinLockLock(&zone->_spinLock);
