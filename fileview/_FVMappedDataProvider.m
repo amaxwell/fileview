@@ -52,7 +52,7 @@ typedef struct _FVMappedRegion {
     off_t   length;
 } FVMappedRegion;
 
-static int32_t _mappedDataSizeKB = 0;
+static volatile int32_t _mappedDataSizeKB = 0;
 #define MAX_MAPPED_SIZE_KB 400000
 
 // This is intentionally low, since I don't know what the limit is, and sysctl doesn't say.  The max number of file descriptors is ~255 per process, but I can actually mmap ~28,000 files on 10.5.4.  We should never see even this many in practice, though.

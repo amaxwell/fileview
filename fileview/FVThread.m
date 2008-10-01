@@ -196,8 +196,8 @@ static void *__FVThread_main(void *obj);
     if (self) {
         
         // for debugging
-        static uint32_t threadIndex = 0;
-        _threadIndex = OSAtomicIncrement32Barrier((int32_t *)&threadIndex);
+        static volatile int32_t threadIndex = 0;
+        _threadIndex = OSAtomicIncrement32Barrier(&threadIndex);
         
         _lastPerformTime = CFAbsoluteTimeGetCurrent();        
         _flags = 0;
