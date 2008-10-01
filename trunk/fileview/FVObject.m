@@ -76,7 +76,7 @@ static void _FVObjectError(NSString *format, ...)
         [self dealloc];
     }
     else {
-        int32_t rc = OSAtomicDecrement32Barrier((int32_t *)&_rc);
+        int32_t rc = OSAtomicDecrement32Barrier((volatile int32_t *)&_rc);
 #if DEBUG
         if (__builtin_expect(-1 == rc, 0))
             _FVObjectError(@"*** possible refcount underflow for %@, break on _FVObjectError() to debug.", self);
@@ -90,7 +90,7 @@ static void _FVObjectError(NSString *format, ...)
 {
     if (__builtin_expect(__FVOASafe, 0)) NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
     
-    uint32_t rc = OSAtomicIncrement32Barrier((int32_t *)&_rc);
+    uint32_t rc = OSAtomicIncrement32Barrier((volatile int32_t *)&_rc);
 #if DEBUG
     if (__builtin_expect(_RetainWarningThreshold < rc, 1))
         _FVObjectError(@"*** high retain count (%u) for %@, break on _FVObjectError() to debug.", rc, self);

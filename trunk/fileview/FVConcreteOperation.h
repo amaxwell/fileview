@@ -47,8 +47,8 @@
 @interface FVConcreteOperation : FVOperation
 {
 @private;
-    id                         _queue;
-    volatile struct FVOpFlags *_flags;
+    id                _queue;
+    struct FVOpFlags *_flags;
 }
 
 @end

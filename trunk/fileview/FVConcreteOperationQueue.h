@@ -49,7 +49,7 @@
 @interface FVConcreteOperationQueue : FVOperationQueue
 {
 @private
-    int32_t          _terminate;    
+    volatile int32_t _terminate;    
     mach_port_t      _threadPort;
     NSConditionLock *_threadLock;
     OSSpinLock       _queueLock;

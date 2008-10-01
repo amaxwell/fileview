@@ -366,13 +366,13 @@ static void *__FVAllocatorZoneMalloc(fv_zone_t *zone, size_t size)
     
     // optimistically assume that the cache is effective; for our usage (lots of similarly-sized images), this is correct
     if (__builtin_expect(kCFNotFound == idx, 0)) {
-        OSAtomicIncrement32((int32_t *)&zone->_cacheMisses);
+        OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&zone->_spinLock);
         alloc = useVM ? __FVAllocationFromVMSystem(size, zone) : __FVAllocationFromMalloc(size, zone);
     }
     else {
-        OSAtomicIncrement32((int32_t *)&zone->_cacheHits);
+        OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheHits);
         alloc = (void *)CFArrayGetValueAtIndex(zone->_freeBuffers, idx);
         CFArrayRemoveValueAtIndex(zone->_freeBuffers, idx);
         OSSpinLockUnlock(&zone->_spinLock);
@@ -440,7 +440,7 @@ static void __FVAllocatorZoneFree(fv_zone_t *zone, void *ptr)
 
 static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
 {
-    OSAtomicIncrement32((int32_t *)&zone->_reallocCount);
+    OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_reallocCount);
         
     void *newPtr;
     

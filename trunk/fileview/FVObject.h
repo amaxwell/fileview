@@ -44,7 +44,7 @@
 @interface FVObject : NSObject 
 {
 @private
-    uint32_t         _rc;
+    volatile uint32_t _rc;
 }
 
 @end
