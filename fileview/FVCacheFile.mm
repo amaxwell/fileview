@@ -129,27 +129,28 @@ static NSInteger FVCacheLogLevel = 0;
         
         // all writes are synchronous since they need to occur in a single block at the end of the file
         _fileDescriptor = open(tempName, O_RDWR);
-        fcntl(_fileDescriptor, F_NOCACHE, 1);
+        if (-1 != _fileDescriptor) {
+            fcntl(_fileDescriptor, F_NOCACHE, 1);
 
-        _path = (NSString *)CFStringCreateWithFileSystemRepresentation(NULL, tempName);
-        FVAPIAssert1(FVCanMapFileAtURL([NSURL fileURLWithPath:_path]), @"%@ is not safe for mmap()", _path);
+            _path = (NSString *)CFStringCreateWithFileSystemRepresentation(NULL, tempName);
+            FVAPIAssert1(FVCanMapFileAtURL([NSURL fileURLWithPath:_path]), @"%@ is not safe for mmap()", _path);
 
-        // Unlink the file immediately so we don't leave turds when the program crashes.
-        unlink(tempName);
-        free(tempName);
-        tempName = NULL;
+            // Unlink the file immediately so we don't leave turds when the program crashes.
+            unlink(tempName);
+            free(tempName);
+            tempName = NULL;
 
-        if (FVCacheLogLevel > 0)
-            _eventTable = [NSMutableDictionary new];     
+            if (FVCacheLogLevel > 0)
+                _eventTable = [NSMutableDictionary new];     
 
-        _writeLock = [NSLock new];
-        _offsetTable = [NSMutableDictionary new];
-        
-        _deflateBuffer = new uint8_t[ZLIB_BUFFER_SIZE];
-                
-        if (-1 == _fileDescriptor) {
+            _writeLock = [NSLock new];
+            _offsetTable = [NSMutableDictionary new];
+            
+            _deflateBuffer = new uint8_t[ZLIB_BUFFER_SIZE];
+        }
+        else {
             NSLog(@"*** ERROR *** unable to open file %@", _path);
-            [self release];
+            [super dealloc];
             self = nil;
         }
         

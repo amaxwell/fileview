@@ -213,7 +213,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 {
 #if USE_CORE_TEXT && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
     if (floor(NSAppKitVersionNumber > NSAppKitVersionNumber10_4)) {
-        [self release];
+        [super dealloc];
         self = [[FVCoreTextIcon alloc] _initWithURL:aURL isPlainText:isPlainText];
     }
     else {

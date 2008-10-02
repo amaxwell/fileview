@@ -130,7 +130,7 @@ static const NSSize _webViewSize = { 1000, 900 };
     // if this is not an http or file URL, return a finder icon instead
     if (NO == [_webViewSchemes containsObject:[aURL scheme]] && NO == [aURL isFileURL]) {
         NSZone *zone = [self zone];
-        [self release];
+        [super dealloc];
         self = [[FVFinderIcon allocWithZone:zone] initWithURL:aURL];
     }
     else if ((self = [super init])) {

@@ -168,15 +168,22 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
     self = [super init];
     if (self) {
         buffer = NSZoneMalloc([self zone], sizeof(vImage_Buffer));
-        buffer->width = bufferSize;
-        buffer->height = 1;
-        buffer->rowBytes = bufferSize;
-        _bufferSize = bufferSize;
-        buffer->data = CFAllocatorAllocate([self allocator], bufferSize, 0);
-        _freeBufferOnDealloc = YES;
-        if (NULL == buffer->data) {
-            [self release];
+        if (NULL == buffer) {
+            [super dealloc];
             self = nil;
+        }
+        else {
+            buffer->width = bufferSize;
+            buffer->height = 1;
+            buffer->rowBytes = bufferSize;
+            _bufferSize = bufferSize;
+            buffer->data = CFAllocatorAllocate([self allocator], bufferSize, 0);
+            _freeBufferOnDealloc = YES;
+            if (NULL == buffer->data) {
+                NSZoneFree([self zone], buffer);
+                [super dealloc];
+                self = nil;
+            }
         }
     }
     return self;
