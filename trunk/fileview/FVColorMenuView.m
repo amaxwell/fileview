@@ -57,7 +57,7 @@ static NSString * const FVColorNameUpdateNotification = @"FVColorNameUpdateNotif
 {
     id target = [self target];
     SEL action = [self action];
-    [self release];
+    [super dealloc];
     self = [[FVColorMenuView menuView] retain];
     [self setAction:action];
     [self setTarget:target];

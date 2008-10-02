@@ -112,7 +112,7 @@ static CFStringRef _savedSearchUTI = NULL;
 - (id)initWithURLScheme:(NSString *)scheme;
 {
     NSParameterAssert(nil != scheme);
-    [self release];
+    [super dealloc];
         
     if ([scheme hasPrefix:@"http"])
         self = [[FVHTTPURLIcon sharedIcon] retain];
@@ -129,7 +129,7 @@ static CFStringRef _savedSearchUTI = NULL;
 {
     // missing file icon
     if (nil == theURL) {
-        [self release];
+        [super dealloc];
         self = [[FVMissingFinderIcon sharedIcon] retain];
     }
     else if ([theURL isFileURL] == NO && [theURL scheme] != nil) {
@@ -165,11 +165,11 @@ static CFStringRef _savedSearchUTI = NULL;
             err = FSGetCatalogInfo(&fileRef, kIconServicesCatalogInfoMask, &catInfo, &name, NULL, NULL);
         
         if (NO == _drawsLinkBadge && noErr == err && targetUTI && UTTypeEqual(targetUTI, kUTTypeFolder) && (((FolderInfo *)&catInfo.finderInfo)->finderFlags & kHasCustomIcon) == 0) {            
-            [self release];
+            [super dealloc];
             self = [[FVGenericFolderIcon sharedIcon] retain];
         }
         else if (NO == _drawsLinkBadge && isSavedSearch) {
-            [self release];
+            [super dealloc];
             self = [[FVSavedSearchIcon sharedIcon] retain];
         }
         else {

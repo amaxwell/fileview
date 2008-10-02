@@ -141,7 +141,9 @@ static inline id *__FVPriorityQueueHeapEnd(FVPriorityQueue *self)
         _mutations = 0;
         
         if (NULL == _values || NULL == _set) {
-            [self release];
+            if (_set) CFRelease(_set);
+            NSZoneFree([self zone], _values);
+            [super dealloc];
             self = nil;
         }
         
