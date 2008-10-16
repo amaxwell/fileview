@@ -91,9 +91,14 @@ static NSString *FVWeblocFilePboardType = @"CorePasteboardFlavorType 0x75726C20"
 static NSDictionary *_titleAttributes = nil;
 static NSDictionary *_labeledAttributes = nil;
 static NSDictionary *_subtitleAttributes = nil;
-static CGFloat _titleHeight = 0.0;
-static CGFloat _subtitleHeight = 0.0;
-static CGColorRef _shadowColor = NULL;
+static CGFloat       _titleHeight = 0.0;
+static CGFloat       _subtitleHeight = 0.0;
+static CGColorRef    _shadowColor = NULL;
+
+// KVO context pointers (pass address)
+static const char *_internalSelectionObservation;
+static const char *_selectionBindingToController;
+static const char *_contentBindingToController;
 
 @interface _FVBinding : NSObject
 {
@@ -756,22 +761,22 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 }
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
-{
-    if ([keyPath isEqualToString:@"selectionIndexes"]) {
+{    
+    if (context == &_internalSelectionObservation || context == &_selectionBindingToController) {
+
+        NSParameterAssert([keyPath isEqualToString:@"selectionIndexes"]);
         
         _FVBinding *selBinding = _selectionBinding;
         BOOL updatePreviewer = NO;
         
-        NSParameterAssert(context == self || context == selBinding);
-        
-        if (selBinding && context == self) {
+        if (selBinding && context == &_internalSelectionObservation) {
             // update the controller's selection; this call will cause a KVO notification that we'll also observe
             [selBinding->_observable setValue:_selectedIndexes forKeyPath:selBinding->_keyPath];
             
             // since this will be called multiple times for a single event, we should only run the preview if self == context
             updatePreviewer = YES;
         }
-        else if (selBinding && context == selBinding) {
+        else if (selBinding && context == &_selectionBindingToController) {
             NSIndexSet *controllerSet = [selBinding->_observable valueForKeyPath:selBinding->_keyPath];
             // since we manipulate _selectedIndexes directly, this won't cause a looping notification
             if ([controllerSet isEqualToIndexSet:_selectedIndexes] == NO) {
@@ -781,7 +786,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         }
         else if (nil == selBinding) {
             // no binding, so this should be a view-initiated change
-            NSParameterAssert(context == self);
+            NSParameterAssert(context == &_internalSelectionObservation);
             updatePreviewer = YES;
         }
         [self setNeedsDisplay:YES];
@@ -792,9 +797,15 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
             [previewer previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[[previewer window] frame]];
         }
     }
-    else if ([keyPath isEqualToString:@"content"] && _controller == context) {
+    else if (context == &_contentBindingToController) {
+        NSParameterAssert([keyPath isEqualToString:@"content"]);
         // change to the number of icons or some rearrangement
         [self reloadIcons];
+    }
+    else {
+        // not our context, so use super's implementation; documentation is totally wrong on this
+        // http://lists.apple.com/archives/cocoa-dev/2008/Oct/msg01096.html
+        [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
     }
 }
 
@@ -807,7 +818,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         // Create an object to handle the binding mechanics manually; it's deallocated when the client unbinds.
         _selectionBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
-        [observable addObserver:self forKeyPath:keyPath options:0 context:_selectionBinding];
+        [observable addObserver:self forKeyPath:keyPath options:0 context:&_selectionBindingToController];
     }
     else if ([binding isEqualToString:@"content"]) {
      
@@ -815,7 +826,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         // keep a record of the observervable object for unbinding; this is strictly for observation, not a manual binding
         _contentBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
-        [observable addObserver:self forKeyPath:@"content" options:0 context:_controller];
+        [observable addObserver:self forKeyPath:@"content" options:0 context:&_contentBindingToController];
         [_controller setBound:YES];
     }
     
@@ -907,7 +918,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     else {
         
         if (NO == _fvFlags.isObservingSelectionIndexes)
-            [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:self];
+            [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:&_internalSelectionObservation];
         
         // bind here (noop if we don't have a slider)
         FVSlider *slider = [_sliderWindow slider];
