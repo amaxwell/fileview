@@ -66,15 +66,15 @@
         [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillHideNotification object:nil];
         [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillResignActiveNotification object:nil];
         [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillTerminateNotification object:nil];
-        // force the window to load, so we get -awakeFromNib
-        [self window];
+        // window is now loaded lazily, but we have to use a flag to avoid a hit when calling isPreviewing
+        windowLoaded = NO;
     }
     return self;
 }
 
 - (BOOL)isPreviewing;
 {
-    return ([[self window] isVisible] || [qlTask isRunning]);
+    return (windowLoaded && ([[self window] isVisible] || [qlTask isRunning]));
 }
 
 - (void)setWebViewContextMenuDelegate:(id)anObject;
@@ -91,6 +91,11 @@
 {
     NSString *savedFrame = [[NSUserDefaults standardUserDefaults] objectForKey:[self windowFrameAutosaveName]];
     return (nil == savedFrame) ? NSZeroRect : NSRectFromString(savedFrame);
+}
+
+- (void)windowDidLoad
+{
+    windowLoaded = YES;
 }
 
 - (void)awakeFromNib
@@ -158,15 +163,25 @@
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4) {
         // make sure it doesn't respond to keystrokes while fading out
         [[self window] makeFirstResponder:nil];
-#if USE_LAYER_BACKING
-        // !!! image is now possibly out of sync due to scrolling/resizing
+        // image is now possibly out of sync due to scrolling/resizing
+        NSView *currentView = [[contentView tabViewItemAtIndex:0] view];
+        NSBitmapImageRep *imageRep = [currentView bitmapImageRepForCachingDisplayInRect:[currentView bounds]];
+        [currentView cacheDisplayInRect:[currentView bounds] toBitmapImageRep:imageRep];
+        NSImage *image = [[NSImage alloc] initWithSize:[imageRep size]];
+        [image addRepresentation:imageRep];
+        [animationView setImage:image];
+        [image release];
         [contentView selectLastTabViewItem:nil];
+#if USE_LAYER_BACKING
         [[[self window] contentView] setWantsLayer:YES];
+        [[self window] display];
 #endif
+        [NSAnimationContext beginGrouping];
         [[self windowAnimator] setAlphaValue:0.0];
         // shrink back to the icon frame
         if (NSIsEmptyRect(previousIconFrame) == NO)
             [[self windowAnimator] setFrame:previousIconFrame display:YES];
+        [NSAnimationContext endGrouping];
         return NO;
     }
     return YES;
@@ -499,6 +514,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 #if USE_LAYER_BACKING
                 // now select the animation view and start animating
                 [[[self window] contentView] setWantsLayer:YES];
+                [(NSView *)[[self window] contentView] display];
 #endif
                 [contentView selectLastTabViewItem:nil];
 
