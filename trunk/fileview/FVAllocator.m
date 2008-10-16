@@ -158,12 +158,21 @@ static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t
 
 // fv_allocation_t struct always immediately precedes the data pointer
 // returns NULL if the pointer was not allocated in this zone
-static inline fv_allocation_t *__FVGetAllocationFromPointer(const void *ptr)
+static inline fv_allocation_t *__FVGetAllocationFromPointer(fv_zone_t *zone, const void *ptr)
 {
     fv_allocation_t *alloc = ((uintptr_t)ptr < sizeof(fv_allocation_t)) ? NULL : (void *)ptr - sizeof(fv_allocation_t);
-    // simple check to ensure that this is one of our pointers
+    if (CFSetContainsValue(zone->_allocations, alloc) == FALSE) {
+        alloc = NULL;
+    } 
+    else if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard) {
+        malloc_printf("inconsistency in allocation records for zone %s\n", malloc_get_zone_name(&zone->_basic_zone));
+        HALT;
+    }
+    /*
+     The simple check to ensure that this is one of our pointers will fail if the math results in a pointer outside our address space, if we're passed a non-FVAllocator pointer in a certain memory region.  This happens when loading the plugin into IB, for instance.
     if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard)
         alloc = NULL;
+     */
     return alloc;
 }
 
@@ -343,12 +352,9 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_
 
 static size_t __FVAllocatorZoneSize(fv_zone_t *zone, const void *ptr)
 {
-    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
-    size_t size = 0;
+    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(zone, ptr);
     // Simple check to ensure that this is one of our pointers; which size to return, though?  Need to return size for values allocated in this zone with malloc, even though malloc_default_zone() is the underlying zone, or else they won't be freed.
-    if (alloc && (alloc->guard == &_vm_guard || alloc->guard == &_malloc_guard))
-        size = alloc->ptrSize;
-    return size;
+    return alloc ? alloc->ptrSize : 0;
 }
 
 static void *__FVAllocatorZoneMalloc(fv_zone_t *zone, size_t size)
@@ -414,7 +420,7 @@ static void __FVAllocatorZoneFree(fv_zone_t *zone, void *ptr)
 {
     // ignore NULL
     if (__builtin_expect(NULL != ptr, 1)) {    
-        fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
+        fv_allocation_t *alloc = __FVGetAllocationFromPointer(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
             malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
@@ -454,7 +460,7 @@ static void *__FVAllocatorZoneRealloc(fv_zone_t *zone, void *ptr, size_t size)
             return __FVAllocatorZoneMalloc(zone, size);
         }
         
-        fv_allocation_t *alloc = __FVGetAllocationFromPointer(ptr);
+        fv_allocation_t *alloc = __FVGetAllocationFromPointer(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
             malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
@@ -701,7 +707,7 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 #endif
 
     fv_zone_t *zone = info;
-#if DEBUG && !defined(IMAGE_SHEAR)
+#if 0 && DEBUG && !defined(IMAGE_SHEAR)
     __FVAllocatorShowStats(zone);
 #endif
     // if we can't lock immediately, wait for another opportunity
