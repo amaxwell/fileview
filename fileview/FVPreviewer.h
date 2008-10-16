@@ -57,7 +57,7 @@
     NSProgressIndicator        *spinner;
     id                         webviewContextMenuDelegate;
     NSRect                     previousIconFrame;
-    
+    BOOL                       windowLoaded;
     NSTask                     *qlTask;
 }
 
