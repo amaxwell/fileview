@@ -66,7 +66,8 @@ typedef struct _fv_allocation_t {
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
-#if DEBUG && !defined(IMAGE_SHEAR)
+#define ENABLE_STATS 0
+#if ENABLE_STATS
 static void __FVAllocatorShowStats(fv_zone_t *fvzone);
 #endif
 
@@ -707,7 +708,7 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 #endif
 
     fv_zone_t *zone = info;
-#if 0 && DEBUG && !defined(IMAGE_SHEAR)
+#if ENABLE_STATS
     __FVAllocatorShowStats(zone);
 #endif
     // if we can't lock immediately, wait for another opportunity
@@ -824,7 +825,7 @@ static void __initialize_allocator()
     _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
 }
 
-#if 0 && DEBUG && !defined(IMAGE_SHEAR) && (!USE_SYSTEM_ZONE)
+#if ENABLE_STATS && (!USE_SYSTEM_ZONE)
 __attribute__ ((destructor))
 static void __log_stats()
 {
@@ -881,7 +882,7 @@ static void __log_stats()
 
 #pragma mark API
 
-#if DEBUG && !defined(IMAGE_SHEAR)
+#if ENABLE_STATS
 
 // can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
 static void __FVAllocatorShowStats(fv_zone_t *fvzone)
