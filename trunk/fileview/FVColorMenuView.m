@@ -57,7 +57,7 @@ static NSString * const FVColorNameUpdateNotification = @"FVColorNameUpdateNotif
 {
     id target = [self target];
     SEL action = [self action];
-    [super dealloc];
+    [self release];
     self = [[FVColorMenuView menuView] retain];
     [self setAction:action];
     [self setTarget:target];
@@ -78,7 +78,8 @@ static NSString * const FVColorNameUpdateNotification = @"FVColorNameUpdateNotif
 {
     self = [super initWithCoder:coder];
     _target = [coder decodeObjectForKey:@"_target"];
-    _action = NSSelectorFromString([coder decodeObjectForKey:@"_action"]);
+    NSString *selString = [coder decodeObjectForKey:@"_action"];
+    _action = selString ? NSSelectorFromString(selString) : NULL;
     return self;
 }
 
@@ -176,7 +177,7 @@ static NSShadow *_shadow = nil;
 static NSRect __FVSquareRectCenteredInRect(const NSRect iconRect)
 {
     // determine aspect ratio (copy paste from FVIcon)
-    NSSize s = (NSSize){ 128, 128 };
+    const NSSize s = (NSSize){ 128, 128 };
     
     CGFloat ratio = MIN(NSWidth(iconRect) / s.width, NSHeight(iconRect) / s.height);
     NSRect dstRect = iconRect;
