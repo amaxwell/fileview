@@ -237,6 +237,25 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
     return document;
 }
 
+// Draw a lock badge for encrypted PDF documents, but don't draw the PDF page since pdf_error logs "failed to create default crypt filter." to the console each time (and doesn't draw anything anyway).  We could keep an _encrypted flag, but I don't think this will be hit often enough to be worth the refactoring effort.
+- (void)_drawLockBadgeInRect:(CGRect)pageRect ofContext:(CGContextRef)ctxt
+{
+    IconRef lockIcon;
+    OSStatus err;
+    // kLockedBadgeIcon looks much better than kLockedIcon, which gets jagged quickly
+    err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kLockedBadgeIcon, &lockIcon);
+    // square, unscaled rectangle since this is a badge icon
+    CGRect lockRect;
+    lockRect.size.width = MIN(pageRect.size.width, pageRect.size.height);
+    lockRect.size.height = lockRect.size.width;
+    lockRect.origin.x = CGRectGetMidX(pageRect) - 0.5 * lockRect.size.width;
+    lockRect.origin.y = CGRectGetMidY(pageRect) - 0.5 * lockRect.size.height;
+    if (noErr == err)
+        (void)PlotIconRefInContext(ctxt, &lockRect, kAlignAbsoluteCenter, kTransformNone, NULL, kPlotIconRefNormalFlags, lockIcon);
+    if (noErr == err)
+        (void)ReleaseIconRef(lockIcon);
+}
+
 - (void)renderOffscreen
 {  
     [[self class] _startRenderingForKey:_cacheKey];
@@ -303,6 +322,10 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             _pageCount = CGPDFDocumentGetNumberOfPages(_pdfDoc);
         }
         
+        // don't allow page changes
+        if (CGPDFDocumentIsEncrypted(_pdfDoc) && _pageCount > 0)
+            _pageCount = 1;
+        
         // The file had to exist when the icon was created, but loading the document can fail if the underlying file was moved out from under us afterwards (e.g. by BibDesk's autofile).  NB: CGPDFDocument uses 1-based indexing.
         if (_pdfDoc)
             _pdfPage = _pageCount ? CGPDFDocumentGetPage(_pdfDoc, _currentPage) : NULL;
@@ -345,11 +368,17 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         CGContextDrawLayerInRect(ctxt, pageRect, _pageLayer);
         
         if (_pdfPage) {
-            // always downscaling, so CGPDFPageGetDrawingTransform is okay to use here
-            CGAffineTransform t = CGPDFPageGetDrawingTransform(_pdfPage, kCGPDFCropBox, pageRect, 0, true);
-            CGContextConcatCTM(ctxt, t);
-            CGContextClipToRect(ctxt, CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox));
-            CGContextDrawPDFPage(ctxt, _pdfPage);
+            
+            if (false == CGPDFDocumentIsEncrypted(_pdfDoc)) {
+                // always downscaling, so CGPDFPageGetDrawingTransform is okay to use here
+                CGAffineTransform t = CGPDFPageGetDrawingTransform(_pdfPage, kCGPDFCropBox, pageRect, 0, true);
+                CGContextConcatCTM(ctxt, t);
+                CGContextClipToRect(ctxt, CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox));
+                CGContextDrawPDFPage(ctxt, _pdfPage);
+            }
+            else {
+                [self _drawLockBadgeInRect:pageRect ofContext:ctxt];
+            }
         }
         
         CGImageRelease(_thumbnail);
@@ -434,38 +463,43 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             // get rid of any shadow, or we may draw a text shadow if the page is transparent
             CGContextSaveGState(context);
             CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
-
-            // CGPDFPageGetDrawingTransform only downscales PDF, so we have to set up the CTM manually
-            // http://lists.apple.com/archives/Quartz-dev/2005/Mar/msg00118.html
-            CGRect cropBox = CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox);
-            CGContextTranslateCTM(context, drawRect.origin.x, drawRect.origin.y);
-            int rotation = CGPDFPageGetRotationAngle(_pdfPage);
-            // only tested 0 and 90 degree rotation
-            switch (rotation) {
-                case 0:
-                    CGContextScaleCTM(context, drawRect.size.width / cropBox.size.width, drawRect.size.height / cropBox.size.height);
-                    CGContextTranslateCTM(context, -CGRectGetMinX(cropBox), -CGRectGetMinY(cropBox));
-                    break;
-                case 90:
-                    CGContextScaleCTM(context, drawRect.size.width / cropBox.size.height, drawRect.size.height / cropBox.size.width);
-                    CGContextRotateCTM(context, -M_PI / 2);
-                    CGContextTranslateCTM(context, -CGRectGetMaxX(cropBox), -CGRectGetMinY(cropBox));
-                    break;
-                case 180:
-                    CGContextScaleCTM(context, drawRect.size.width / cropBox.size.width, drawRect.size.height / cropBox.size.height);
-                    CGContextRotateCTM(context, M_PI);
-                    CGContextTranslateCTM(context, -CGRectGetMaxX(cropBox), -CGRectGetMaxY(cropBox));
-                    break;
-                case 270:
-                    CGContextScaleCTM(context, drawRect.size.width / cropBox.size.height, drawRect.size.height / cropBox.size.width);
-                    CGContextRotateCTM(context, M_PI / 2);
-                    CGContextTranslateCTM(context, -CGRectGetMinX(cropBox), -CGRectGetMaxY(cropBox));
-                    break;
-            }
-            CGContextClipToRect(context, cropBox);
-            CGContextDrawPDFPage(context, _pdfPage);
-            CGContextRestoreGState(context);
             
+            if (false == CGPDFDocumentIsEncrypted(_pdfDoc)) {
+                // CGPDFPageGetDrawingTransform only downscales PDF, so we have to set up the CTM manually
+                // http://lists.apple.com/archives/Quartz-dev/2005/Mar/msg00118.html
+                CGRect cropBox = CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox);
+                CGContextTranslateCTM(context, drawRect.origin.x, drawRect.origin.y);
+                int rotation = CGPDFPageGetRotationAngle(_pdfPage);
+                // only tested 0 and 90 degree rotation
+                switch (rotation) {
+                    case 0:
+                        CGContextScaleCTM(context, drawRect.size.width / cropBox.size.width, drawRect.size.height / cropBox.size.height);
+                        CGContextTranslateCTM(context, -CGRectGetMinX(cropBox), -CGRectGetMinY(cropBox));
+                        break;
+                    case 90:
+                        CGContextScaleCTM(context, drawRect.size.width / cropBox.size.height, drawRect.size.height / cropBox.size.width);
+                        CGContextRotateCTM(context, -M_PI / 2);
+                        CGContextTranslateCTM(context, -CGRectGetMaxX(cropBox), -CGRectGetMinY(cropBox));
+                        break;
+                    case 180:
+                        CGContextScaleCTM(context, drawRect.size.width / cropBox.size.width, drawRect.size.height / cropBox.size.height);
+                        CGContextRotateCTM(context, M_PI);
+                        CGContextTranslateCTM(context, -CGRectGetMaxX(cropBox), -CGRectGetMaxY(cropBox));
+                        break;
+                    case 270:
+                        CGContextScaleCTM(context, drawRect.size.width / cropBox.size.height, drawRect.size.height / cropBox.size.width);
+                        CGContextRotateCTM(context, M_PI / 2);
+                        CGContextTranslateCTM(context, -CGRectGetMinX(cropBox), -CGRectGetMaxY(cropBox));
+                        break;
+                }
+                CGContextClipToRect(context, cropBox);
+                CGContextDrawPDFPage(context, _pdfPage);
+            }
+            else {
+                [self _drawLockBadgeInRect:drawRect ofContext:context];
+            }
+            CGContextRestoreGState(context);
+
             if (_drawsLinkBadge)
                 [self _badgeIconInRect:dstRect ofContext:context];
         }
