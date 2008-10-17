@@ -811,6 +811,9 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 - (void)bind:(NSString *)binding toObject:(id)observable withKeyPath:(NSString *)keyPath options:(NSDictionary *)options;
 {
+    if ([options count])
+        FVLog(@"*** warning *** binding options are unsupported in -[%@ %@] (requested %@)", [self class], NSStringFromSelector(_cmd), options);
+    
     // Note: we don't bind to this, some client does.  We do register as an observer, but that's a different code path.
     if ([binding isEqualToString:@"selectionIndexes"]) {
         
