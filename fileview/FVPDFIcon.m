@@ -237,7 +237,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
     return document;
 }
 
-// Draw a lock badge for encrypted PDF documents, but don't draw the PDF page since pdf_error logs "failed to create default crypt filter." to the console each time (and doesn't draw anything anyway).  We could keep an _encrypted flag, but I don't think this will be hit often enough to be worth the refactoring effort.
+// Draw a lock badge for encrypted PDF documents.  If drawing the PDF page fails, pdf_error() logs "failed to create default crypt filter." to the console each time (and doesn't draw anything).  Documents that just have restricted copy/print permissions will draw just fine (so shouldn't have the badge).
 - (void)_drawLockBadgeInRect:(CGRect)pageRect ofContext:(CGContextRef)ctxt
 {
     IconRef lockIcon;
@@ -322,13 +322,13 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             _pageCount = CGPDFDocumentGetNumberOfPages(_pdfDoc);
         }
         
-        // don't allow page changes
-        if (CGPDFDocumentIsEncrypted(_pdfDoc) && _pageCount > 0)
-            _pageCount = 1;
-        
         // The file had to exist when the icon was created, but loading the document can fail if the underlying file was moved out from under us afterwards (e.g. by BibDesk's autofile).  NB: CGPDFDocument uses 1-based indexing.
         if (_pdfDoc)
             _pdfPage = _pageCount ? CGPDFDocumentGetPage(_pdfDoc, _currentPage) : NULL;
+        
+        // won't be able to display this document if it can't be unlocked with the empty string
+        if (_pdfDoc && CGPDFDocumentIsEncrypted(_pdfDoc) && CGPDFDocumentUnlockWithPassword(_pdfDoc, "") == false)
+            _pageCount = 1;
         
         if (_pdfPage) {
             CGRect pageRect = CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox);
@@ -369,12 +369,14 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         
         if (_pdfPage) {
             
-            if (false == CGPDFDocumentIsEncrypted(_pdfDoc)) {
+            if (CGPDFDocumentIsUnlocked(_pdfDoc)) {
                 // always downscaling, so CGPDFPageGetDrawingTransform is okay to use here
                 CGAffineTransform t = CGPDFPageGetDrawingTransform(_pdfPage, kCGPDFCropBox, pageRect, 0, true);
+                CGContextSaveGState(ctxt);
                 CGContextConcatCTM(ctxt, t);
                 CGContextClipToRect(ctxt, CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox));
                 CGContextDrawPDFPage(ctxt, _pdfPage);
+                CGContextRestoreGState(ctxt);
             }
             else {
                 [self _drawLockBadgeInRect:pageRect ofContext:ctxt];
@@ -464,7 +466,8 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             CGContextSaveGState(context);
             CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
             
-            if (false == CGPDFDocumentIsEncrypted(_pdfDoc)) {
+            // unlocked with empty password at creation
+            if (CGPDFDocumentIsUnlocked(_pdfDoc)) {
                 // CGPDFPageGetDrawingTransform only downscales PDF, so we have to set up the CTM manually
                 // http://lists.apple.com/archives/Quartz-dev/2005/Mar/msg00118.html
                 CGRect cropBox = CGPDFPageGetBoxRect(_pdfPage, kCGPDFCropBox);
@@ -498,10 +501,11 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
             else {
                 [self _drawLockBadgeInRect:drawRect ofContext:context];
             }
-            CGContextRestoreGState(context);
-
             if (_drawsLinkBadge)
                 [self _badgeIconInRect:dstRect ofContext:context];
+            
+            // restore shadow and possibly the CTM
+            CGContextRestoreGState(context);
         }
         else if (NULL != _thumbnail) {
             CGContextDrawImage(context, drawRect, _thumbnail);
