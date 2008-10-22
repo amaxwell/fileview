@@ -58,9 +58,6 @@
 
 @implementation FVTextIcon
 
-static NSSize _paperSize;
-static NSSize _containerSize;
-static CGAffineTransform _paperTransform;
 static NSMutableSet *_cachedTextSystems = nil;
 static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
@@ -71,18 +68,18 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 {
     FVINITIALIZE(FVTextIcon);
     FVAPIParameterAssert(pthread_main_np() != 0);
-
-    _paperSize = FVDefaultPaperSize;
-    CGAffineTransform t1 = CGAffineTransformMakeTranslation(FVSideMargin, _paperSize.height - FVTopMargin);
-    CGAffineTransform t2 = CGAffineTransformMakeScale(1, -1);
-    _paperTransform = CGAffineTransformConcat(t2, t1);
-    // could add in NSTextContainer's default lineFragmentPadding
-    _containerSize = _paperSize;
-    _containerSize.width -= 2 * FVSideMargin;
-    _containerSize.height -= 2* FVTopMargin;
     
     // make sure we compare with pointer equality; all I really want is a bag
     _cachedTextSystems = (NSMutableSet *)CFSetCreateMutable(NULL, MAX_CACHED_TEXT_SYSTEMS, &FVNSObjectPointerSetCallBacks);
+}
+
++ (NSSize)_containerSize
+{
+    // could add in NSTextContainer's default lineFragmentPadding
+    NSSize containerSize = FVDefaultPaperSize;
+    containerSize.width -= 2 * FVSideMargin;
+    containerSize.height -= 2* FVTopMargin;
+    return containerSize;
 }
 
 // A particular layout manager/text storage combination is not thread safe, so the AppKit string drawing routines must only be used from the main thread.  We're using the thread dictionary to cache our string drawing machinery on a per-thread basis.  Update:  for the record, Aki Inoue says that NSStringDrawing is supposed to be thread safe, so the crash I experienced may be something else.
@@ -97,7 +94,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     [lm release];
     // see header; the CircleView example sets it to NO
     [lm setUsesScreenFonts:YES];
-    NSTextContainer *tc = [[NSTextContainer allocWithZone:[self zone]] initWithContainerSize:_containerSize];
+    NSTextContainer *tc = [[NSTextContainer allocWithZone:[self zone]] initWithContainerSize:[self _containerSize]];
     [lm addTextContainer:tc];
     // retained by layout manager
     [tc release];    
@@ -197,8 +194,8 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 {
     self = [super initWithURL:aURL];
     if (self) {
-        _fullSize = _paperSize;
-        _thumbnailSize = _paperSize;
+        _fullSize = FVDefaultPaperSize;
+        _thumbnailSize = FVDefaultPaperSize;
         // first approximation
         FVIconLimitThumbnailSize(&_thumbnailSize);
         _desiredSize = NSZeroSize;
@@ -327,12 +324,17 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 - (CGImageRef)_newImageWithAttributedString:(NSMutableAttributedString *)attrString documentAttributes:(NSDictionary *)documentAttributes
 {
-    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(_paperSize.width, _paperSize.height);    
+    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(FVDefaultPaperSize.width, FVDefaultPaperSize.height);    
     NSTextStorage *textStorage = [FVTextIcon popTextStorage];
+
+    // set up default page layout parameters
+    CGAffineTransform t1 = CGAffineTransformMakeTranslation(FVSideMargin, FVDefaultPaperSize.height - FVTopMargin);
+    CGAffineTransform t2 = CGAffineTransformMakeScale(1, -1);
+    CGAffineTransform pageTransform = CGAffineTransformConcat(t2, t1);    
+    NSSize containerSize = [[self class] _containerSize];
+    NSSize paperSize = FVDefaultPaperSize;
     
-    CGAffineTransform pageTransform = _paperTransform;
-    NSSize containerSize = _containerSize;
-    NSSize paperSize = _paperSize;
+    // default to white background
     CGFloat backgroundComps[4] = { 1.0, 1.0, 1.0, 1.0 };
 
     // use a monospaced font for plain text
@@ -351,8 +353,8 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
             bottom = [[documentAttributes objectForKey:NSBottomMarginDocumentAttribute] floatValue];
             paperSize = [[documentAttributes objectForKey:NSPaperSizeDocumentAttribute] sizeValue];
             
-            CGAffineTransform t1 = CGAffineTransformMakeTranslation(0, paperSize.height);
-            CGAffineTransform t2 = CGAffineTransformMakeScale(1, -1);
+            t1 = CGAffineTransformMakeTranslation(0, paperSize.height);
+            t2 = CGAffineTransformMakeScale(1, -1);
             pageTransform = CGAffineTransformConcat(t2, t1);
             t1 = CGAffineTransformMakeTranslation(left, -bottom);
             pageTransform = CGAffineTransformConcat(pageTransform, t1);
