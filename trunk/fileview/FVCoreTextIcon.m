@@ -38,37 +38,29 @@
 
 #import "FVCoreTextIcon.h"
 
-static CGRect _paperRect;
-static CGRect _textRect;
-
 @implementation FVCoreTextIcon
-
-+ (void)initialize
-{
-    FVINITIALIZE(FVCoreTextIcon);
-    FVAPIParameterAssert(pthread_main_np() != 0);
-    
-    _paperRect.origin = CGPointZero;
-    _paperRect.size = NSSizeToCGSize(FVDefaultPaperSize);
-    
-    // use a symmetric margin
-    _textRect.origin = CGPointZero;
-    _textRect = CGRectInset(_paperRect, FVSideMargin, FVTopMargin);
-}
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
 
 - (CGImageRef)_newImageWithAttributedString:(NSMutableAttributedString *)attrString documentAttributes:(NSDictionary *)documentAttributes
 {
     CFMutableAttributedStringRef cfAttrString = (CFMutableAttributedStringRef)attrString;
-    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(CGRectGetWidth(_paperRect), CGRectGetHeight(_paperRect));    
-    CGContextSaveGState(ctxt);
     
-    CGRect paperRect = _paperRect;
-    CGRect textRect = _textRect;
-    
+    // set up page layout parameters
+    CGRect paperRect;
+    paperRect.origin = CGPointZero;
+    paperRect.size = NSSizeToCGSize(FVDefaultPaperSize);
+    // use a symmetric margin
+    CGRect textRect;
+    textRect.origin = CGPointZero;
+    textRect = CGRectInset(paperRect, FVSideMargin, FVTopMargin);
+
+    // white page background
     CGFloat backgroundComps[4] = { 1.0, 1.0, 1.0, 1.0 };
     
+    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(CGRectGetWidth(paperRect), CGRectGetHeight(paperRect));    
+    CGContextSaveGState(ctxt);
+
     // use a monospaced font for plain text
     if (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
         CTFontRef font = CTFontCreateUIFontForLanguage(kCTFontUserFixedPitchFontType, 0, NULL);

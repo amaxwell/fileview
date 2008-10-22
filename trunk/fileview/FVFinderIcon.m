@@ -64,8 +64,6 @@
 
 @implementation FVFinderIcon
 
-static CFStringRef _savedSearchUTI = NULL;
-
 + (void)initialize
 {
     FVINITIALIZE(FVFinderIcon);
@@ -78,8 +76,6 @@ static CFStringRef _savedSearchUTI = NULL;
     [[FVMailURLIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
     [[FVGenericFolderIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
     [[FVSavedSearchIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-
-    _savedSearchUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, FVSTR("savedSearch"), NULL);
 }
 
 + (BOOL)_isSavedSearchURL:(NSURL *)aURL
@@ -93,7 +89,11 @@ static CFStringRef _savedSearchUTI = NULL;
     CFStringRef UTIFromExtension = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, extension, NULL);
     BOOL isSavedSearch = NO;
     if (NULL != UTIFromExtension) {
-        isSavedSearch = UTTypeEqual(UTIFromExtension, _savedSearchUTI);
+        CFStringRef savedSearchUTI = UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, FVSTR("savedSearch"), NULL);
+        if (savedSearchUTI) {
+            isSavedSearch = UTTypeEqual(UTIFromExtension, savedSearchUTI);
+            CFRelease(savedSearchUTI);
+        }
         CFRelease(UTIFromExtension);
     }
     return isSavedSearch;
