@@ -40,7 +40,6 @@
 #import <FileView/FVFinderLabel.h>
 #import <FileView/FVPreviewer.h>
 
-#import <QTKit/QTKit.h>
 #import <WebKit/WebKit.h>
 
 #import "FVIcon.h"
@@ -75,7 +74,7 @@ enum {
 };
 typedef NSUInteger FVDropOperation;
 
-static NSString *FVWeblocFilePboardType = @"CorePasteboardFlavorType 0x75726C20";
+static NSString * const FVWeblocFilePboardType = @"CorePasteboardFlavorType 0x75726C20";
 
 #define DEFAULT_ICON_SIZE ((NSSize) { 64, 64 })
 #define DEFAULT_PADDING   ((CGFloat) 32)         // 16 per side
@@ -95,10 +94,10 @@ static CGFloat       _titleHeight = 0.0;
 static CGFloat       _subtitleHeight = 0.0;
 static CGColorRef    _shadowColor = NULL;
 
-// KVO context pointers (pass address)
-static const char *_internalSelectionObservation;
-static const char *_selectionBindingToController;
-static const char *_contentBindingToController;
+// KVO context pointers (pass address): http://lists.apple.com/archives/cocoa-dev/2008/Aug/msg02471.html
+static char _FVInternalSelectionObserverContext;
+static char _FVSelectionBindingToControllerObserverContext;
+static char _FVContentBindingToControllerObserverContext;
 
 @interface _FVBinding : NSObject
 {
@@ -146,10 +145,6 @@ static const char *_contentBindingToController;
     _shadowColor = CGColorCreate(cspace, shadowComponents);
     CGColorSpaceRelease(cspace);
     
-    // QTMovie raises if +initialize isn't sent on the AppKit thread
-    [QTMovie class];
-    
-    // binding an NSSlider in IB 3 results in a crash on 10.4
     [self exposeBinding:@"iconScale"];
     [self exposeBinding:@"content"];
     [self exposeBinding:@"selectionIndexes"];
@@ -762,21 +757,21 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {    
-    if (context == &_internalSelectionObservation || context == &_selectionBindingToController) {
+    if (context == &_FVInternalSelectionObserverContext || context == &_FVSelectionBindingToControllerObserverContext) {
 
         NSParameterAssert([keyPath isEqualToString:@"selectionIndexes"]);
         
         _FVBinding *selBinding = _selectionBinding;
         BOOL updatePreviewer = NO;
         
-        if (selBinding && context == &_internalSelectionObservation) {
+        if (selBinding && context == &_FVInternalSelectionObserverContext) {
             // update the controller's selection; this call will cause a KVO notification that we'll also observe
             [selBinding->_observable setValue:_selectedIndexes forKeyPath:selBinding->_keyPath];
             
             // since this will be called multiple times for a single event, we should only run the preview if self == context
             updatePreviewer = YES;
         }
-        else if (selBinding && context == &_selectionBindingToController) {
+        else if (selBinding && context == &_FVSelectionBindingToControllerObserverContext) {
             NSIndexSet *controllerSet = [selBinding->_observable valueForKeyPath:selBinding->_keyPath];
             // since we manipulate _selectedIndexes directly, this won't cause a looping notification
             if ([controllerSet isEqualToIndexSet:_selectedIndexes] == NO) {
@@ -786,7 +781,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         }
         else if (nil == selBinding) {
             // no binding, so this should be a view-initiated change
-            NSParameterAssert(context == &_internalSelectionObservation);
+            NSParameterAssert(context == &_FVInternalSelectionObserverContext);
             updatePreviewer = YES;
         }
         [self setNeedsDisplay:YES];
@@ -797,7 +792,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
             [previewer previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[[previewer window] frame]];
         }
     }
-    else if (context == &_contentBindingToController) {
+    else if (context == &_FVContentBindingToControllerObserverContext) {
         NSParameterAssert([keyPath isEqualToString:@"content"]);
         // change to the number of icons or some rearrangement
         [self reloadIcons];
@@ -821,7 +816,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         // Create an object to handle the binding mechanics manually; it's deallocated when the client unbinds.
         _selectionBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
-        [observable addObserver:self forKeyPath:keyPath options:0 context:&_selectionBindingToController];
+        [observable addObserver:self forKeyPath:keyPath options:0 context:&_FVSelectionBindingToControllerObserverContext];
     }
     else if ([binding isEqualToString:@"content"]) {
      
@@ -829,7 +824,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         // keep a record of the observervable object for unbinding; this is strictly for observation, not a manual binding
         _contentBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
-        [observable addObserver:self forKeyPath:@"content" options:0 context:&_contentBindingToController];
+        [observable addObserver:self forKeyPath:@"content" options:0 context:&_FVContentBindingToControllerObserverContext];
         [_controller setBound:YES];
     }
     
@@ -921,7 +916,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     else {
         
         if (NO == _fvFlags.isObservingSelectionIndexes)
-            [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:&_internalSelectionObservation];
+            [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:&_FVInternalSelectionObserverContext];
         
         // bind here (noop if we don't have a slider)
         FVSlider *slider = [_sliderWindow slider];
@@ -2956,8 +2951,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 - (NSArray *)exposedBindings;
 {
-    NSMutableArray *bindings = [NSMutableArray array];
-    [bindings addObjectsFromArray:[super exposedBindings]];
+    NSMutableArray *bindings = [[[super exposedBindings] mutableCopy] autorelease];
     [bindings removeObject:@"iconScale"];
     [bindings removeObject:@"maxIconScale"];
     [bindings removeObject:@"minIconScale"];
