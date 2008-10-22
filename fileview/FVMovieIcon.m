@@ -44,36 +44,19 @@
 
 @implementation FVMovieIcon
 
-static NSLock *_movieLock = nil;
-static NSInvocation *_movieInvocation = nil;
-
-+ (void)initialize
-{
-    FVINITIALIZE(FVMovieIcon);
-    
-    /*
-     QTMovie can't be used from multiple threads simultaneously, since the underlying C functions apparently aren't thread safe.  Deallocation in particular seems to crash.  In addition, Christiaan found a case where a QT component tried to display a window and ended up trying to run NSApp in a modal session from a thread.  While modal windows are supposed to work from a thread, it appeared to cause a crash in some Carbon window drawing code.
-     
-     If performance problems are evident, we could just use Quick Look for thumbnailing movies, but I don't see any problems dropping ~200 movies on the test program window.
-     
-     Note: QTKit on 10.5 has enterQTKitOnThread/exitQTKitOnThread, which might be worth investigating as well.  Another note: enterQTKitOnThread does not seem to help, even locking beforehand so multiple threads aren't calling it simultaneously.  Trying to load certain wmv files causes it to crash very reliably.
-     
-     */
-    
-    // lock around the invocation; we can only call this from a single instance at a time
-    _movieLock = [NSLock new];
-    NSMethodSignature *sig = [self methodSignatureForSelector:@selector(_copyTIFFDataFromMovieAtURL:)];
-    NSParameterAssert(nil != sig);
-    _movieInvocation = [[NSInvocation invocationWithMethodSignature:sig] retain];
-    [_movieInvocation setTarget:self];
-    [_movieInvocation setSelector:@selector(_copyTIFFDataFromMovieAtURL:)];
-}
+/*
+ QTMovie can't be used from multiple threads simultaneously, since the underlying C functions apparently aren't thread safe.  Deallocation in particular seems to crash.  In addition, Christiaan found a case where a QT component tried to display a window and ended up trying to run NSApp in a modal session from a thread.  While modal windows are supposed to work from a thread, it appeared to cause a crash in some Carbon window drawing code.
+ 
+ If performance problems are evident, we could just use Quick Look for thumbnailing movies, but I don't see any problems dropping ~200 movies on the test program window.
+ 
+ Note: QTKit on 10.5 has enterQTKitOnThread/exitQTKitOnThread, which might be worth investigating as well.  Another note: enterQTKitOnThread does not seem to help, even locking beforehand so multiple threads aren't calling it simultaneously.  Trying to load certain wmv files causes it to crash very reliably.
+ 
+ */
 
 + (NSData *)_copyTIFFDataFromMovieAtURL:(NSURL *)aURL
 {
     NSParameterAssert(nil != aURL);
     NSAssert2(pthread_main_np() != 0, @"*** threading violation *** +[%@ %@] requires main thread", self, NSStringFromSelector(_cmd));
-    NSAssert2([_movieLock tryLock] == NO, @"*** threading violation *** +[%@ %@] requires caller to lock _movieLock", self, NSStringFromSelector(_cmd));
     NSMutableDictionary *attributes = [NSMutableDictionary new];
     [attributes setObject:aURL forKey:QTMovieURLAttribute];
     
@@ -109,12 +92,16 @@ static NSInvocation *_movieInvocation = nil;
 
 + (CFDataRef)_copyTIFFDataFromMovieOnMainThreadWithURL:(NSURL *)aURL
 {
-    [_movieLock lock];
-    [_movieInvocation setArgument:&aURL atIndex:2];
+    NSMethodSignature *sig = [self methodSignatureForSelector:@selector(_copyTIFFDataFromMovieAtURL:)];
+    NSParameterAssert(nil != sig);
+    NSInvocation *movieInvocation = [NSInvocation invocationWithMethodSignature:sig];
+    [movieInvocation setTarget:self];
+    [movieInvocation setSelector:@selector(_copyTIFFDataFromMovieAtURL:)];
+    [movieInvocation setArgument:&aURL atIndex:2];
+    [movieInvocation performSelectorOnMainThread:@selector(invoke) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
+
     NSData *imageData;
-    [_movieInvocation performSelectorOnMainThread:@selector(invoke) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
-    [_movieInvocation getReturnValue:&imageData];
-    [_movieLock unlock];
+    [movieInvocation getReturnValue:&imageData];
     return (CFDataRef)imageData;
 }
 
