@@ -204,7 +204,7 @@ static CGLayerRef   _pageLayer = NULL;
 }
 
 // roughly 50% of a typical page minimum dimension
-static const size_t FVMaxPDFThumbnailDimension = 310;
+#define FVMaxPDFThumbnailDimension 310
 
 // used to constrain thumbnail size for huge pages
 static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
@@ -574,7 +574,7 @@ static NSURL * __FVCreatePDFURLForPDFBundleURL(NSURL *aURL)
 @implementation FVPostScriptIcon
 
 static NSMutableDictionary *_convertedKeys = nil;
-static NSLock *_convertedKeysLock = nil;
+static NSLock              *_convertedKeysLock = nil;
 
 + (void)initialize
 {
