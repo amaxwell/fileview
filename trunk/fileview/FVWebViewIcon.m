@@ -62,11 +62,9 @@
 
 @implementation FVWebViewIcon
 
-// webview pool variables to keep memory usage down; pool size is tunable
-static NSInteger       _maxWebViews = 5;
-static NSMutableArray *_availableWebViews = nil;
-static NSMutableArray *_activeWebViews = nil;
-static NSInteger       _numberOfWebViews = 0;
+// limit number of loading views to keep memory usage down; size is tunable
+static int8_t _maxWebViews = 0;
+static int8_t _numberOfWebViews = 0;
 static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconWebViewAvailableNotificationName";
 
 #define IDLE    0
@@ -77,48 +75,40 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 {
     FVINITIALIZE(FVWebViewIcon);
 
-    NSInteger maxViews = [[NSUserDefaults standardUserDefaults] integerForKey:@"FVWebIconMaximumNumberOfWebViews"];
-    if (maxViews > 0)
-        _maxWebViews = maxViews;
+    NSNumber *maxViews = [[NSUserDefaults standardUserDefaults] objectForKey:@"FVWebIconMaximumNumberOfWebViews"];
     
-    _availableWebViews = [[NSMutableArray alloc] initWithCapacity:_maxWebViews];
-    _activeWebViews = [[NSMutableArray alloc] initWithCapacity:_maxWebViews];
+    // default value of 5, with valid range (0, 50)
+    if (nil == maxViews) {
+        _maxWebViews = 5;
+    }
+    else if ([maxViews intValue] > 50) {
+        FVLog(@"Limiting number of webviews to 50 (FVWebIconMaximumNumberOfWebViews = %d)", maxViews);
+        _maxWebViews = 50;
+    }
+    else if ([maxViews intValue] >= 0) {
+        _maxWebViews = [maxViews intValue];
+    }
+    else {
+        // negative values
+        _maxWebViews = 0;
+    }
 }
 
 // size of the view frame; large enough to fit a reasonably sized page
 + (NSSize)_webViewSize { return NSMakeSize(1000, 900); }
 
 // return nil if _maxWebViews is exceeded
-+ (WebView *)popWebView 
++ (WebView *)_newWebView
 {
     FVAPIAssert2(pthread_main_np() != 0, @"*** threading violation *** -[%@ %@] requires main thread", [self class], NSStringFromSelector(_cmd));
-    FVAPIAssert((NSInteger)[_availableWebViews count] + (NSInteger)[_activeWebViews count] == _numberOfWebViews, @"webview cache inconsistency");
-    WebView *nextView = nil;
-    if ([_availableWebViews count]) {
-        nextView = [_availableWebViews lastObject];
-        [_activeWebViews addObject:nextView];
-        [_availableWebViews removeLastObject];
-    }
-    else if (_numberOfWebViews <= _maxWebViews) {
+    FVAPIParameterAssert(_maxWebViews > 0);
+    WebView *view = nil;
+    if (_numberOfWebViews <= _maxWebViews) {
         NSSize size = [self _webViewSize];
-        nextView = [[WebView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
-        [_activeWebViews addObject:nextView];
-        [nextView release];
+        view = [[WebView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
         _numberOfWebViews++;
     }
-    FVAPIAssert((NSInteger)[_availableWebViews count] + (NSInteger)[_activeWebViews count] == _numberOfWebViews, @"webview cache inconsistency");
-    return nextView;
-}
-
-+ (void)pushWebView:(WebView *)aView
-{
-    FVAPIParameterAssert(nil != aView);
-    FVAPIAssert2(pthread_main_np() != 0, @"*** threading violation *** -[%@ %@] requires main thread", [self class], NSStringFromSelector(_cmd));
-    FVAPIAssert((NSInteger)[_availableWebViews count] + (NSInteger)[_activeWebViews count] == _numberOfWebViews, @"webview cache inconsistency");
-    [_availableWebViews insertObject:aView atIndex:0];
-    [_activeWebViews removeObject:aView];
-    FVAPIAssert((NSInteger)[_availableWebViews count] + (NSInteger)[_activeWebViews count] == _numberOfWebViews, @"webview cache inconsistency");
-    [[NSNotificationCenter defaultCenter] postNotificationName:FVWebIconWebViewAvailableNotificationName object:self];
+    return view;
 }
 
 + (BOOL)_isSupportedScheme:(NSString *)scheme
@@ -131,8 +121,9 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 {    
     NSParameterAssert(nil != [aURL scheme]);
     
+    // if webviews are disabled, return a finder icon to avoid problems with looping notifications
     // if this is not an http or file URL, return a finder icon instead
-    if (NO == [[self class] _isSupportedScheme:[aURL scheme]] && NO == [aURL isFileURL]) {
+    if (0 == _maxWebViews || (NO == [[self class] _isSupportedScheme:[aURL scheme]] && NO == [aURL isFileURL])) {
         NSZone *zone = [self zone];
         [super dealloc];
         self = [[FVFinderIcon allocWithZone:zone] initWithURL:aURL];
@@ -152,7 +143,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         _desiredSize = NSZeroSize;
         
         _cacheKey = [FVIconCache newKeyForURL:_httpURL];
-        _condLock = [[NSConditionLock alloc] initWithCondition:IDLE];
+        _condLock = [[NSConditionLock allocWithZone:[self zone]] initWithCondition:IDLE];
     }
     return self;
 }
@@ -169,8 +160,11 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         FVAPIAssert([_webView downloadDelegate] == nil, @"downloadDelegate non-nil");
         FVAPIAssert([_webView UIDelegate] == nil, @"UIDelegate non-nil");
         FVAPIAssert([_webView resourceLoadDelegate] == nil, @"resourceLoadDelegate non-nil");
-        [[self class] pushWebView:_webView];
+        [_webView release];
+        _numberOfWebViews--;
         _webView = nil;
+        // notify observers that _numberOfWebViews has been decremented
+        [[NSNotificationCenter defaultCenter] postNotificationName:FVWebIconWebViewAvailableNotificationName object:[self class]];
     }
 }
 
@@ -392,7 +386,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     NSAssert(nil == _webView, @"*** Render error *** renderOffscreenOnMainThread called when _webView already exists");
     
     if (nil == _webView)
-        _webView = [[self class] popWebView];
+        _webView = [[self class] _newWebView];
 
     if (nil == _webView) {
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_handleWebViewAvailableNotification:) name:FVWebIconWebViewAvailableNotificationName object:[self class]];
