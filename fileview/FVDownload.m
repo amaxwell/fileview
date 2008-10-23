@@ -146,7 +146,7 @@
 
 - (void)download:(NSURLDownload *)download decideDestinationWithSuggestedFilename:(NSString *)filename;
 {
-    if ([_delegate respondsToSelector:_cmd])
+    if ([_delegate respondsToSelector:@selector(download:setDestinationWithSuggestedFilename:)])
         [_delegate download:self setDestinationWithSuggestedFilename:filename];
 }
 
