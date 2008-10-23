@@ -62,7 +62,7 @@ typedef struct _FVGradientColor {
     FVRGBAColor color2;
 } FVGradientColor;
 
-static void linearColorBlendFunction(void *info, const CGFloat *in, CGFloat *out)
+static void __FVLinearColorBlendFunction(void *info, const CGFloat *in, CGFloat *out)
 {
     FVGradientColor *color = info;
     out[0] = (1.0 - *in) * color->color1.red + *in * color->color2.red;
@@ -71,12 +71,10 @@ static void linearColorBlendFunction(void *info, const CGFloat *in, CGFloat *out
     out[3] = (1.0 - *in) * color->color1.alpha + *in * color->color2.alpha;    
 }
 
-static void linearColorReleaseFunction(void *info)
+static void __FVLinearColorReleaseFunction(void *info)
 {
     CFAllocatorDeallocate(CFAllocatorGetDefault(), info);
 }
-
-static const CGFunctionCallbacks linearFunctionCallbacks = {0, &linearColorBlendFunction, &linearColorReleaseFunction};
 
 #define LABEL_ALPHA 1.0
 
@@ -274,7 +272,8 @@ static const CGFunctionCallbacks linearFunctionCallbacks = {0, &linearColorBlend
     [upperColor getRed:&gradientColor->color2.red green:&gradientColor->color2.green blue:&gradientColor->color2.blue alpha:&gradientColor->color2.alpha];
     
     // basic idea borrowed from OAGradientTableView and simplified
-    static const CGFloat domainAndRange[8] = { 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0 };
+    const CGFloat domainAndRange[8] = { 0.0, 1.0, 0.0, 1.0, 0.0, 1.0, 0.0, 1.0 };
+    const CGFunctionCallbacks linearFunctionCallbacks = {0, &__FVLinearColorBlendFunction, &__FVLinearColorReleaseFunction};
     CGFunctionRef linearBlendFunctionRef = CGFunctionCreate(gradientColor, 1, domainAndRange, 4, domainAndRange, &linearFunctionCallbacks);    
     CGContextSaveGState(context); 
     CGContextClipToRect(context, NSRectToCGRect(rect));
