@@ -69,11 +69,6 @@ static NSMutableArray *_activeWebViews = nil;
 static NSInteger       _numberOfWebViews = 0;
 static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconWebViewAvailableNotificationName";
 
-static NSSet          *_webViewSchemes = nil;
-
-// size of the view frame; large enough to fit a reasonably sized page
-static const NSSize _webViewSize = { 1000, 900 };
-
 #define IDLE    0
 #define LOADING 1
 #define LOADED  2
@@ -88,8 +83,10 @@ static const NSSize _webViewSize = { 1000, 900 };
     
     _availableWebViews = [[NSMutableArray alloc] initWithCapacity:_maxWebViews];
     _activeWebViews = [[NSMutableArray alloc] initWithCapacity:_maxWebViews];
-    _webViewSchemes = [[NSSet alloc] initWithObjects:@"http", @"https", @"ftp", nil];
 }
+
+// size of the view frame; large enough to fit a reasonably sized page
++ (NSSize)_webViewSize { return NSMakeSize(1000, 900); }
 
 // return nil if _maxWebViews is exceeded
 + (WebView *)popWebView 
@@ -103,7 +100,8 @@ static const NSSize _webViewSize = { 1000, 900 };
         [_availableWebViews removeLastObject];
     }
     else if (_numberOfWebViews <= _maxWebViews) {
-        nextView = [[WebView alloc] initWithFrame:NSMakeRect(0, 0, _webViewSize.width, _webViewSize.height)];
+        NSSize size = [self _webViewSize];
+        nextView = [[WebView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
         [_activeWebViews addObject:nextView];
         [nextView release];
         _numberOfWebViews++;
@@ -123,12 +121,18 @@ static const NSSize _webViewSize = { 1000, 900 };
     [[NSNotificationCenter defaultCenter] postNotificationName:FVWebIconWebViewAvailableNotificationName object:self];
 }
 
++ (BOOL)_isSupportedScheme:(NSString *)scheme
+{
+    NSString *lcString = [scheme lowercaseString];
+    return [lcString isEqualToString:@"http"] || [lcString isEqualToString:@"https"] || [lcString isEqualToString:@"ftp"];
+}
+
 - (id)initWithURL:(NSURL *)aURL;
 {    
     NSParameterAssert(nil != [aURL scheme]);
     
     // if this is not an http or file URL, return a finder icon instead
-    if (NO == [_webViewSchemes containsObject:[aURL scheme]] && NO == [aURL isFileURL]) {
+    if (NO == [[self class] _isSupportedScheme:[aURL scheme]] && NO == [aURL isFileURL]) {
         NSZone *zone = [self zone];
         [super dealloc];
         self = [[FVFinderIcon allocWithZone:zone] initWithURL:aURL];
@@ -141,9 +145,9 @@ static const NSSize _webViewSize = { 1000, 900 };
         _fallbackIcon = nil;
         
         // we can predict these sizes ahead of time since we have a fixed aspect ratio
-        _thumbnailSize = _webViewSize;
+        _thumbnailSize = [[self class] _webViewSize];
         FVIconLimitThumbnailSize(&_thumbnailSize);
-        _fullImageSize = _webViewSize;
+        _fullImageSize = _thumbnailSize;
         FVIconLimitFullImageSize(&_fullImageSize);
         _desiredSize = NSZeroSize;
         
@@ -230,9 +234,6 @@ static const NSSize _webViewSize = { 1000, 900 };
 // size of the _fullImage
 - (NSSize)size { return _fullImageSize; }
 
-// actual size of the webview
-- (NSSize)_webviewSize { return _webViewSize; }
-
 // size of the _thumbnail (1/5 of webview size)
 - (NSSize)_thumbnailSize { return _thumbnailSize; }
 
@@ -294,7 +295,8 @@ static const NSSize _webViewSize = { 1000, 900 };
     WebFrameView *view = [[_webView mainFrame] frameView];
     [view setAllowsScrolling:NO];
     
-    NSSize size = [self _webviewSize];
+    // actual size of the view
+    NSSize size = [[self class] _webViewSize];
     CGContextRef context = FVIconBitmapContextCreateWithSize(size.width, size.height);
     CGContextClearRect(context, CGRectMake(0, 0, size.width, size.height));
     NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:[view isFlipped]];
