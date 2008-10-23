@@ -163,16 +163,7 @@ static NSString * const FVColorNameUpdateNotification = @"FVColorNameUpdateNotif
 
 @implementation FVColorMenuCell
 
-static NSShadow *_shadow = nil;
-
 #define NO_BOX -1
-
-+ (void)initialize
-{
-    _shadow = [[NSShadow alloc] init];
-    [_shadow setShadowOffset:NSMakeSize(0, -1)];
-    [_shadow setShadowBlurRadius:2.0];
-}
 
 static NSRect __FVSquareRectCenteredInRect(const NSRect iconRect)
 {
@@ -214,8 +205,12 @@ static NSRect __FVSquareRectCenteredInRect(const NSRect iconRect)
         [p stroke];
     }
     else {
-        [_shadow set];
+        NSShadow *labelShadow = [NSShadow new];
+        [labelShadow setShadowOffset:NSMakeSize(0, -1)];
+        [labelShadow setShadowBlurRadius:2.0];
+        [labelShadow set];
         [FVFinderLabel drawFinderLabel:tag inRect:interiorFrame roundEnds:NO];
+        [labelShadow release];
     }
     
     [NSGraphicsContext restoreGraphicsState];

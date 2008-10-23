@@ -43,7 +43,7 @@
 
 extern bool __CFOASafe;
 static bool __FVOASafe = false;
-static const uint32_t _RetainWarningThreshold = 1000000;
+#define RETAIN_WARNING_THRESHOLD 1000000
 
 @implementation FVObject
 
@@ -92,7 +92,7 @@ static void _FVObjectError(NSString *format, ...)
     
     uint32_t rc = OSAtomicIncrement32Barrier((volatile int32_t *)&_rc);
 #if DEBUG
-    if (__builtin_expect(_RetainWarningThreshold < rc, 1))
+    if (__builtin_expect(RETAIN_WARNING_THRESHOLD < rc, 1))
         _FVObjectError(@"*** high retain count (%u) for %@, break on _FVObjectError() to debug.", rc, self);
 #else
 #pragma unused(rc)
