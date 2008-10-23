@@ -101,7 +101,6 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     return textStorage;
 }
 
-// caller will own the returned object
 + (NSTextStorage *)popTextStorage
 {
     OSSpinLockLock(&_cacheLock);
@@ -116,7 +115,6 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     return [textStorage autorelease];
 }
 
-// assumes the object was retrieved from +popTextStorage and /not/ (auto)released
 + (void)pushTextStorage:(NSTextStorage *)textStorage
 {
     OSSpinLockLock(&_cacheLock);
