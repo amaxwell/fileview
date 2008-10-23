@@ -41,27 +41,28 @@
 
 @implementation FVProgressIndicatorCell
 
-static CGColorRef _fillColor = NULL;
-static CGColorRef _strokeColor = NULL;
-
-+ (void)initialize
++ (CGColorRef)_newFillColor
 {
-    FVINITIALIZE(FVProgressIndicatorCell);
-    
     CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
     CGFloat components[4];
-    
     NSColor *nsColor = [[NSColor selectedControlColor] colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
     [nsColor getComponents:components];
     // make it slightly transparent
     components[3] = 0.8;
-    _fillColor = CGColorCreate(cspace, components);
-    
-    nsColor = [[NSColor alternateSelectedControlColor] colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
-    [nsColor getComponents:components];
-    _strokeColor = CGColorCreate(cspace, components);
-    
+    CGColorRef fillColor = CGColorCreate(cspace, components);
     CGColorSpaceRelease(cspace);
+    return fillColor;
+}
+
++ (CGColorRef)_newStrokeColor
+{
+    CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+    CGFloat components[4];
+    NSColor *nsColor = [[NSColor alternateSelectedControlColor] colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
+    [nsColor getComponents:components];
+    CGColorRef strokeColor = CGColorCreate(cspace, components);
+    CGColorSpaceRelease(cspace);
+    return strokeColor;
 }
 
 - (id)init
@@ -71,8 +72,17 @@ static CGColorRef _strokeColor = NULL;
         _currentProgress = 0;
         _currentRotation = 0;
         _style = FVProgressIndicatorDeterminate;
+        _fillColor = [[self class] _newFillColor];
+        _strokeColor = [[self class] _newStrokeColor];
     }
     return self;
+}
+
+- (void)dealloc
+{
+    CGColorRelease(_fillColor);
+    CGColorRelease(_strokeColor);
+    [super dealloc];
 }
 
 - (void)setCurrentProgress:(CGFloat)progress { _currentProgress = progress; }
