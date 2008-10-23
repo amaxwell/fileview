@@ -72,8 +72,8 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone);
 #endif
 
 // used as guard field in allocation struct; do not rely on the value
-static const char *_malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
-static const char *_vm_guard;      /* indicates vm_allocate was used for this block           */
+static const char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
+static const char _vm_guard;      /* indicates vm_allocate was used for this block           */
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
