@@ -238,20 +238,20 @@ static NSInteger FVCacheLogLevel = 0;
     CFURLRef theURL = (CFURLRef)key->_URL;
     CFStringRef scheme = CFURLCopyScheme(theURL);
     CFStringRef identifier = NULL;
-    if (scheme && CFStringCompare(scheme, CFSTR("file"), 0) == kCFCompareEqualTo) {
+    if (scheme && CFStringCompare(scheme, FVSTR("file"), 0) == kCFCompareEqualTo) {
         
         FSRef fileRef;
         if (CFURLGetFSRef(theURL, &fileRef)) {
-            CFStringRef theUTI;
-            LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, (CFTypeRef *)&theUTI);
-            if (theUTI) identifier = theUTI;
+            CFTypeRef theUTI;
+            LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
+            if (theUTI) identifier = (CFStringRef)theUTI;
         }
     }
     else if (scheme) {
         identifier = (CFStringRef)CFRetain(scheme);
     }
     else {
-        identifier = (CFStringRef)CFRetain(CFSTR("anonymous"));
+        identifier = (CFStringRef)CFRetain(FVSTR("anonymous"));
     }
     
     _FVCacheEventRecord *rec = [_eventTable objectForKey:(id)identifier];
