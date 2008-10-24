@@ -112,10 +112,10 @@ static Boolean __FVAllocationEqual(const void *val1, const void *val2)
 }
 
 // !!! hash by size; need to check this to make sure it uses buckets effectively
+// hashing by size is no longer permissible, since this may be called on an arbitrary pointer on probes (so dereferencing it may lead to EXC_BAD_ACCESS)
 static CFHashCode __FVAllocationHash(const void *value)
 {
-    const fv_allocation_t *alloc = value;
-    return alloc->allocSize;
+    return (uintptr_t)value;
 }
 
 // returns kCFNotFound if no buffer of sufficient size exists
