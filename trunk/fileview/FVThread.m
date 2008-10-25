@@ -123,10 +123,10 @@ static volatile int32_t _threadCount = 0;
 }
 
 /*
- The rules are simple: to use the pool, you need to obtain an _FVThread using +backgroundThread.  When you're done, call +recycleBackgroundThread: to return it to the queue.  There is no need to retain or release the _FVThread instance; it's retain count is never decremented after +alloc, and is also retained by its NSThread.  Hence we can use a nonretaining array and avoid refcounting overhead.
+ The rules are simple: to use the pool, you need to obtain an _FVThread using +newThreadUsingPool.  When you're done, call +recycleThread: to return it to the queue.  There is no need to retain or release the _FVThread instance; it's retain count is never decremented after +alloc, and is also retained by its NSThread.  Hence we can use a nonretaining array and avoid refcounting overhead.
  */
 
-+ (_FVThread *)backgroundThread;
++ (_FVThread *)newThreadUsingPool;
 {
     OSSpinLockLock(&_lock);
     _FVThread *thread = nil;
@@ -144,7 +144,7 @@ static volatile int32_t _threadCount = 0;
 }
 
 // no ownership transfer here
-+ (void)recycleBackgroundThread:(_FVThread *)thread;
++ (void)recycleThread:(_FVThread *)thread;
 {
     NSParameterAssert(nil != thread);
     OSSpinLockLock(&_lock);
@@ -185,7 +185,7 @@ static volatile int32_t _threadCount = 0;
     if (_threadPoolCapacity == _threadCount)
         [NSThread detachNewThreadSelector:selector toTarget:target withObject:argument];
     else
-        [[self backgroundThread] performSelector:selector withTarget:target argument:argument];
+        [[self newThreadUsingPool] performSelector:selector withTarget:target argument:argument];
 }
 
 static void *__FVThread_main(void *obj);
@@ -319,7 +319,7 @@ void *__FVThread_main(void *obj)
             pthread_mutex_unlock(&self->_mutex);
             
             // selector has been performed, and we're unlocked, so it's now safe to allow another caller to use this thread
-            [_FVThread recycleBackgroundThread:self];
+            [_FVThread recycleThread:self];
         }
     }
     [self release];
