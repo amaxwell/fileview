@@ -234,11 +234,11 @@ static NSInteger FVCacheLogLevel = 0;
     // !!! Early return; we don't want to dereference members that don't exist, since any object can be used as key.
     if ([key isKindOfClass:[_FVCacheKey class]] == NO)
         return;
-    
+
     CFURLRef theURL = (CFURLRef)key->_URL;
     CFStringRef scheme = CFURLCopyScheme(theURL);
     CFStringRef identifier = NULL;
-    if (scheme && CFStringCompare(scheme, FVSTR("file"), 0) == kCFCompareEqualTo) {
+    if (scheme && CFStringCompare(scheme, (CFStringRef)NSURLFileScheme, 0) == kCFCompareEqualTo) {
         
         FSRef fileRef;
         if (CFURLGetFSRef(theURL, &fileRef)) {
@@ -251,7 +251,7 @@ static NSInteger FVCacheLogLevel = 0;
         identifier = (CFStringRef)CFRetain(scheme);
     }
     else {
-        identifier = (CFStringRef)CFRetain(FVSTR("anonymous"));
+        identifier = CFStringCreateWithCString(NULL, "anonymous", kCFStringEncodingASCII);
     }
     
     _FVCacheEventRecord *rec = [_eventTable objectForKey:(id)identifier];
