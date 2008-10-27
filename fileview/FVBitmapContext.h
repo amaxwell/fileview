@@ -40,27 +40,31 @@
 
 /** @file FVBitmapContext.h  Bitmap context creation and disposal. */
 
+/** @typedef CGContextRef FVBitmapContextRef
+ This typedef mainly exists to silence clang's retain/release heuristic warnings, which unfortunately look for CF/CG as the release function prefix.  Should file a bug with llvm, but this is easier than dealing with bugzilla. */
+typedef CGContextRef FVBitmapContextRef;
+
 /** @internal @brief Row bytes for pixel width.
  
  Computes the appropriate number of bytes per row for 64-byte alignment.  Algorithm borrowed from Apple's sample code.
- @param bytesPerSample Bytes per pixel (4 for an 8-bit ARGB image).
+ @param bytesPerSample Bytes per pixel (e.g. an 8-bits-per-channel ARGB image has 32 bits per pixel, so uses 4 bytes per pixel).
  @param pixelsWide Width of the image in pixels.
  @return Number of bytes to allocate per row. */
 FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide);
 
 /** @internal @brief Bitmap context creation.
  
- Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using FVIconBitmapContextDispose.  The context may contain garbage, so clear it first if you're drawing transparent content.
+ Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using FVIconBitmapContextRelease.  The context may contain garbage, so clear it first if you're drawing transparent content.
  @param width Width in pixels.
  @param height Height in pixels. 
  @return A new CGBitmapContext or NULL if it could not be created. */
-FV_PRIVATE_EXTERN CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height);
+FV_PRIVATE_EXTERN FVBitmapContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height);
 
 /** @internal @brief Bitmap context disposal.
  
  Destroys a CGBitmapContext created using FVIconBitmapContextCreateWithSize.  @warning This deallocates the bitmap data associated with the context, rather than decrementing a reference count.
  @arg ctxt The context to release. */
-FV_PRIVATE_EXTERN void FVIconBitmapContextDispose(CGContextRef ctxt);
+FV_PRIVATE_EXTERN void FVIconBitmapContextRelease(FVBitmapContextRef ctxt);
 
 /** @internal @brief See if an image is compatible with caching assumptions.
  

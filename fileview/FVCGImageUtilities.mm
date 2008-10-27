@@ -97,7 +97,7 @@ size_t __FVMaximumTileHeight(void) { return MAX_TILE_HEIGHT; }
 static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize size)
 {
     [_copyLock lock];
-    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
+    FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
     CGContextClearRect(ctxt, CGRectMake(0, 0, size.width, size.height));
 
     CGContextSaveGState(ctxt);
@@ -106,7 +106,7 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
     CGContextRestoreGState(ctxt);
     
     CGImageRef toReturn = CGBitmapContextCreateImage(ctxt);
-    FVIconBitmapContextDispose(ctxt);
+    FVIconBitmapContextRelease(ctxt);
     [_copyLock unlock];
     return toReturn;
 }

@@ -66,7 +66,7 @@ size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixels
     return destRowBytes;
 }
 
-CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
+FVBitmapContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
 {
     size_t bitsPerComponent = 8;
     size_t nComponents = 4;
@@ -101,7 +101,7 @@ CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
     return ctxt;
 }
 
-void FVIconBitmapContextDispose(CGContextRef ctxt)
+void FVIconBitmapContextRelease(FVBitmapContextRef ctxt)
 {
     void *bitmapData = CGBitmapContextGetData(ctxt);
     if (bitmapData) CFAllocatorDeallocate(FVAllocatorGetDefault(), bitmapData);
