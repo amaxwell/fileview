@@ -58,7 +58,7 @@
     // white page background
     CGFloat backgroundComps[4] = { 1.0, 1.0, 1.0, 1.0 };
     
-    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(CGRectGetWidth(paperRect), CGRectGetHeight(paperRect));    
+    FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(CGRectGetWidth(paperRect), CGRectGetHeight(paperRect));    
     CGContextSaveGState(ctxt);
 
     // use a monospaced font for plain text
@@ -122,7 +122,7 @@
     CGContextRestoreGState(ctxt);
     
     CGImageRef image = CGBitmapContextCreateImage(ctxt);
-    FVIconBitmapContextDispose(ctxt);
+    FVIconBitmapContextRelease(ctxt);
     
     return image;
 }

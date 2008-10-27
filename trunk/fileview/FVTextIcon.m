@@ -322,7 +322,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 - (CGImageRef)_newImageWithAttributedString:(NSMutableAttributedString *)attrString documentAttributes:(NSDictionary *)documentAttributes
 {
-    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(FVDefaultPaperSize.width, FVDefaultPaperSize.height);    
+    FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(FVDefaultPaperSize.width, FVDefaultPaperSize.height);    
     NSTextStorage *textStorage = [FVTextIcon popTextStorage];
 
     // set up default page layout parameters
@@ -423,7 +423,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     textStorage = nil;
     
     CGImageRef image = CGBitmapContextCreateImage(ctxt);
-    FVIconBitmapContextDispose(ctxt);
+    FVIconBitmapContextRelease(ctxt);
     
     return image;
     

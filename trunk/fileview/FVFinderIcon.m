@@ -226,14 +226,14 @@
 
 static CGImageRef __FVCreateImageWithIcon(IconRef icon, size_t width, size_t height)
 {
-    CGContextRef ctxt = FVIconBitmapContextCreateWithSize(width, height);
+    FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(width, height);
     CGRect rect = CGRectZero;
     rect.size = CGSizeMake(width, height);
     CGContextClearRect(ctxt, rect);
     CGImageRef image = NULL;
     if (noErr == PlotIconRefInContext(ctxt, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, icon))
         image = CGBitmapContextCreateImage(ctxt);
-    FVIconBitmapContextDispose(ctxt);
+    FVIconBitmapContextRelease(ctxt);
     return image;
 }
 
@@ -301,7 +301,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kGenericDocumentIcon, &docIcon);
         if (err) docIcon = NULL;
 
-        CGContextRef context = FVIconBitmapContextCreateWithSize(FVMaxThumbnailDimension, FVMaxThumbnailDimension);
+        FVBitmapContextRef context = FVIconBitmapContextCreateWithSize(FVMaxThumbnailDimension, FVMaxThumbnailDimension);
         CGRect rect = CGRectZero;
         
         rect.size = CGSizeMake(FVMaxThumbnailDimension, FVMaxThumbnailDimension);
@@ -312,7 +312,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
         if (questionIcon) PlotIconRefInContext(context, &rect, kAlignCenterBottom, kTransformNone, NULL, kIconServicesNoBadgeFlag, questionIcon);          
         
         _thumbnail = CGBitmapContextCreateImage(context);        
-        FVIconBitmapContextDispose(context);
+        FVIconBitmapContextRelease(context);
         
         context = FVIconBitmapContextCreateWithSize(FVMaxImageDimension, FVMaxImageDimension);
         rect = CGRectZero;
@@ -325,7 +325,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
         if (questionIcon) PlotIconRefInContext(context, &rect, kAlignCenterBottom, kTransformNone, NULL, kIconServicesNoBadgeFlag, questionIcon);          
         
         _fullImage = CGBitmapContextCreateImage(context);        
-        FVIconBitmapContextDispose(context);
+        FVIconBitmapContextRelease(context);
         
         if (questionIcon) ReleaseIconRef(questionIcon);
         if (docIcon) ReleaseIconRef(docIcon);
