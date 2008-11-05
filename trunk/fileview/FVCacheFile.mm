@@ -376,7 +376,7 @@ static NSInteger FVCacheLogLevel = 0;
             
             ssize_t bytesRemaining = location->_compressedLength;
             // man page says mmap will fail if offset isn't a multiple of page size
-            NSParameterAssert(location->_offset == round_page(location->_offset));
+            NSParameterAssert(location->_offset == (off_t)round_page(location->_offset));
             
             int status;
             
