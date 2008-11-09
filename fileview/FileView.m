@@ -90,7 +90,6 @@ static NSDictionary *_labeledAttributes = nil;
 static NSDictionary *_subtitleAttributes = nil;
 static CGFloat       _titleHeight = 0.0;
 static CGFloat       _subtitleHeight = 0.0;
-static CGColorRef    _shadowColor = NULL;
 
 // KVO context pointers (pass address): http://lists.apple.com/archives/cocoa-dev/2008/Aug/msg02471.html
 static char _FVInternalSelectionObserverContext;
@@ -137,12 +136,7 @@ static char _FVContentBindingToControllerObserverContext;
     _titleHeight = [lm defaultLineHeightForFont:[_titleAttributes objectForKey:NSFontAttributeName]];
     _subtitleHeight = [lm defaultLineHeightForFont:[_subtitleAttributes objectForKey:NSFontAttributeName]];
     [lm release];
-    
-    CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
-    CGFloat shadowComponents[] = { 0, 0, 0, 0.4 };
-    _shadowColor = CGColorCreate(cspace, shadowComponents);
-    CGColorSpaceRelease(cspace);
-    
+        
     [self exposeBinding:@"iconScale"];
     [self exposeBinding:@"content"];
     [self exposeBinding:@"selectionIndexes"];
@@ -1537,6 +1531,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     // shadow needs to be scaled as the icon scale changes to approximate the IconServices shadow
     CGFloat shadowBlur = 2.0 * [self iconScale];
     CGSize shadowOffset = CGSizeMake(0.0, -[self iconScale]);
+    CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
+    CGFloat shadowComponents[] = { 0, 0, 0, 0.4 };
+    CGColorRef shadowColor = CGColorCreate(cspace, shadowComponents);
+    CGColorSpaceRelease(cspace);
     
     // iterate each row/column to see if it's in the dirty rect, and evaluate the current cache state
     for (r = rMin; r < rMax; r++) 
@@ -1567,7 +1565,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     CGContextSaveGState(cgContext);
                     
                     // draw a shadow behind the image/page
-                    CGContextSetShadowWithColor(cgContext, shadowOffset, shadowBlur, _shadowColor);
+                    CGContextSetShadowWithColor(cgContext, shadowOffset, shadowBlur, shadowColor);
                     
                     // possibly better performance by caching all bitmaps in a flipped state, but bookkeeping is a pain
                     CGContextTranslateCTM(cgContext, 0, NSMaxY(iconRect));
@@ -1629,6 +1627,8 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
             }
         }
     }
+    
+    CGColorRelease(shadowColor);
     
     // avoid hitting the cache thread while a live resize is in progress, but allow cache updates while scrolling
     // use the same range criteria that we used in iterating icons
