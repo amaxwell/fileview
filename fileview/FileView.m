@@ -74,8 +74,6 @@ enum {
 };
 typedef NSUInteger FVDropOperation;
 
-static NSString * const FVWeblocFilePboardType = @"CorePasteboardFlavorType 0x75726C20";
-
 #define DEFAULT_ICON_SIZE ((NSSize) { 64, 64 })
 #define DEFAULT_PADDING   ((CGFloat) 32)         // 16 per side
 #define MINIMUM_PADDING   ((CGFloat) 10)
@@ -428,7 +426,8 @@ static char _FVContentBindingToControllerObserverContext;
         for (i = 0; i < iMax; i++)
             FVAPIAssert1([_dataSource respondsToSelector:selectors[i]], @"datasource must implement %@", NSStringFromSelector(selectors[i]));
 
-        [self registerForDraggedTypes:[NSArray arrayWithObjects:NSFilenamesPboardType, NSURLPboardType, FVWeblocFilePboardType, (NSString *)kUTTypeURL, (NSString *)kUTTypeUTF8PlainText, NSStringPboardType, nil]];
+        NSString *weblocType = @"CorePasteboardFlavorType 0x75726C20";
+        [self registerForDraggedTypes:[NSArray arrayWithObjects:NSFilenamesPboardType, NSURLPboardType, weblocType, (NSString *)kUTTypeURL, (NSString *)kUTTypeUTF8PlainText, NSStringPboardType, nil]];
     } else {
         [self registerForDraggedTypes:nil];
     }
@@ -1157,14 +1156,8 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 - (void)_drawDropHighlightInRect:(NSRect)aRect;
 {
-    static NSColor *strokeColor = nil;
-    static NSColor *fillColor = nil;
-    if (nil == strokeColor) {
-        fillColor = [[[[NSColor alternateSelectedControlColor] colorWithAlphaComponent:0.2] colorUsingColorSpaceName:NSDeviceRGBColorSpace] retain];
-        strokeColor = [[[[NSColor alternateSelectedControlColor] colorWithAlphaComponent:0.8] colorUsingColorSpaceName:NSDeviceRGBColorSpace] retain];
-    }
-    [strokeColor setStroke];
-    [fillColor setFill];
+    [[[NSColor alternateSelectedControlColor] colorWithAlphaComponent:0.8] setStroke];
+    [[[NSColor alternateSelectedControlColor] colorWithAlphaComponent:0.2] setFill];
     
     CGFloat lineWidth = 2.0;
     NSBezierPath *p;
