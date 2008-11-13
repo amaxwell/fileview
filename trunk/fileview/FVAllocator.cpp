@@ -863,21 +863,37 @@ static void __log_stats()
 
 #if ENABLE_STATS
 
-// can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
-static void __FVAllocatorShowStats(fv_zone_t *fvzone)
+static std::multiset<size_t> __FVAllocatorFreeSizesLocked(fv_zone_t *fvzone, size_t *freeMemPtr)
 {
-    // use the default zone explicitly; avoid callout to our custom zone(s)
-    malloc_zone_t *zone = malloc_default_zone();
-    OSSpinLockLock(&fvzone->_spinLock);
-    // record the actual time of this measurement
-    CFAbsoluteTime snapshotTime = CFAbsoluteTimeGetCurrent();
-    const fv_allocation_t *stackBuf[FV_STACK_MAX] = { NULL };
-    CFRange range = CFRangeMake(0, CFArrayGetCount(fvzone->_freeBuffers));
-    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? (const fv_allocation_t **)malloc_zone_calloc(zone, range.length, sizeof(fv_allocation_t *)) : stackBuf;
-    CFArrayGetValues(fvzone->_freeBuffers, range, (const void **)ptrs);
+    const size_t ptrCount = CFArrayGetCount(fvzone->_freeBuffers);
+    const fv_allocation_t **ptrs = new const fv_allocation_t *[ptrCount];
+
+    CFArrayGetValues(fvzone->_freeBuffers, CFRangeMake(0, ptrCount), (const void **)ptrs);
+    size_t freeMemory = 0;
+    std::multiset<size_t> allocationSet;
+    for (size_t i = 0; i < ptrCount; i++) {
+        if (__builtin_expect((ptrs[i]->guard != &_vm_guard && ptrs[i]->guard != &_malloc_guard), 0)) {
+            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptrs[i]);
+            malloc_printf("Break on malloc_printf to debug.\n");
+            HALT;
+        }
+        // FIXME: consistent size usage
+        freeMemory += ptrs[i]->allocSize;
+        allocationSet.insert(ptrs[i]->ptrSize);
+    }
+    delete [] ptrs;
+    if (freeMemPtr) *freeMemPtr = freeMemory;
+    return allocationSet;
+}
+
+static std::multiset<size_t> __FVAllocatorAllSizesLocked(fv_zone_t *fvzone, size_t *totalMemPtr)
+{
+    const size_t ptrCount = CFSetGetCount(fvzone->_allocations);
+    const fv_allocation_t **ptrs = new const fv_allocation_t *[ptrCount];
+    CFSetGetValues(fvzone->_allocations, (const void **)ptrs);
     size_t totalMemory = 0;
     std::multiset<size_t> allocationSet;
-    for (CFIndex i = 0; i < range.length; i++) {
+    for (size_t i = 0; i < ptrCount; i++) {
         if (__builtin_expect((ptrs[i]->guard != &_vm_guard && ptrs[i]->guard != &_malloc_guard), 0)) {
             malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptrs[i]);
             malloc_printf("Break on malloc_printf to debug.\n");
@@ -887,45 +903,51 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
         totalMemory += ptrs[i]->allocSize;
         allocationSet.insert(ptrs[i]->ptrSize);
     }
-    // held the lock to ensure that it's safe to dereference the allocations
+    delete [] ptrs;
+    if (totalMemPtr) *totalMemPtr = totalMemory;
+    return allocationSet;
+}
+
+// can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
+static void __FVAllocatorShowStats(fv_zone_t *fvzone)
+{
+    // use the default zone explicitly; avoid callout to our custom zone(s)
+    OSSpinLockLock(&fvzone->_spinLock);
+    // record the actual time of this measurement
+    const time_t absoluteTime = time(NULL);
+    size_t totalMemory = 0, freeMemory = 0;
+    std::multiset<size_t> allocationSet = __FVAllocatorAllSizesLocked(fvzone, &totalMemory);
+    std::multiset<size_t> freeSet = __FVAllocatorFreeSizesLocked(fvzone, &freeMemory);
     OSSpinLockUnlock(&fvzone->_spinLock);
-    if (stackBuf != ptrs) malloc_zone_free(zone, ptrs);
     
     fprintf(stderr, "------------------------------------\n");
-    fprintf(stderr, "Zone name: %s\n", malloc_get_zone_name((malloc_zone_t *)fvzone));
-    fprintf(stderr, "   Size     Count  Total  Percentage\n");
-    fprintf(stderr, "   (b)       --    (Mb)      ----   \n");
+    fprintf(stderr, "Zone name: %s\n", malloc_get_zone_name(&fvzone->_basic_zone));
+    fprintf(stderr, "   Size     Count(Free)  Total  Percentage\n");
+    fprintf(stderr, "   (b)       --    --    (Mb)      ----   \n");
 
     const double totalMemoryMbytes = (double)totalMemory / 1024 / 1024;
     std::multiset<size_t>::iterator it;
     for (it = allocationSet.begin(); it != allocationSet.end(); it = allocationSet.upper_bound(*it)) {
         size_t allocationSize = *it;
         size_t count = allocationSet.count(allocationSize);
+        size_t freeCount = freeSet.count(allocationSize);
         double totalMbytes = double(allocationSize) * count / 1024 / 1024;
         double percentOfTotal = totalMbytes / totalMemoryMbytes * 100;
-        fprintf(stderr, "%8lu    %3lu   %5.2f    %5.2f %%\n", (long)allocationSize, (long)count, totalMbytes, percentOfTotal);        
+        fprintf(stderr, "%8lu    %3lu  (%3lu)  %5.2f    %5.2f %%\n", (long)allocationSize, (long)count, (long)freeCount, totalMbytes, percentOfTotal);        
     }
 
     // avoid divide-by-zero
     double cacheRequests = (fvzone->_cacheHits + fvzone->_cacheMisses);
     double missRate = cacheRequests > 0 ? (double)fvzone->_cacheMisses / (fvzone->_cacheHits + fvzone->_cacheMisses) * 100 : 0;
-    // use a custom formatter to avoid displaying time zone
-    CFAllocatorRef alloc = CFAllocatorGetDefault();
-    CFDateRef date = CFDateCreate(alloc, snapshotTime);
-    static CFDateFormatterRef formatter = NULL;
-    if (NULL == formatter) {
-        formatter = CFDateFormatterCreate(alloc, NULL, kCFDateFormatterShortStyle, kCFDateFormatterShortStyle);
-        CFStringRef format = CFStringCreateWithCString(alloc, "yyyy-MM-dd HH:mm:ss", kCFStringEncodingASCII);
-        CFDateFormatterSetFormat(formatter, format);
-        CFRelease(format);
-    }
-    CFStringRef dateDescription = CFDateFormatterCreateStringWithDate(alloc, formatter, date);
-    if (NULL != date) CFRelease(date);
-    char descBuf[32];
-    CFStringGetCString(dateDescription, descBuf, sizeof(descBuf), kCFStringEncodingUTF8);
-    fprintf(stderr, "%s: %d hits and %d misses for a cache failure rate of %.2f%%\n", descBuf, fvzone->_cacheHits, fvzone->_cacheMisses, missRate);
-    fprintf(stderr, "%s: total memory used: %.2f Mbytes, %d reallocations\n", descBuf, (double)totalMemory / 1024 / 1024, fvzone->_reallocCount);
-    if (NULL != dateDescription) CFRelease(dateDescription);
+
+    struct tm time;
+    localtime_r(&absoluteTime, &time);
+    
+    const char *timeFormat = "%Y-%m-%d %T"; // 2008-11-12 21:51:00 --> 20 characters
+    char timeString[32] = { '\0' };
+    strftime(timeString, sizeof(timeString), timeFormat, &time);
+    fprintf(stderr, "%s: %d hits and %d misses for a cache failure rate of %.2f%%\n", timeString, fvzone->_cacheHits, fvzone->_cacheMisses, missRate);
+    fprintf(stderr, "%s: total in use: %.2f Mbytes, total available: %.2f Mbytes, %d reallocations, \n", timeString, double(totalMemory) / 1024 / 1024, double(freeMemory) / 1024 / 1024, fvzone->_reallocCount);
 }
 
 #endif
