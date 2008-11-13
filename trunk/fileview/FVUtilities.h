@@ -118,16 +118,3 @@ FV_PRIVATE_EXTERN bool FVCanMapFileAtURL(NSURL *fileURL);
 /** Draw round rects.  On 10.5 and later, this is a wrapper for +[NSBezierPath bezierPathWithRoundedRect:xRadius:yRadius:].  On Tiger, yRadius is set equal to xRadius. */
 + (NSBezierPath*)fv_bezierPathWithRoundRect:(NSRect)rect xRadius:(CGFloat)xRadius yRadius:(CGFloat)yRadius;
 @end
-
-// from CFInternal.h
-#if defined(__ppc__) || defined(__ppc64__)
-    #define HALT __asm__ __volatile__("trap")
-#elif defined(__i386__) || defined(__x86_64__)
-    #if defined(__GNUC__)
-        #define HALT __asm__ __volatile__("int3")
-    #elif defined(_MSC_VER)
-        #define HALT __asm int 3;
-    #else
-        #error Compiler not supported
-    #endif
-#endif
