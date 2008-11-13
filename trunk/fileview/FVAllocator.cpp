@@ -37,27 +37,19 @@
  */
 
 #import "FVAllocator.h"
-
 #import <libkern/OSAtomic.h>
 #import <malloc/malloc.h>
 #import <mach/mach.h>
 #import <mach/vm_map.h>
 
 #import <set>
+#import <iostream>
 
 #if !defined(DEBUG)
 #define FVCParameterAssert(condition) do { if(!condition) { HALT; } } while(0)
 #else
 #define FVCParameterAssert(condition)
 #endif
-
-// FIXME: use std::cout?
-/** @internal @brief Logging function. 
- Log to stdout without the date/app/pid gunk that NSLog appends */
-extern "C" void FVLogv(CFStringRef format, va_list argList);
-/** @internal @brief Logging function. 
- Log to stdout without the date/app/pid gunk that NSLog appends */
-extern "C" void FVLog(CFStringRef format, ...);
 
 typedef struct _fv_zone_t {
     malloc_zone_t     _basic_zone;
@@ -117,7 +109,10 @@ static CFComparisonResult __FVAllocationSizeComparator(const void *val1, const v
 static CFStringRef __FVAllocationCopyDescription(const void *value)
 {
     const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("<0x%x>,\t size = %lu"), alloc->ptr, (unsigned long)alloc->ptrSize);
+    CFStringRef format = CFStringCreateWithCString(NULL, "<0x%x>,\t size = %lu", kCFStringEncodingASCII);
+    CFStringRef ret = CFStringCreateWithFormat(NULL, NULL, format, alloc->ptr, (unsigned long)alloc->ptrSize);
+    CFRelease(format);
+    return ret;
 }
 
 static Boolean __FVAllocationEqual(const void *val1, const void *val2)
@@ -149,7 +144,6 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex reques
         size_t foundSize = foundAlloc->ptrSize;
         if ((float)(foundSize - requestedSize) / requestedSize > 1) {
             idx = kCFNotFound;
-            // FVLog(@"requested %d, found %d; error = %.2f", requestedSize, foundSize, (float)(foundSize - requestedSize) / requestedSize);
         }
     }
     return idx;
@@ -795,7 +789,10 @@ static malloc_zone_t *__FVCreateZoneWithName(const char *name)
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
-    return CFStringCreateWithFormat(NULL, NULL, CFSTR("FVAllocator <%p>"), info);
+    CFStringRef format = CFStringCreateWithCString(NULL, "FVAllocator <%p>", kCFStringEncodingASCII);
+    CFStringRef ret = CFStringCreateWithFormat(NULL, NULL, format, info);
+    CFRelease(format);
+    return ret;
 }
 
 // return an available buffer of sufficient size or create a new one
@@ -894,10 +891,10 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     OSSpinLockUnlock(&fvzone->_spinLock);
     if (stackBuf != ptrs) malloc_zone_free(zone, ptrs);
     
-    FVLog(CFSTR("------------------------------------"));
-    FVLog(CFSTR("Zone name: %s"), malloc_get_zone_name((malloc_zone_t *)fvzone));
-    FVLog(CFSTR("   Size     Count  Total  Percentage"));
-    FVLog(CFSTR("   (b)       --    (Mb)      ----   "));
+    fprintf(stderr, "------------------------------------\n");
+    fprintf(stderr, "Zone name: %s\n", malloc_get_zone_name((malloc_zone_t *)fvzone));
+    fprintf(stderr, "   Size     Count  Total  Percentage\n");
+    fprintf(stderr, "   (b)       --    (Mb)      ----   \n");
 
     const double totalMemoryMbytes = (double)totalMemory / 1024 / 1024;
     std::multiset<size_t>::iterator it;
@@ -906,7 +903,7 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
         size_t count = allocationSet.count(allocationSize);
         double totalMbytes = double(allocationSize) * count / 1024 / 1024;
         double percentOfTotal = totalMbytes / totalMemoryMbytes * 100;
-        FVLog(CFSTR("%8lu    %3lu   %5.2f    %5.2f %%"), (long)allocationSize, (long)count, totalMbytes, percentOfTotal);        
+        fprintf(stderr, "%8lu    %3lu   %5.2f    %5.2f %%\n", (long)allocationSize, (long)count, totalMbytes, percentOfTotal);        
     }
 
     // avoid divide-by-zero
@@ -918,12 +915,16 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     static CFDateFormatterRef formatter = NULL;
     if (NULL == formatter) {
         formatter = CFDateFormatterCreate(alloc, NULL, kCFDateFormatterShortStyle, kCFDateFormatterShortStyle);
-        CFDateFormatterSetFormat(formatter, CFSTR("yyyy-MM-dd HH:mm:ss"));
+        CFStringRef format = CFStringCreateWithCString(alloc, "yyyy-MM-dd HH:mm:ss", kCFStringEncodingASCII);
+        CFDateFormatterSetFormat(formatter, format);
+        CFRelease(format);
     }
     CFStringRef dateDescription = CFDateFormatterCreateStringWithDate(alloc, formatter, date);
     if (NULL != date) CFRelease(date);
-    FVLog(CFSTR("%@: %d hits and %d misses for a cache failure rate of %.2f%%"), dateDescription, fvzone->_cacheHits, fvzone->_cacheMisses, missRate);
-    FVLog(CFSTR("%@: total memory used: %.2f Mbytes, %d reallocations"), dateDescription, (double)totalMemory / 1024 / 1024, fvzone->_reallocCount);
+    char descBuf[32];
+    CFStringGetCString(dateDescription, descBuf, sizeof(descBuf), kCFStringEncodingUTF8);
+    fprintf(stderr, "%s: %d hits and %d misses for a cache failure rate of %.2f%%\n", descBuf, fvzone->_cacheHits, fvzone->_cacheMisses, missRate);
+    fprintf(stderr, "%s: total memory used: %.2f Mbytes, %d reallocations\n", descBuf, (double)totalMemory / 1024 / 1024, fvzone->_reallocCount);
     if (NULL != dateDescription) CFRelease(dateDescription);
 }
 
