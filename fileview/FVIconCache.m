@@ -40,8 +40,6 @@
 #import "FVUtilities.h"
 #import "FVCGImageDescription.h"
 #import "FVCacheFile.h"
-#import "FVOperationQueue.h"
-#import "FVConcreteOperation.h"
 #import "FVAllocator.h"
 
 #import <libkern/OSAtomic.h>
@@ -50,28 +48,10 @@
 static CGImageRef FVCreateCGImageWithData(NSData *data);
 static CFDataRef FVCreateDataWithCGImage(CGImageRef image);
 
-@interface FVImageCacheOperation : FVConcreteOperation
-{
-@private;
-    CGImageRef   _image;
-    FVIconCache *_cache;
-    id           _key;
-}
-
-- (id)initWithImage:(CGImageRef)image cache:(FVIconCache *)cache key:(id)key ;
-
-@end
-
 @implementation FVIconCache
 
 static FVIconCache *_bigImageCache = nil;
 static FVIconCache *_smallImageCache = nil;
-
-// This gives better performance, since -renderOffscreen returns immediately and icons can be drawn sooner.
-#define USE_CACHE_QUEUE 0
-#if USE_CACHE_QUEUE
-static FVOperationQueue *_cacheQueue = nil;
-#endif
 
 + (void)initialize
 {
@@ -81,10 +61,6 @@ static FVOperationQueue *_cacheQueue = nil;
     [_bigImageCache setName:@"full size images"];
     _smallImageCache = [FVIconCache new];
     [_smallImageCache setName:@"thumbnail images"];
-#if USE_CACHE_QUEUE
-    _cacheQueue = [FVOperationQueue new];
-    [_cacheQueue setThreadPriority:0.0];
-#endif
 }
 
 - (id)init
@@ -103,9 +79,6 @@ static FVOperationQueue *_cacheQueue = nil;
 
 - (void)handleAppTerminate:(NSNotification *)notification
 {    
-#if USE_CACHE_QUEUE
-    [_cacheQueue terminate];
-#endif
     // avoid writing to a closed file
     FVCacheFile *cacheFile = _cacheFile;
     _cacheFile = nil;
@@ -145,6 +118,8 @@ static FVOperationQueue *_cacheQueue = nil;
     [_cacheFile invalidateDataForKey:aKey];
 }
 
+#pragma mark Class methods
+
 + (id)newKeyForURL:(NSURL *)aURL;
 {
     return [FVCacheFile newKeyForURL:aURL];
@@ -155,22 +130,9 @@ static FVOperationQueue *_cacheQueue = nil;
     return [_smallImageCache newImageForKey:aKey];
 }
 
-/*
- 
- NOTE: use high priority for thumbnails, low priority for big images.  Most classes draw the thumbnail if the big one isn't available, and being able to return the thumbnails soon can reduce the number of duplicate requests here.
- 
-*/
-
 + (void)cacheThumbnail:(CGImageRef)image forKey:(id)aKey;
 {
-#if USE_CACHE_QUEUE
-    FVImageCacheOperation *op = [[FVImageCacheOperation allocWithZone:[self zone]] initWithImage:image cache:_smallImageCache key:aKey];
-    [op setQueuePriority:FVOperationQueuePriorityHigh];
-    [_cacheQueue addOperation:op];
-    [op release];
-#else
     [_smallImageCache cacheImage:image forKey:aKey];
-#endif
 }
 
 + (CGImageRef)newImageForKey:(id)aKey;
@@ -180,14 +142,7 @@ static FVOperationQueue *_cacheQueue = nil;
 
 + (void)cacheImage:(CGImageRef)image forKey:(id)aKey;
 {
-#if USE_CACHE_QUEUE
-    FVImageCacheOperation *op = [[FVImageCacheOperation allocWithZone:[self zone]] initWithImage:image cache:_bigImageCache key:aKey];
-    [op setQueuePriority:FVOperationQueuePriorityLow];
-    [_cacheQueue addOperation:op];
-    [op release];
-#else
     [_bigImageCache cacheImage:image forKey:aKey];
-#endif
 }
 
 + (void)invalidateCachesForKey:(id)aKey;
@@ -233,7 +188,6 @@ static CGImageRef FVCreateCGImageWithData(NSData *data)
     [unarchiver release];
 #endif
     return toReturn;
-    
 }
 
 static CFDataRef FVCreateDataWithCGImage(CGImageRef image)
@@ -261,40 +215,3 @@ static CFDataRef FVCreateDataWithCGImage(CGImageRef image)
 #endif    
     return data;
 }
-
-@implementation FVImageCacheOperation
-
-- (id)initWithImage:(CGImageRef)image cache:(FVIconCache *)cache key:(id)key ;
-{
-    NSParameterAssert(image && cache && key);
-    self = [super init];
-    if (self) {
-        _image = CGImageRetain(image);
-        _cache = [cache retain];
-        _key = [key retain];
-    }
-    return self;
-}
-
-- (void)dealloc
-{
-    CGImageRelease(_image);
-    [_cache release];
-    [_key release];
-    [super dealloc];
-}
-
-- (BOOL)isConcurrent { return NO; }
-
-- (void)main;
-{
-    if (NO == [self isCancelled]) {
-        NSAutoreleasePool *pool = [NSAutoreleasePool new];
-        [_cache cacheImage:_image forKey:_key];
-        [self finished];
-        [pool release];
-    }
-}
-
-@end
-
