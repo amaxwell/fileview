@@ -43,7 +43,7 @@
 @interface FVIconCache : NSObject
 {
 @private;
-    FVCacheFile          *_cacheFile;
+    FVCacheFile *_cacheFile;
 }
 
 // use this to get a key for caching images to disk
