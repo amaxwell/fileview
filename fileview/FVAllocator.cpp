@@ -45,22 +45,10 @@
 
 #import <set>
 
-// FIXME: move to pch?
-#if defined(__ppc__) || defined(__ppc64__)
-    #define HALT __asm__ __volatile__("trap")
-#elif defined(__i386__) || defined(__x86_64__)
-    #if defined(__GNUC__)
-        #define HALT __asm__ __volatile__("int3")
-    #elif defined(_MSC_VER)
-        #define HALT __asm int 3;
-    #else
-        #error Compiler not supported
-    #endif
-#endif
-
-// FIXME: use HALT
-#ifndef NSCParameterAssert
-#define NSCParameterAssert assert
+#if !defined(DEBUG)
+#define FVCParameterAssert(condition) do { if(!condition) { HALT; } } while(0)
+#else
+#define FVCParameterAssert(condition)
 #endif
 
 // FIXME: use std::cout?
@@ -147,7 +135,7 @@ static CFHashCode __FVAllocationHash(const void *value)
 // returns kCFNotFound if no buffer of sufficient size exists
 static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex requestedSize, fv_zone_t *zone)
 {
-    NSCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
+    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
     CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
     // need a temporary struct for comparison; only the ptrSize field is needed
     const fv_allocation_t alloc = { NULL, 0, NULL, requestedSize, NULL, NULL };
@@ -170,7 +158,7 @@ static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex reques
 // always insert at the correct index, so we maintain heap order
 static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t *alloc, fv_zone_t *zone)
 {
-    NSCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
+    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
     if (alloc->zone != zone) {
         fv_zone_t *z = (fv_zone_t *)alloc->zone;
         malloc_printf("add to free list in wrong zone: %s should be %s\n", malloc_get_zone_name(&z->_basic_zone), malloc_get_zone_name(&zone->_basic_zone));
@@ -222,7 +210,7 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
     
     // _vm_guard indicates it should be freed with vm_deallocate
     if (__builtin_expect(&_vm_guard == alloc->guard, 1)) {
-        NSCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
+        FVCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (__builtin_expect(0 != ret, 0)) {
@@ -243,8 +231,8 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
 static void __FVAllocationFree(const void *ptr, void *context)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(context);
-    NSCParameterAssert(CFSetContainsValue(zone->_allocations, ptr) == TRUE);
-    NSCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
+    FVCParameterAssert(CFSetContainsValue(zone->_allocations, ptr) == TRUE);
+    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
     CFSetRemoveValue(zone->_allocations, ptr);
     
     __FVAllocationDestroy(ptr, NULL);
@@ -253,7 +241,7 @@ static void __FVAllocationFree(const void *ptr, void *context)
 // does not include fv_allocation_t header size
 static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *useVM)
 {
-    NSCParameterAssert(NULL != useVM);
+    FVCParameterAssert(NULL != useVM);
     // allocate at least requestedSize
     size_t actualSize = requestedSize;
     *useVM = __FVAllocatorUseVMForSize(actualSize);
@@ -292,7 +280,7 @@ static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *us
 static inline void __FVRecordAllocation(const fv_allocation_t *alloc, fv_zone_t *zone)
 {
     OSSpinLockLock(&zone->_spinLock);
-    NSCParameterAssert(CFSetContainsValue(zone->_allocations, alloc) == FALSE);
+    FVCParameterAssert(CFSetContainsValue(zone->_allocations, alloc) == FALSE);
     CFSetAddValue(zone->_allocations, alloc);
     OSSpinLockUnlock(&zone->_spinLock);
 }
@@ -318,7 +306,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, f
     
     // use this space for the header
     size_t actualSize = requestedSize + vm_page_size;
-    NSCParameterAssert(round_page(actualSize) == actualSize);
+    FVCParameterAssert(round_page(actualSize) == actualSize);
 
     // allocations going through this allocator will always be larger than 4K
     kern_return_t ret;
@@ -340,7 +328,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, f
         alloc->zone = zone;
         alloc->free = true;
         alloc->guard = &_vm_guard;
-        NSCParameterAssert(alloc->ptrSize >= requestedSize);
+        FVCParameterAssert(alloc->ptrSize >= requestedSize);
         __FVRecordAllocation(alloc, zone);
     }
     return alloc;
@@ -365,14 +353,14 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_
         alloc->ptr = (void *)((uintptr_t)memory + sizeof(fv_allocation_t));
         // ptrSize field is the size of ptr, not including the header; used for array sorting
         alloc->ptrSize = (uintptr_t)memory + actualSize - (uintptr_t)alloc->ptr;
-        NSCParameterAssert(alloc->ptrSize == actualSize - sizeof(fv_allocation_t));
+        FVCParameterAssert(alloc->ptrSize == actualSize - sizeof(fv_allocation_t));
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
         alloc->zone = zone;
         alloc->free = true;
         alloc->guard = &_malloc_guard;
-        NSCParameterAssert(alloc->ptrSize >= requestedSize);
+        FVCParameterAssert(alloc->ptrSize >= requestedSize);
         __FVRecordAllocation(alloc, zone);
     }
     return alloc;
@@ -445,7 +433,7 @@ static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
     memset(memory, 0, size);
     // this should have no effect if we used vm to allocate
     void *ret = (void *)round_page((uintptr_t)memory);
-    if (useVM) { NSCParameterAssert(memory == ret); }
+    if (useVM) { FVCParameterAssert(memory == ret); }
     return ret;
 }
 
@@ -708,7 +696,7 @@ static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
 
 static size_t __FVTotalAllocationsLocked(fv_zone_t *zone)
 {
-    NSCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
+    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
     const fv_allocation_t *stackBuf[FV_STACK_MAX];
     CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
     // FIXME: this cast is gross
