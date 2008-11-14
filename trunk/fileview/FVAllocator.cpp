@@ -46,20 +46,20 @@
 #import <iostream>
 
 #if !defined(DEBUG)
-#define FVCParameterAssert(condition) do { if(!condition) { HALT; } } while(0)
+#define FVCParameterAssert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define FVCParameterAssert(condition)
 #endif
 
 typedef struct _fv_zone_t {
-    malloc_zone_t     _basic_zone;
-    CFMutableArrayRef _freeBuffers;
-    OSSpinLock        _spinLock;
-    CFMutableSetRef   _allocations;
-    CFRunLoopTimerRef _timer;
-    volatile uint32_t _cacheHits;
-    volatile uint32_t _cacheMisses;
-    volatile uint32_t _reallocCount;
+    malloc_zone_t      _basic_zone;
+    std::multiset<struct _fv_allocation_t *, bool(*)(struct _fv_allocation_t *, struct _fv_allocation_t *)>  *_availableAllocations;
+    OSSpinLock         _spinLock;
+    std::set<struct _fv_allocation_t *>          *_allocations;
+    CFRunLoopTimerRef  _timer;
+    volatile uint32_t  _cacheHits;
+    volatile uint32_t  _cacheMisses;
+    volatile uint32_t  _reallocCount;
 } fv_zone_t;
 
 typedef struct _fv_allocation_t {
@@ -71,6 +71,7 @@ typedef struct _fv_allocation_t {
     bool             free;      /* in use or in the free list    */
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
+
 
 #define ENABLE_STATS 1
 #if ENABLE_STATS
@@ -94,77 +95,6 @@ static char _vm_guard;      /* indicates vm_allocate was used for this block    
 #define FV_REAP_TIMEINTERVAL 300
 #endif
 
-static CFComparisonResult __FVAllocationSizeComparator(const void *val1, const void *val2, void *context)
-{
-    const size_t size1 = ((fv_allocation_t *)val1)->ptrSize;
-    const size_t size2 = ((fv_allocation_t *)val2)->ptrSize;
-    if (size1 > size2)
-        return kCFCompareGreaterThan;
-    else if (size1 < size2)
-        return kCFCompareLessThan;
-    else
-        return kCFCompareEqualTo;
-}
-
-static CFStringRef __FVAllocationCopyDescription(const void *value)
-{
-    const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
-    CFStringRef format = CFStringCreateWithCString(NULL, "<0x%x>,\t size = %lu", kCFStringEncodingASCII);
-    CFStringRef ret = CFStringCreateWithFormat(NULL, NULL, format, alloc->ptr, (unsigned long)alloc->ptrSize);
-    CFRelease(format);
-    return ret;
-}
-
-static Boolean __FVAllocationEqual(const void *val1, const void *val2)
-{
-    return (val1 == val2);
-}
-
-// !!! hash by size; need to check this to make sure it uses buckets effectively
-// hashing by size is no longer permissible, since this may be called on an arbitrary pointer on probes (so dereferencing it may lead to EXC_BAD_ACCESS)
-static CFHashCode __FVAllocationHash(const void *value)
-{
-    return (uintptr_t)value;
-}
-
-// returns kCFNotFound if no buffer of sufficient size exists
-static CFIndex __FVAllocatorGetIndexOfAllocationGreaterThan(const CFIndex requestedSize, fv_zone_t *zone)
-{
-    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
-    CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
-    // need a temporary struct for comparison; only the ptrSize field is needed
-    const fv_allocation_t alloc = { NULL, 0, NULL, requestedSize, NULL, NULL };
-
-    CFIndex idx = CFArrayBSearchValues(zone->_freeBuffers, range, &alloc, __FVAllocationSizeComparator, NULL);
-    if (idx >= range.length) {
-        idx = kCFNotFound;
-    }
-    else {
-        const fv_allocation_t *foundAlloc = (const fv_allocation_t *)CFArrayGetValueAtIndex(zone->_freeBuffers, idx);
-        size_t foundSize = foundAlloc->ptrSize;
-        if ((float)(foundSize - requestedSize) / requestedSize > 1) {
-            idx = kCFNotFound;
-        }
-    }
-    return idx;
-}
-
-// always insert at the correct index, so we maintain heap order
-static CFIndex __FVAllocatorGetInsertionIndexForAllocation(const fv_allocation_t *alloc, fv_zone_t *zone)
-{
-    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
-    if (alloc->zone != zone) {
-        fv_zone_t *z = (fv_zone_t *)alloc->zone;
-        malloc_printf("add to free list in wrong zone: %s should be %s\n", malloc_get_zone_name(&z->_basic_zone), malloc_get_zone_name(&zone->_basic_zone));
-        HALT;
-    }
-    CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
-    CFIndex anIndex = CFArrayBSearchValues(zone->_freeBuffers, range, alloc, __FVAllocationSizeComparator, NULL);
-    if (anIndex >= range.length)
-        anIndex = range.length;
-    return anIndex;
-}
-
 // fv_allocation_t struct always immediately precedes the data pointer
 // returns NULL if the pointer was not allocated in this zone
 static inline fv_allocation_t *__FVGetAllocationFromPointer(fv_zone_t *zone, const void *ptr)
@@ -172,8 +102,7 @@ static inline fv_allocation_t *__FVGetAllocationFromPointer(fv_zone_t *zone, con
     fv_allocation_t *alloc = NULL;
     if ((uintptr_t)ptr >= sizeof(fv_allocation_t))
         alloc = (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t));
-    
-    if (CFSetContainsValue(zone->_allocations, alloc) == FALSE) {
+    if (zone->_allocations->find(alloc) == zone->_allocations->end()) {
         alloc = NULL;
     } 
     else if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard) {
@@ -225,10 +154,10 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
 static void __FVAllocationFree(const void *ptr, void *context)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(context);
-    FVCParameterAssert(CFSetContainsValue(zone->_allocations, ptr) == TRUE);
+    fv_allocation_t *alloc = (fv_allocation_t *)ptr;
+    FVCParameterAssert(zone->_allocations->find(alloc) != zone->_allocations->end());
     FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
-    CFSetRemoveValue(zone->_allocations, ptr);
-    
+    zone->_allocations->erase(alloc);
     __FVAllocationDestroy(ptr, NULL);
 }
 
@@ -271,11 +200,11 @@ static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *us
 }
 
 // Record the allocation for zone destruction.
-static inline void __FVRecordAllocation(const fv_allocation_t *alloc, fv_zone_t *zone)
+static inline void __FVRecordAllocation(fv_allocation_t *alloc, fv_zone_t *zone)
 {
     OSSpinLockLock(&zone->_spinLock);
-    FVCParameterAssert(CFSetContainsValue(zone->_allocations, alloc) == FALSE);
-    CFSetAddValue(zone->_allocations, alloc);
+    FVCParameterAssert(zone->_allocations->find(alloc) == zone->_allocations->end());
+    zone->_allocations->insert(alloc);
     OSSpinLockUnlock(&zone->_spinLock);
 }
 
@@ -381,12 +310,14 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
     
     // !!! unlock on each if branch
     OSSpinLockLock(&zone->_spinLock);
-    CFIndex idx = __FVAllocatorGetIndexOfAllocationGreaterThan(size, zone);
-    fv_allocation_t *alloc;
+   
     void *ret = NULL;
     
-    // optimistically assume that the cache is effective; for our usage (lots of similarly-sized images), this is correct
-    if (__builtin_expect(kCFNotFound == idx, 0)) {
+    fv_allocation_t request = { NULL, 0, NULL, size, NULL, NULL };
+    std::multiset<fv_allocation_t *>::iterator next = zone->_availableAllocations->lower_bound(&request);
+    fv_allocation_t *alloc = *next;
+
+    if (zone->_availableAllocations->end() == next || ((float)(alloc->ptrSize - size) / size) > 1) {
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&zone->_spinLock);
@@ -394,8 +325,8 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
     }
     else {
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheHits);
-        alloc = (fv_allocation_t *)CFArrayGetValueAtIndex(zone->_freeBuffers, idx);
-        CFArrayRemoveValueAtIndex(zone->_freeBuffers, idx);
+        // pass iterator to erase this element, not just any element of this size
+        zone->_availableAllocations->erase(next);
         OSSpinLockUnlock(&zone->_spinLock);
         if (__builtin_expect(origSize > alloc->ptrSize, 0)) {
             malloc_printf("incorrect size %y (%y expected) in %s\n", alloc->ptrSize, origSize, malloc_get_zone_name(&zone->_basic_zone));
@@ -448,15 +379,8 @@ static void __FVAllocatorZoneFree(malloc_zone_t *fvzone, void *ptr)
         // add to free list
         OSSpinLockLock(&zone->_spinLock);
         // check to ensure that it's not already in the free list
-        CFIndex idx = CFArrayGetFirstIndexOfValue(zone->_freeBuffers, CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers)), alloc);
-        if (__builtin_expect(kCFNotFound == idx, 1)) {
-            idx = __FVAllocatorGetInsertionIndexForAllocation(alloc, zone);
-            CFArrayInsertValueAtIndex(zone->_freeBuffers, idx, alloc);
-        }
-        else {
-            malloc_printf("double free() of pointer %p\n in zone %s\n", ptr, malloc_get_zone_name(&zone->_basic_zone));
-            malloc_printf("Break on malloc_printf to debug.\n");
-        }
+        // FIXME: assert availableAllocations does not contain alloc
+        zone->_availableAllocations->insert(alloc);
         alloc->free = true;
         OSSpinLockUnlock(&zone->_spinLock);    
     }
@@ -533,11 +457,14 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
     
     // remove all the free buffers
     OSSpinLockLock(&zone->_spinLock);
-    CFArrayRemoveAllValues(zone->_freeBuffers);
+    zone->_availableAllocations->clear();
 
     // now deallocate all buffers allocated using this zone, regardless of underlying call
-    CFSetApplyFunction(zone->_allocations, __FVAllocationDestroy, NULL);
-    CFSetRemoveAllValues(zone->_allocations);
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
+        __FVAllocationDestroy(*it, NULL);
+    }
+    zone->_allocations->clear();
     OSSpinLockUnlock(&zone->_spinLock);
     
     // free the zone itself (must have been allocated with malloc!)
@@ -575,9 +502,12 @@ static void __FVAllocatorSumAllocations(const void *value, void *context)
 static size_t __FVAllocatorTotalSize(fv_zone_t *zone)
 {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-    size_t sizeTotal;
+    size_t sizeTotal = 0;
     OSSpinLockLock(&zone->_spinLock);
-    CFSetApplyFunction(zone->_allocations, __FVAllocatorSumAllocations, &sizeTotal);
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
+        __FVAllocatorSumAllocations(*it, &sizeTotal);
+    }
     OSSpinLockUnlock(&zone->_spinLock);
     return sizeTotal;
 }
@@ -585,10 +515,16 @@ static size_t __FVAllocatorTotalSize(fv_zone_t *zone)
 static size_t __FVAllocatorGetSizeInUse(fv_zone_t *zone)
 {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-    size_t sizeTotal, sizeFree;
+    size_t sizeTotal = 0, sizeFree = 0;
     OSSpinLockLock(&zone->_spinLock);
-    CFSetApplyFunction(zone->_allocations, __FVAllocatorSumAllocations, &sizeTotal);
-    CFArrayApplyFunction(zone->_freeBuffers, CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers)), __FVAllocatorSumAllocations, &sizeFree);
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
+        __FVAllocatorSumAllocations(*it, &sizeTotal);
+    }
+    std::multiset<fv_allocation_t *>::iterator freeiter;
+    for (freeiter = zone->_availableAllocations->begin(); freeiter != zone->_availableAllocations->end(); freeiter++) {
+        __FVAllocatorSumAllocations(*freeiter, &sizeFree);
+    }
     OSSpinLockUnlock(&zone->_spinLock);
     if (sizeTotal < sizeFree) {
         malloc_printf("inconsistent allocation record; free list exceeds allocation count\n");
@@ -601,7 +537,7 @@ static void __FVAllocatorZoneStatistics(malloc_zone_t *fvzone, malloc_statistics
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-    stats->blocks_in_use = CFSetGetCount(zone->_allocations) - CFArrayGetCount(zone->_freeBuffers);
+    stats->blocks_in_use = zone->_allocations->size() - zone->_availableAllocations->size();
     stats->size_in_use = __FVAllocatorGetSizeInUse(zone);
     stats->max_size_in_use = __FVAllocatorTotalSize(zone);
     stats->size_allocated = stats->max_size_in_use;
@@ -670,7 +606,10 @@ __FVAllocatorEnumerator(task_t task, void *context, unsigned type_mask, vm_addre
     OSSpinLockLock(&zone->_spinLock);
     kern_return_t ret = 0;
     applier_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
-    CFSetApplyFunction(zone->_allocations, __enumerator_applier, &ctxt);
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
+        __enumerator_applier(*it, &ctxt);
+    }
     OSSpinLockUnlock(&zone->_spinLock);
     return ret;
 }
@@ -688,20 +627,15 @@ static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
 
 #define FV_STACK_MAX 512
 
-static size_t __FVTotalAllocationsLocked(fv_zone_t *zone)
+static size_t __FVTotalAvailableAllocationsLocked(fv_zone_t *zone)
 {
     FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
-    const fv_allocation_t *stackBuf[FV_STACK_MAX];
-    CFRange range = CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers));
-    // FIXME: this cast is gross
-    const fv_allocation_t **ptrs = range.length > FV_STACK_MAX ? (const fv_allocation_t **)malloc_zone_malloc(malloc_default_zone(), range.length) : stackBuf;
-    CFArrayGetValues(zone->_freeBuffers, range, (const void **)ptrs);
     size_t totalMemory = 0;
     // FIXME: consistent size usage
-    for (CFIndex i = 0; i < range.length; i++)
-        totalMemory += ptrs[i]->allocSize;
-    
-    if (stackBuf != ptrs) malloc_zone_free(malloc_default_zone(), ptrs);    
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
+        totalMemory += (*it)->allocSize;
+    } 
     return totalMemory;
 }
 
@@ -735,12 +669,30 @@ static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
 #endif
     // if we can't lock immediately, wait for another opportunity
     if (OSSpinLockTry(&zone->_spinLock)) {
-        if (__FVTotalAllocationsLocked(zone) > FV_REAP_THRESHOLD) {
-            CFArrayApplyFunction(zone->_freeBuffers, CFRangeMake(0, CFArrayGetCount(zone->_freeBuffers)), __FVAllocationFree, zone);
-            CFArrayRemoveAllValues(zone->_freeBuffers);
+        if (__FVTotalAvailableAllocationsLocked(zone) > FV_REAP_THRESHOLD) {
+            std::set<fv_allocation_t *>::iterator it;
+            for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
+                __FVAllocationFree(*it, zone);
+            } 
+            zone->_availableAllocations->clear();
         }
         OSSpinLockUnlock(&zone->_spinLock);
     }
+}
+
+
+/*
+ This comparison object is set on object construction, and may either be a pointer to a function or an object of a class with a function call operator. In both cases it takes two arguments of the same type as the container elements, and returns true if the first argument is considered to go before the second in the strict weak ordering the object defines, and false otherwise.
+ */
+
+static bool __FVAllocationSizeComparator(fv_allocation_t *val1, fv_allocation_t *val2)
+{
+    const size_t size1 = ((fv_allocation_t *)val1)->ptrSize;
+    const size_t size2 = ((fv_allocation_t *)val2)->ptrSize;
+    if (size1 < size2)
+        return true;
+    else
+        return false;
 }
 
 // could be exposed as API in future, since it's declared as malloc_zone_t
@@ -762,11 +714,12 @@ static malloc_zone_t *__FVCreateZoneWithName(const char *name)
     zone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
     
     // malloc_set_zone_name calls out to this zone, so we need the array/set to exist
-    const CFArrayCallBacks acb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual };
-    zone->_freeBuffers = CFArrayCreateMutable(NULL, 0, &acb);
     
-    const CFSetCallBacks scb = { 0, NULL, NULL, __FVAllocationCopyDescription, __FVAllocationEqual, __FVAllocationHash };
-    zone->_allocations = CFSetCreateMutable(NULL, 0, &scb);    
+    // http://www.cplusplus.com/reference/stl/set/set.html
+    // proof that C++ programmers have to be insane
+    bool (*compare_ptr)(fv_allocation_t *, fv_allocation_t *) = __FVAllocationSizeComparator;
+    zone->_availableAllocations = new std::multiset<fv_allocation_t *, bool(*)(fv_allocation_t *, fv_allocation_t *)>(compare_ptr);
+    zone->_allocations = new std::set<fv_allocation_t *>;    
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
@@ -865,45 +818,40 @@ static void __log_stats()
 
 static std::multiset<size_t> __FVAllocatorFreeSizesLocked(fv_zone_t *fvzone, size_t *freeMemPtr)
 {
-    const size_t ptrCount = CFArrayGetCount(fvzone->_freeBuffers);
-    const fv_allocation_t **ptrs = new const fv_allocation_t *[ptrCount];
-
-    CFArrayGetValues(fvzone->_freeBuffers, CFRangeMake(0, ptrCount), (const void **)ptrs);
     size_t freeMemory = 0;
     std::multiset<size_t> allocationSet;
-    for (size_t i = 0; i < ptrCount; i++) {
-        if (__builtin_expect((ptrs[i]->guard != &_vm_guard && ptrs[i]->guard != &_malloc_guard), 0)) {
-            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptrs[i]);
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = fvzone->_availableAllocations->begin(); it != fvzone->_availableAllocations->end(); it++) {
+        fv_allocation_t *alloc = *it;
+        if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
+            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
         // FIXME: consistent size usage
-        freeMemory += ptrs[i]->allocSize;
-        allocationSet.insert(ptrs[i]->ptrSize);
-    }
-    delete [] ptrs;
+        freeMemory += alloc->allocSize;
+        allocationSet.insert(alloc->ptrSize);
+    } 
     if (freeMemPtr) *freeMemPtr = freeMemory;
     return allocationSet;
 }
 
 static std::multiset<size_t> __FVAllocatorAllSizesLocked(fv_zone_t *fvzone, size_t *totalMemPtr)
 {
-    const size_t ptrCount = CFSetGetCount(fvzone->_allocations);
-    const fv_allocation_t **ptrs = new const fv_allocation_t *[ptrCount];
-    CFSetGetValues(fvzone->_allocations, (const void **)ptrs);
     size_t totalMemory = 0;
     std::multiset<size_t> allocationSet;
-    for (size_t i = 0; i < ptrCount; i++) {
-        if (__builtin_expect((ptrs[i]->guard != &_vm_guard && ptrs[i]->guard != &_malloc_guard), 0)) {
-            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptrs[i]);
+    std::set<fv_allocation_t *>::iterator it;
+    for (it = fvzone->_allocations->begin(); it != fvzone->_allocations->end(); it++) {
+        fv_allocation_t *alloc = *it;
+        if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
+            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
         // FIXME: consistent size usage
-        totalMemory += ptrs[i]->allocSize;
-        allocationSet.insert(ptrs[i]->ptrSize);
-    }
-    delete [] ptrs;
+        totalMemory += alloc->allocSize;
+        allocationSet.insert(alloc->ptrSize);
+    } 
     if (totalMemPtr) *totalMemPtr = totalMemory;
     return allocationSet;
 }
