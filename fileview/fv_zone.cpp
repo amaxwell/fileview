@@ -82,7 +82,6 @@ static char _vm_guard;      /* indicates vm_allocate was used for this block    
 
 static std::set<fv_zone_t *> *_allZones = NULL;
 static pthread_mutex_t        _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t         _allZonesCondition = PTHREAD_COND_INITIALIZER;
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
@@ -703,18 +702,11 @@ static void __FVAllocatorReapZone(fv_zone_t *zone)
 static void *__FVAllocatorReapThread(void *unused)
 {
     do {
-        struct timeval tv;
-        gettimeofday(&tv, NULL);
-        struct timespec ts;
-        TIMEVAL_TO_TIMESPEC(&tv, &ts);
-        ts.tv_sec += FV_REAP_TIMEINTERVAL;
+        sleep(FV_REAP_TIMEINTERVAL);
         pthread_mutex_lock(&_allZonesLock);
-        int ret = 0;
-        while (0 == ret) {
-            ret = pthread_cond_timedwait(&_allZonesCondition, &_allZonesLock, &ts);
-            std::set<fv_zone_t *>::iterator it;
-            for (it = _allZones->begin(); it != _allZones->end(); it++)
-                __FVAllocatorReapZone(*it);
+        std::set<fv_zone_t *>::iterator it;
+        for (it = _allZones->begin(); it != _allZones->end(); it++) {
+            __FVAllocatorReapZone(*it);
         }
         pthread_mutex_unlock(&_allZonesLock);
     } while (1);
