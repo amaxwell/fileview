@@ -663,7 +663,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 #pragma mark Setup and cleanup
 
 #define ENABLE_STATS 1
-#if ENABLE_STATS
+#if DEBUG && ENABLE_STATS
 static void __FVAllocatorShowStats(fv_zone_t *fvzone);
 #endif
 
@@ -739,7 +739,7 @@ static void __initialize_reaper_thread()
 
 #pragma mark statistics
 
-#if ENABLE_STATS
+#if DEBUG && ENABLE_STATS
 
 static std::multiset<size_t> __FVAllocatorFreeSizesLocked(fv_zone_t *fvzone, size_t *freeMemPtr)
 {
