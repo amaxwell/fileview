@@ -274,7 +274,7 @@ static void *__FVThread_main(void *obj);
     pthread_mutex_unlock(&_mutex);
 }
 
-void *__FVThread_main(void *obj)
+static void *__FVThread_main(void *obj)
 {
     
 #if DEBUG_REAPER
