@@ -36,7 +36,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <CoreFoundation/CoreFoundation.h>
+#import <Cocoa/Cocoa.h>
 
 /** @file FVAllocator.h @brief Allocator for moderate-to-large blocks.
  
@@ -56,4 +56,4 @@
  @return The shared allocator instance. */
 FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void);
 
-FV_PRIVATE_EXTERN void *FVDefaultZone(void);
+FV_PRIVATE_EXTERN NSZone *FVDefaultZone(void);
