@@ -10,7 +10,7 @@
 		8DD76F9A0486AA7600D96B5E /* FVAllocatorPerf.m in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* FVAllocatorPerf.m */; settings = {ATTRIBUTES = (); }; };
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
 		8DD76F9F0486AA7600D96B5E /* FVAllocatorPerf.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6859EA3029092ED04C91782 /* FVAllocatorPerf.1 */; };
-		F9D4F0B00E47FFF500775E83 /* FVAllocator.m in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0AD0E47FFF500775E83 /* FVAllocator.m */; };
+		F9D4F0B00E47FFF500775E83 /* FVAllocator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0AD0E47FFF500775E83 /* FVAllocator.cpp */; };
 		F9D4F0B10E47FFF500775E83 /* FVUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0AF0E47FFF500775E83 /* FVUtilities.m */; };
 		F9D4F0BD0E4800A400775E83 /* FVObject.m in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0BC0E4800A400775E83 /* FVObject.m */; };
 		F9D4F1020E48036F00775E83 /* ApplicationServices.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9D4F1000E48036F00775E83 /* ApplicationServices.framework */; };
@@ -38,7 +38,7 @@
 		8DD76FA10486AA7600D96B5E /* FVAllocatorPerf */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = FVAllocatorPerf; sourceTree = BUILT_PRODUCTS_DIR; };
 		C6859EA3029092ED04C91782 /* FVAllocatorPerf.1 */ = {isa = PBXFileReference; lastKnownFileType = text.man; path = FVAllocatorPerf.1; sourceTree = "<group>"; };
 		F9D4F0AC0E47FFF500775E83 /* FVAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVAllocator.h; path = ../FVAllocator.h; sourceTree = SOURCE_ROOT; };
-		F9D4F0AD0E47FFF500775E83 /* FVAllocator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVAllocator.m; path = ../FVAllocator.m; sourceTree = SOURCE_ROOT; };
+		F9D4F0AD0E47FFF500775E83 /* FVAllocator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FVAllocator.cpp; path = ../FVAllocator.cpp; sourceTree = SOURCE_ROOT; };
 		F9D4F0AE0E47FFF500775E83 /* FVUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVUtilities.h; path = ../FVUtilities.h; sourceTree = SOURCE_ROOT; };
 		F9D4F0AF0E47FFF500775E83 /* FVUtilities.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVUtilities.m; path = ../FVUtilities.m; sourceTree = SOURCE_ROOT; };
 		F9D4F0BB0E4800A400775E83 /* FVObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVObject.h; path = ../FVObject.h; sourceTree = SOURCE_ROOT; };
@@ -79,7 +79,7 @@
 				F9D4F0BB0E4800A400775E83 /* FVObject.h */,
 				F9D4F0BC0E4800A400775E83 /* FVObject.m */,
 				F9D4F0AC0E47FFF500775E83 /* FVAllocator.h */,
-				F9D4F0AD0E47FFF500775E83 /* FVAllocator.m */,
+				F9D4F0AD0E47FFF500775E83 /* FVAllocator.cpp */,
 				F9D4F0AE0E47FFF500775E83 /* FVUtilities.h */,
 				F9D4F0AF0E47FFF500775E83 /* FVUtilities.m */,
 				08FB7795FE84155DC02AAC07 /* Source */,
@@ -178,7 +178,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8DD76F9A0486AA7600D96B5E /* FVAllocatorPerf.m in Sources */,
-				F9D4F0B00E47FFF500775E83 /* FVAllocator.m in Sources */,
+				F9D4F0B00E47FFF500775E83 /* FVAllocator.cpp in Sources */,
 				F9D4F0B10E47FFF500775E83 /* FVUtilities.m in Sources */,
 				F9D4F0BD0E4800A400775E83 /* FVObject.m in Sources */,
 				F9D4F1160E48041900775E83 /* FVBitmapContext.m in Sources */,
