@@ -551,9 +551,8 @@ typedef struct _applier_context {
     kern_return_t      *ret;
 } applier_context;
 
-static void __enumerator_applier(const void *value, void *context)
+static void __enumerator_applier(const void *value, applier_context *ctxt)
 {
-    applier_context *ctxt = reinterpret_cast<applier_context *>(context);
     const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
     
     // Is this needed?  Should I use local_memory instead of the alloc pointer?
