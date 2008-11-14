@@ -41,8 +41,10 @@
 #import <malloc/malloc.h>
 #import <mach/mach.h>
 #import <mach/vm_map.h>
+#import <pthread.h>
 
 #import <set>
+#import <vector>
 #import <iostream>
 
 #if !defined(DEBUG)
@@ -81,6 +83,10 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone);
 // used as guard field in allocation struct; do not rely on the value
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
 static char _vm_guard;      /* indicates vm_allocate was used for this block           */
+
+static std::vector<fv_zone_t *> *_allZones = NULL;
+static pthread_mutex_t           _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t            _allZonesCondition = PTHREAD_COND_INITIALIZER;
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
@@ -735,6 +741,10 @@ static malloc_zone_t *__FVCreateZoneWithName(const char *name)
     CFRunLoopAddTimer(CFRunLoopGetMain(), zone->_timer, kCFRunLoopCommonModes);
     CFRelease(zone->_timer);
     
+    pthread_mutex_lock(&_allZonesLock);
+    _allZones->push_back(zone);
+    pthread_mutex_unlock(&_allZonesLock);
+    
     return (malloc_zone_t *)zone;
 }
 
@@ -786,7 +796,8 @@ static malloc_zone_t  *_allocatorZone = NULL;
 __attribute__ ((constructor))
 static void __initialize_allocator()
 {    
-    
+    _allZones = new std::vector<fv_zone_t *>;
+    // FIXME: spawn a new thread here and let it block on the condition
     _allocatorZone = __FVCreateZoneWithName("FVAllocatorZone");
     
     CFAllocatorContext context = { 
