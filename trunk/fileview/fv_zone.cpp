@@ -49,7 +49,7 @@
 #import <set>
 #import <iostream>
 
-#if !defined(DEBUG)
+#if DEBUG
 #define FVCParameterAssert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define FVCParameterAssert(condition)
@@ -76,11 +76,6 @@ typedef struct _fv_allocation_t {
 } fv_allocation_t;
 
 
-#define ENABLE_STATS 1
-#if ENABLE_STATS
-static void __FVAllocatorShowStats(fv_zone_t *fvzone);
-#endif
-
 // used as guard field in allocation struct; do not rely on the value
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
 static char _vm_guard;      /* indicates vm_allocate was used for this block           */
@@ -93,8 +88,6 @@ static pthread_cond_t         _allZonesCondition = PTHREAD_COND_INITIALIZER;
 #define FV_VM_THRESHOLD 15360UL
 // clean up the pool at 100 MB of freed memory
 #define FV_REAP_THRESHOLD 104857600UL
-
-#define USE_SYSTEM_ZONE 0
 
 #if DEBUG
 #define FV_REAP_TIMEINTERVAL 60
@@ -126,14 +119,12 @@ static inline fv_allocation_t *__FVGetAllocationFromPointer(fv_zone_t *zone, con
 
 static inline bool __FVAllocatorUseVMForSize(size_t size) { return size >= FV_VM_THRESHOLD; }
 
-/*
- CFSetApplierFunction; ptr argument must point to an fv_allocation_t allocated in this zone.  Caller is responsible for locking the collection and for mutating the _allocations set to keep it consistent.
- */
-static inline void __FVAllocationDestroy(const void *ptr, void *unused)
+
+// Deallocates a particular block, according to its underlying storage (vm or szone).
+static inline void __FVAllocationDestroy(fv_allocation_t *alloc)
 {
-    const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(ptr);
     if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
-        malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, ptr);
+        malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
         malloc_printf("Break on malloc_printf to debug.\n");
         HALT;
     }
@@ -151,21 +142,6 @@ static inline void __FVAllocationDestroy(const void *ptr, void *unused)
     else {
         malloc_zone_free(malloc_default_zone(), alloc->base);
     }
-}
-
-/* 
- CFArrayApplierFunction; ptr argument must point to an fv_allocation_t allocated in this zone.  Caller is responsible for locking the collection.  
- 
- !!! Warning: this mutates the _allocations set, so it cannot be used as a CFSetApplierFunction to free all allocations in that set.
- */
-static void __FVAllocationFree(const void *ptr, void *context)
-{
-    fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(context);
-    fv_allocation_t *alloc = (fv_allocation_t *)ptr;
-    FVCParameterAssert(zone->_allocations->find(alloc) != zone->_allocations->end());
-    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
-    zone->_allocations->erase(alloc);
-    __FVAllocationDestroy(ptr, NULL);
 }
 
 // does not include fv_allocation_t header size
@@ -470,7 +446,7 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
     // now deallocate all buffers allocated using this zone, regardless of underlying call
     std::set<fv_allocation_t *>::iterator it;
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
-        __FVAllocationDestroy(*it, NULL);
+        __FVAllocationDestroy(*it);
     }
     zone->_allocations->clear();
     OSSpinLockUnlock(&zone->_spinLock);
@@ -633,18 +609,6 @@ static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     __FVAllocatorZoneStatistics
 };
 
-static size_t __FVTotalAvailableAllocationsLocked(fv_zone_t *zone)
-{
-    FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
-    size_t totalMemory = 0;
-    // FIXME: consistent size usage
-    std::set<fv_allocation_t *>::iterator it;
-    for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
-        totalMemory += (*it)->allocSize;
-    } 
-    return totalMemory;
-}
-
 static bool __FVAllocationSizeComparator(fv_allocation_t *val1, fv_allocation_t *val2)
 {
     const size_t size1 = ((fv_allocation_t *)val1)->ptrSize;
@@ -684,7 +648,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     // proof that C++ programmers have to be insane
     bool (*compare_ptr)(fv_allocation_t *, fv_allocation_t *) = __FVAllocationSizeComparator;
     zone->_availableAllocations = new std::multiset<fv_allocation_t *, bool(*)(fv_allocation_t *, fv_allocation_t *)>(compare_ptr);
-    zone->_allocations = new std::set<fv_allocation_t *>;    
+    zone->_allocations = new std::set<fv_allocation_t *>;
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
@@ -699,24 +663,44 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 
 #pragma mark Setup and cleanup
 
+#define ENABLE_STATS 1
+#if ENABLE_STATS
+static void __FVAllocatorShowStats(fv_zone_t *fvzone);
+#endif
+
 static void __FVAllocatorReapZone(fv_zone_t *zone)
 {
-#if ENABLE_STATS
+#if DEBUG && ENABLE_STATS
     __FVAllocatorShowStats(zone);
 #endif
     // if we can't lock immediately, wait for another opportunity
     if (OSSpinLockTry(&zone->_spinLock)) {
-        if (__FVTotalAvailableAllocationsLocked(zone) > FV_REAP_THRESHOLD) {
-            std::set<fv_allocation_t *>::iterator it;
+        
+        // iterate the free list to see how much memory is unused
+        size_t freeMemory = 0;
+        std::set<fv_allocation_t *>::iterator it;
+        for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
+            freeMemory += (*it)->allocSize;
+        }         
+        
+        if (freeMemory > FV_REAP_THRESHOLD) {
+            
+            // clear out all of the available allocations; this could be more intelligent
             for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
-                __FVAllocationFree(*it, zone);
+                // remove from the allocation list
+                FVCParameterAssert(zone->_allocations->find(*it) != zone->_allocations->end());
+                zone->_allocations->erase(*it);
+                // deallocate underlying storage
+                __FVAllocationDestroy(*it);
             } 
+            // now remove all blocks from the free list
             zone->_availableAllocations->clear();
         }
         OSSpinLockUnlock(&zone->_spinLock);
     }
 }
 
+// periodically check all zones against the per-zone high water mark for unused memory
 static void *__FVAllocatorReapThread(void *unused)
 {
     do {
