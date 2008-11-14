@@ -609,7 +609,8 @@ static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
 
 static bool __FVAllocationSizeComparator(fv_allocation_t *val1, fv_allocation_t *val2) { return (val1->ptrSize < val2->ptrSize); }
 
-// could be exposed as API in future, since it's declared as malloc_zone_t
+#pragma mark API
+
 malloc_zone_t *fv_create_zone_named(const char *name)
 {
     // can't rely on initializers to do this early enough, since FVAllocator creates a zone in a __constructor__
