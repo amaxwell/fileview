@@ -42,9 +42,9 @@
 #import <mach/mach.h>
 #import <mach/vm_map.h>
 #import <pthread.h>
+#import <sys/time.h>
 
 #import <set>
-#import <vector>
 #import <iostream>
 
 #if !defined(DEBUG)
@@ -58,7 +58,6 @@ typedef struct _fv_zone_t {
     std::multiset<struct _fv_allocation_t *, bool(*)(struct _fv_allocation_t *, struct _fv_allocation_t *)>  *_availableAllocations;
     OSSpinLock         _spinLock;
     std::set<struct _fv_allocation_t *>          *_allocations;
-    CFRunLoopTimerRef  _timer;
     volatile uint32_t  _cacheHits;
     volatile uint32_t  _cacheMisses;
     volatile uint32_t  _reallocCount;
@@ -84,9 +83,9 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone);
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
 static char _vm_guard;      /* indicates vm_allocate was used for this block           */
 
-static std::vector<fv_zone_t *> *_allZones = NULL;
-static pthread_mutex_t           _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t            _allZonesCondition = PTHREAD_COND_INITIALIZER;
+static std::set<fv_zone_t *> *_allZones = NULL;
+static pthread_mutex_t        _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t         _allZonesCondition = PTHREAD_COND_INITIALIZER;
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
@@ -456,10 +455,11 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *fvzone, void *ptr, size_t s
 static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
-    CFRunLoopTimerRef t = zone->_timer;
-    zone->_timer = NULL;
-    OSMemoryBarrier();
-    CFRunLoopTimerInvalidate(t);
+    
+    // remove from timed processing
+    pthread_mutex_lock(&_allZonesLock);
+    _allZones->erase(zone);
+    pthread_mutex_unlock(&_allZonesLock);
     
     // remove all the free buffers
     OSSpinLockLock(&zone->_spinLock);
@@ -631,8 +631,6 @@ static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
     __FVAllocatorZoneStatistics
 };
 
-#define FV_STACK_MAX 512
-
 static size_t __FVTotalAvailableAllocationsLocked(fv_zone_t *zone)
 {
     FVCParameterAssert(OSSpinLockTry(&zone->_spinLock) == false);
@@ -644,52 +642,6 @@ static size_t __FVTotalAvailableAllocationsLocked(fv_zone_t *zone)
     } 
     return totalMemory;
 }
-
-#if 0
-static kern_return_t
-_szone_default_reader(task_t task, vm_address_t address, vm_size_t size, void **ptr)
-{
-    *ptr = (void *)address;
-    return 0;
-}
-#endif
-
-static void __FVAllocatorReap(CFRunLoopTimerRef t, void *info)
-{
-#if 0
-    kern_return_t ret;
-    vm_address_t *x;
-    unsigned cnt;
-    ret = malloc_get_all_zones(mach_task_self(), _szone_default_reader, &x, &cnt);
-    if (ret) cnt = 0;
-    for(unsigned i = 0; i < cnt; i++) {
-        malloc_zone_t *z = (void *)x[i];
-        fprintf(stderr, "zone %d name is %s\n", i, malloc_get_zone_name(z));
-    }
-    if (!cnt) fprintf(stderr, "unable to read zones\n");
-#endif
-
-    fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(info);
-#if ENABLE_STATS
-    __FVAllocatorShowStats(zone);
-#endif
-    // if we can't lock immediately, wait for another opportunity
-    if (OSSpinLockTry(&zone->_spinLock)) {
-        if (__FVTotalAvailableAllocationsLocked(zone) > FV_REAP_THRESHOLD) {
-            std::set<fv_allocation_t *>::iterator it;
-            for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
-                __FVAllocationFree(*it, zone);
-            } 
-            zone->_availableAllocations->clear();
-        }
-        OSSpinLockUnlock(&zone->_spinLock);
-    }
-}
-
-
-/*
- This comparison object is set on object construction, and may either be a pointer to a function or an object of a class with a function call operator. In both cases it takes two arguments of the same type as the container elements, and returns true if the first argument is considered to go before the second in the strict weak ordering the object defines, and false otherwise.
- */
 
 static bool __FVAllocationSizeComparator(fv_allocation_t *val1, fv_allocation_t *val2)
 {
@@ -729,20 +681,10 @@ static malloc_zone_t *__FVCreateZoneWithName(const char *name)
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
-    
-    // create timer after zone is fully set up
-    
-    // round to the nearest FV_REAP_TIMEINTERVAL, so fire time is easier to predict by the clock
-    CFAbsoluteTime fireTime = trunc((CFAbsoluteTimeGetCurrent() + FV_REAP_TIMEINTERVAL) / FV_REAP_TIMEINTERVAL) * FV_REAP_TIMEINTERVAL;
-    fireTime += FV_REAP_TIMEINTERVAL;
-    CFRunLoopTimerContext ctxt = { 0, zone, NULL, NULL, NULL };
-    zone->_timer = CFRunLoopTimerCreate(NULL, fireTime, FV_REAP_TIMEINTERVAL, 0, 0, __FVAllocatorReap, &ctxt);
-    // add this to the main thread's runloop, which will always exist
-    CFRunLoopAddTimer(CFRunLoopGetMain(), zone->_timer, kCFRunLoopCommonModes);
-    CFRelease(zone->_timer);
-    
+
+    // register for timer
     pthread_mutex_lock(&_allZonesLock);
-    _allZones->push_back(zone);
+    _allZones->insert(zone);
     pthread_mutex_unlock(&_allZonesLock);
     
     return (malloc_zone_t *)zone;
@@ -793,13 +735,65 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 static CFAllocatorRef  _allocator = NULL;
 static malloc_zone_t  *_allocatorZone = NULL;
 
+static void __FVAllocatorReapZone(fv_zone_t *zone)
+{
+#if ENABLE_STATS
+    __FVAllocatorShowStats(zone);
+#endif
+    // if we can't lock immediately, wait for another opportunity
+    if (OSSpinLockTry(&zone->_spinLock)) {
+        if (__FVTotalAvailableAllocationsLocked(zone) > FV_REAP_THRESHOLD) {
+            std::set<fv_allocation_t *>::iterator it;
+            for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
+                __FVAllocationFree(*it, zone);
+            } 
+            zone->_availableAllocations->clear();
+        }
+        OSSpinLockUnlock(&zone->_spinLock);
+    }
+}
+
+static void *__FVAllocatorReapThread(void *unused)
+{
+    do {
+        struct timeval tv;
+        gettimeofday(&tv, NULL);
+        struct timespec ts;
+        TIMEVAL_TO_TIMESPEC(&tv, &ts);
+        ts.tv_sec += FV_REAP_TIMEINTERVAL;
+        pthread_mutex_lock(&_allZonesLock);
+        int ret = 0;
+        while (0 == ret) {
+            std::set<fv_zone_t *>::iterator it;
+            for (it = _allZones->begin(); it != _allZones->end(); it++)
+                __FVAllocatorReapZone(*it);
+            ret = pthread_cond_timedwait(&_allZonesCondition, &_allZonesLock, &ts);
+        }
+        pthread_mutex_unlock(&_allZonesLock);
+    } while (1);
+    
+    return NULL;
+}
+
 __attribute__ ((constructor))
 static void __initialize_allocator()
 {    
-    _allZones = new std::vector<fv_zone_t *>;
-    // FIXME: spawn a new thread here and let it block on the condition
+    _allZones = new std::set<fv_zone_t *>;
+    
+    // create a thread to do periodic cleanup so memory usage doesn't get out of hand
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    
+    // not required as an ivar at present
+    pthread_t thread;
+    (void)pthread_create(&thread, &attr, __FVAllocatorReapThread, NULL);
+    pthread_attr_destroy(&attr);
+    
+    // create the initial zone
     _allocatorZone = __FVCreateZoneWithName("FVAllocatorZone");
     
+    // wrap the zone in a CFAllocator; could just return it directly, though
     CFAllocatorContext context = { 
         0, 
         _allocatorZone, 
