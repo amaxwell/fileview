@@ -51,21 +51,25 @@
 #import <map>
 #import <vector>
 #import <iostream>
+using namespace std;
 
 #if DEBUG
 #define ENABLE_STATS 1
-#define FVCParameterAssert(condition) do { if(false == (condition)) { HALT; } } while(0)
+#define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define ENABLE_STATS 0
-#define FVCParameterAssert(condition)
+#define fv_zone_assert(condition)
 #endif
 
+// define so the template isn't insanely wide
+#define ALLOC struct _fv_allocation_t *
+#define MSALLOC ALLOC, bool(*)(ALLOC, ALLOC)
 
 typedef struct _fv_zone_t {
     malloc_zone_t      _basic_zone;
-    std::multiset<struct _fv_allocation_t *, bool(*)(struct _fv_allocation_t *, struct _fv_allocation_t *)>  *_availableAllocations;
-    OSSpinLock         _spinLock;
-    std::set<struct _fv_allocation_t *>          *_allocations;
+    multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size */
+    set<ALLOC>        *_allocations;          /* all allocations, ordered by address  */
+    OSSpinLock         _spinLock;             /* lock before manipulating sets        */
     volatile uint32_t  _cacheHits;
     volatile uint32_t  _cacheMisses;
     volatile uint32_t  _reallocCount;
@@ -85,11 +89,12 @@ typedef struct _fv_allocation_t {
 } fv_allocation_t;
 
 
-// used as guard field in allocation struct; do not rely on the value
+// used as sentinel field in allocation struct; do not rely on the value
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
 static char _vm_guard;      /* indicates vm_allocate was used for this block           */
 
-static std::set<fv_zone_t *> *_allZones = NULL;
+// track all zones allocated by fv_create_zone_named()
+static set<fv_zone_t *> *_allZones = NULL;
 static pthread_mutex_t        _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
 
 // small allocations (below 15K) use malloc_default_zone()
@@ -105,7 +110,7 @@ static pthread_mutex_t        _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
 
 // fv_allocation_t struct always immediately precedes the data pointer
 // returns NULL if the pointer was not allocated in this zone
-static inline fv_allocation_t *__FVGetAllocationFromPointer(fv_zone_t *zone, const void *ptr)
+static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *zone, const void *ptr)
 {
     fv_allocation_t *alloc = NULL;
     if ((uintptr_t)ptr >= sizeof(fv_allocation_t))
@@ -125,11 +130,11 @@ static inline fv_allocation_t *__FVGetAllocationFromPointer(fv_zone_t *zone, con
     return alloc;
 }
 
-static inline bool __FVAllocatorUseVMForSize(size_t size) { return size >= FV_VM_THRESHOLD; }
+static inline bool __fv_zone_use_vm(size_t size) { return size >= FV_VM_THRESHOLD; }
 
 
 // Deallocates a particular block, according to its underlying storage (vm or szone).
-static inline void __FVAllocationDestroy(fv_allocation_t *alloc)
+static inline void __fv_zone_destroy_allocation(fv_allocation_t *alloc)
 {
     if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
         malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
@@ -139,7 +144,7 @@ static inline void __FVAllocationDestroy(fv_allocation_t *alloc)
     
     // _vm_guard indicates it should be freed with vm_deallocate
     if (__builtin_expect(&_vm_guard == alloc->guard, 1)) {
-        FVCParameterAssert(__FVAllocatorUseVMForSize(alloc->allocSize));
+        fv_zone_assert(__fv_zone_use_vm(alloc->allocSize));
         vm_size_t len = alloc->allocSize;
         kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
         if (__builtin_expect(0 != ret, 0)) {
@@ -153,12 +158,12 @@ static inline void __FVAllocationDestroy(fv_allocation_t *alloc)
 }
 
 // does not include fv_allocation_t header size
-static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *useVM)
+static inline size_t __fv_zone_round_size(const size_t requestedSize, bool *useVM)
 {
-    FVCParameterAssert(NULL != useVM);
+    fv_zone_assert(NULL != useVM);
     // allocate at least requestedSize
     size_t actualSize = requestedSize;
-    *useVM = __FVAllocatorUseVMForSize(actualSize);
+    *useVM = __fv_zone_use_vm(actualSize);
     if (true == *useVM) {
         
         if (actualSize < 102400) 
@@ -191,16 +196,16 @@ static inline size_t __FVAllocatorRoundSize(const size_t requestedSize, bool *us
 }
 
 // Record the allocation for zone destruction.
-static inline void __FVRecordAllocation(fv_allocation_t *alloc, fv_zone_t *zone)
+static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t *zone)
 {
     OSSpinLockLock(&zone->_spinLock);
-    FVCParameterAssert(zone->_allocations->find(alloc) == zone->_allocations->end());
+    fv_zone_assert(zone->_allocations->find(alloc) == zone->_allocations->end());
     zone->_allocations->insert(alloc);
     OSSpinLockUnlock(&zone->_spinLock);
 }
 
 /*
- Layout of memory allocated by __FVAllocateFromVMSystem().  The padding at the beginning is for page alignment.  Caller is responsible for passing the result of __FVAllocatorRoundSize() to this function.
+ Layout of memory allocated by __FVAllocateFromVMSystem().  The padding at the beginning is for page alignment.  Caller is responsible for passing the result of __fv_zone_round_size() to this function.
  
  |<-- page boundary
  |<---------- ptrSize ---------->|
@@ -212,7 +217,7 @@ static inline void __FVRecordAllocation(fv_allocation_t *alloc, fv_zone_t *zone)
  
  */
 
-static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, fv_zone_t *zone)
+static fv_allocation_t *__fv_zone_vm_allocation(const size_t requestedSize, fv_zone_t *zone)
 {
     // base address of the allocation, including fv_allocation_t
     vm_address_t memory;
@@ -220,7 +225,7 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, f
     
     // use this space for the header
     size_t actualSize = requestedSize + vm_page_size;
-    FVCParameterAssert(round_page(actualSize) == actualSize);
+    fv_zone_assert(round_page(actualSize) == actualSize);
     
     // allocations going through this allocator will always be larger than 4K
     kern_return_t ret;
@@ -242,14 +247,14 @@ static fv_allocation_t *__FVAllocationFromVMSystem(const size_t requestedSize, f
         alloc->zone = zone;
         alloc->free = true;
         alloc->guard = &_vm_guard;
-        FVCParameterAssert(alloc->ptrSize >= requestedSize);
-        __FVRecordAllocation(alloc, zone);
+        fv_zone_assert(alloc->ptrSize >= requestedSize);
+        __fv_zone_record_allocation(alloc, zone);
     }
     return alloc;
 }
 
 // memory is not page-aligned so there's no padding between the start of the allocated block and the returned fv_allocation_t pointer
-static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_zone_t *zone)
+static fv_allocation_t *__fv_zone_malloc_allocation(const size_t requestedSize, fv_zone_t *zone)
 {
     // base address of the allocation, including fv_allocation_t
     void *memory;
@@ -267,37 +272,37 @@ static fv_allocation_t *__FVAllocationFromMalloc(const size_t requestedSize, fv_
         alloc->ptr = (void *)((uintptr_t)memory + sizeof(fv_allocation_t));
         // ptrSize field is the size of ptr, not including the header; used for array sorting
         alloc->ptrSize = (uintptr_t)memory + actualSize - (uintptr_t)alloc->ptr;
-        FVCParameterAssert(alloc->ptrSize == actualSize - sizeof(fv_allocation_t));
+        fv_zone_assert(alloc->ptrSize == actualSize - sizeof(fv_allocation_t));
         // record the base address and size for deallocation purposes
         alloc->base = memory;
         alloc->allocSize = actualSize;
         alloc->zone = zone;
         alloc->free = true;
         alloc->guard = &_malloc_guard;
-        FVCParameterAssert(alloc->ptrSize >= requestedSize);
-        __FVRecordAllocation(alloc, zone);
+        fv_zone_assert(alloc->ptrSize >= requestedSize);
+        __fv_zone_record_allocation(alloc, zone);
     }
     return alloc;
 }
 
 #pragma mark Zone implementation
 
-static size_t __FVAllocatorZoneSize(malloc_zone_t *fvzone, const void *ptr)
+static size_t fv_zone_size(malloc_zone_t *fvzone, const void *ptr)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
-    const fv_allocation_t *alloc = __FVGetAllocationFromPointer(zone, ptr);
+    const fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
     // Simple check to ensure that this is one of our pointers; which size to return, though?  Need to return size for values allocated in this zone with malloc, even though malloc_default_zone() is the underlying zone, or else they won't be freed.
     return alloc ? alloc->ptrSize : 0;
 }
 
-static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
+static void *fv_zone_malloc(malloc_zone_t *fvzone, size_t size)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     
     const size_t origSize = size;
     bool useVM;
     // look for the possibly-rounded-up size, or the tolerance might cause us to create a new block
-    size = __FVAllocatorRoundSize(size, &useVM);
+    size = __fv_zone_round_size(size, &useVM);
     
     // !!! unlock on each if branch
     OSSpinLockLock(&zone->_spinLock);
@@ -305,14 +310,14 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
     void *ret = NULL;
     
     fv_allocation_t request = { NULL, 0, NULL, size, NULL, NULL };
-    std::multiset<fv_allocation_t *>::iterator next = zone->_availableAllocations->lower_bound(&request);
+    multiset<fv_allocation_t *>::iterator next = zone->_availableAllocations->lower_bound(&request);
     fv_allocation_t *alloc = *next;
     
     if (zone->_availableAllocations->end() == next || ((float)(alloc->ptrSize - size) / size) > 1) {
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheMisses);
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&zone->_spinLock);
-        alloc = useVM ? __FVAllocationFromVMSystem(size, zone) : __FVAllocationFromMalloc(size, zone);
+        alloc = useVM ? __fv_zone_vm_allocation(size, zone) : __fv_zone_malloc_allocation(size, zone);
     }
     else {
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheHits);
@@ -335,34 +340,34 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
     return ret;    
 }
 
-static void *__FVAllocatorZoneCalloc(malloc_zone_t *zone, size_t num_items, size_t size)
+static void *fv_zone_calloc(malloc_zone_t *zone, size_t num_items, size_t size)
 {
-    void *memory = __FVAllocatorZoneMalloc(zone, num_items * size);
+    void *memory = fv_zone_malloc(zone, num_items * size);
     memset(memory, 0, num_items * size);
     return memory;
 }
 
 // implementation for non-VM case was modified after the implementation in CFBase.c
-static void *__FVAllocatorZoneValloc(malloc_zone_t *zone, size_t size)
+static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
 {
     // this will already be page-aligned if we're using vm
-    const bool useVM = __FVAllocatorUseVMForSize(size);
+    const bool useVM = __fv_zone_use_vm(size);
     if (false == useVM) size += vm_page_size;
-    void *memory = __FVAllocatorZoneMalloc(zone, size);
+    void *memory = fv_zone_malloc(zone, size);
     memset(memory, 0, size);
     // this should have no effect if we used vm to allocate
     void *ret = (void *)round_page((uintptr_t)memory);
-    if (useVM) { FVCParameterAssert(memory == ret); }
+    if (useVM) { fv_zone_assert(memory == ret); }
     return ret;
 }
 
-static void __FVAllocatorZoneFree(malloc_zone_t *fvzone, void *ptr)
+static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     
     // ignore NULL
     if (__builtin_expect(NULL != ptr, 1)) {    
-        fv_allocation_t *alloc = __FVGetAllocationFromPointer(zone, ptr);
+        fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
             malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
@@ -380,7 +385,7 @@ static void __FVAllocatorZoneFree(malloc_zone_t *fvzone, void *ptr)
     }
 }
 
-static void *__FVAllocatorZoneRealloc(malloc_zone_t *fvzone, void *ptr, size_t size)
+static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_reallocCount);
@@ -392,11 +397,11 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *fvzone, void *ptr, size_t s
         
         // bizarre, but documented behavior of realloc(3)
         if (__builtin_expect(0 == size, 0)) {
-            __FVAllocatorZoneFree(fvzone, ptr);
-            return __FVAllocatorZoneMalloc(fvzone, size);
+            fv_zone_free(fvzone, ptr);
+            return fv_zone_malloc(fvzone, size);
         }
         
-        fv_allocation_t *alloc = __FVGetAllocationFromPointer(zone, ptr);
+        fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
             malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
@@ -427,21 +432,21 @@ static void *__FVAllocatorZoneRealloc(malloc_zone_t *fvzone, void *ptr, size_t s
         // if this wasn't a vm region or the vm region couldn't be extended, allocate a new block
         if (KERN_SUCCESS != ret) {
             // get a new buffer, copy contents, return original ptr to the pool; should try to use vm_copy here
-            newPtr = __FVAllocatorZoneMalloc(fvzone, size);
+            newPtr = fv_zone_malloc(fvzone, size);
             memcpy(newPtr, ptr, alloc->ptrSize);
-            __FVAllocatorZoneFree(fvzone, ptr);
+            fv_zone_free(fvzone, ptr);
         }
         
     }
     else {
         // original pointer was NULL, so just malloc a new block
-        newPtr = __FVAllocatorZoneMalloc(fvzone, size);
+        newPtr = fv_zone_malloc(fvzone, size);
     }
     return newPtr;
 }
 
 // this may not be perfectly (thread) safe, but the caller is responsible for whatever happens...
-static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
+static void fv_zone_destroy(malloc_zone_t *fvzone)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     
@@ -455,7 +460,7 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
     zone->_availableAllocations->clear();
     
     // now deallocate all buffers allocated using this zone, regardless of underlying call
-    for_each(zone->_allocations->begin(), zone->_allocations->end(), __FVAllocationDestroy);
+    for_each(zone->_allocations->begin(), zone->_allocations->end(), __fv_zone_destroy_allocation);
     zone->_allocations->clear();
     OSSpinLockUnlock(&zone->_spinLock);
     
@@ -463,56 +468,56 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
     malloc_zone_free(malloc_zone_from_ptr(zone), zone);
 }
 
-static void __FVAllocatorZonePrint(malloc_zone_t *zone, boolean_t verbose) {
+static void fv_zone_print(malloc_zone_t *zone, boolean_t verbose) {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
 }
 
-static void __FVAllocatorZoneLog(malloc_zone_t *zone, void *address) {
+static void fv_zone_log(malloc_zone_t *zone, void *address) {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
 }
 
-static boolean_t __FVAllocatorZoneIntrospectTrue(malloc_zone_t *zone) {
+static boolean_t fv_zone_introspect_true(malloc_zone_t *zone) {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     return 1;
 }
 
-static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
+static size_t fv_zone_good_size(malloc_zone_t *zone, size_t size)
 {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     bool ignored;
-    return __FVAllocatorRoundSize(size, &ignored);
+    return __fv_zone_round_size(size, &ignored);
 }
 
-static inline void __FVAllocatorSumAllocations(fv_allocation_t *alloc, size_t *size)
+static inline void __fv_zone_sum_allocations(fv_allocation_t *alloc, size_t *size)
 {
     *size += alloc->ptrSize;
 }
 
-static size_t __FVAllocatorTotalSize(fv_zone_t *zone)
+static size_t __fv_zone_total_size(fv_zone_t *zone)
 {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     size_t sizeTotal = 0;
     OSSpinLockLock(&zone->_spinLock);
-    std::set<fv_allocation_t *>::iterator it;
+    set<fv_allocation_t *>::iterator it;
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
-        __FVAllocatorSumAllocations(*it, &sizeTotal);
+        __fv_zone_sum_allocations(*it, &sizeTotal);
     }
     OSSpinLockUnlock(&zone->_spinLock);
     return sizeTotal;
 }
 
-static size_t __FVAllocatorGetSizeInUse(fv_zone_t *zone)
+static size_t __fv_zone_get_size_in_use(fv_zone_t *zone)
 {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     size_t sizeTotal = 0, sizeFree = 0;
     OSSpinLockLock(&zone->_spinLock);
-    std::set<fv_allocation_t *>::iterator it;
+    set<fv_allocation_t *>::iterator it;
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
-        __FVAllocatorSumAllocations(*it, &sizeTotal);
+        __fv_zone_sum_allocations(*it, &sizeTotal);
     }
-    std::multiset<fv_allocation_t *>::iterator freeiter;
+    multiset<fv_allocation_t *>::iterator freeiter;
     for (freeiter = zone->_availableAllocations->begin(); freeiter != zone->_availableAllocations->end(); freeiter++) {
-        __FVAllocatorSumAllocations(*freeiter, &sizeFree);
+        __fv_zone_sum_allocations(*freeiter, &sizeFree);
     }
     OSSpinLockUnlock(&zone->_spinLock);
     if (sizeTotal < sizeFree) {
@@ -522,25 +527,25 @@ static size_t __FVAllocatorGetSizeInUse(fv_zone_t *zone)
     return (sizeTotal - sizeFree);
 }
 
-static void __FVAllocatorZoneStatistics(malloc_zone_t *fvzone, malloc_statistics_t *stats)
+static void fv_zone_statistics(malloc_zone_t *fvzone, malloc_statistics_t *stats)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     stats->blocks_in_use = zone->_allocations->size() - zone->_availableAllocations->size();
-    stats->size_in_use = __FVAllocatorGetSizeInUse(zone);
-    stats->max_size_in_use = __FVAllocatorTotalSize(zone);
+    stats->size_in_use = __fv_zone_get_size_in_use(zone);
+    stats->max_size_in_use = __fv_zone_total_size(zone);
     stats->size_allocated = stats->max_size_in_use;
 }
 
 // called when preparing for a fork() (see _malloc_fork_prepare() in malloc.c)
-static void __FVAllocatorForceLock(malloc_zone_t *fvzone)
+static void fv_zone_force_lock(malloc_zone_t *fvzone)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     OSSpinLockLock(&zone->_spinLock);
 }
 
 // called in parent and child after fork() (see _malloc_fork_parent() and _malloc_fork_child() in malloc.c)
-static void __FVAllocatorForceUnlock(malloc_zone_t *fvzone)
+static void fv_zone_force_unlock(malloc_zone_t *fvzone)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     OSSpinLockUnlock(&zone->_spinLock);
@@ -587,14 +592,14 @@ static void __enumerator_applier(const void *value, applier_context *ctxt)
 }
 
 static kern_return_t 
-__FVAllocatorEnumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
+fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(zone_address);
     OSSpinLockLock(&zone->_spinLock);
     kern_return_t ret = 0;
     applier_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
-    std::set<fv_allocation_t *>::iterator it;
+    set<fv_allocation_t *>::iterator it;
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
         __enumerator_applier(*it, &ctxt);
     }
@@ -602,18 +607,18 @@ __FVAllocatorEnumerator(task_t task, void *context, unsigned type_mask, vm_addre
     return ret;
 }
 
-static const struct malloc_introspection_t __FVAllocatorZoneIntrospect = {
-    __FVAllocatorEnumerator,
-    __FVAllocatorZoneGoodSize,
-    __FVAllocatorZoneIntrospectTrue,
-    __FVAllocatorZonePrint,
-    __FVAllocatorZoneLog,
-    __FVAllocatorForceLock,
-    __FVAllocatorForceUnlock,
-    __FVAllocatorZoneStatistics
+static const struct malloc_introspection_t __fv_zone_introspect = {
+    fv_zone_enumerator,
+    fv_zone_good_size,
+    fv_zone_introspect_true,
+    fv_zone_print,
+    fv_zone_log,
+    fv_zone_force_lock,
+    fv_zone_force_unlock,
+    fv_zone_statistics
 };
 
-static bool __FVAllocationSizeComparator(fv_allocation_t *val1, fv_allocation_t *val2) { return (val1->ptrSize < val2->ptrSize); }
+static bool __fv_alloc_size_compare(fv_allocation_t *val1, fv_allocation_t *val2) { return (val1->ptrSize < val2->ptrSize); }
 
 #pragma mark API
 
@@ -621,31 +626,31 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 {
     // can't rely on initializers to do this early enough, since FVAllocator creates a zone in a __constructor__
     pthread_mutex_lock(&_allZonesLock);
-    if (NULL == _allZones) _allZones = new std::set<fv_zone_t *>;
+    if (NULL == _allZones) _allZones = new set<fv_zone_t *>;
     pthread_mutex_unlock(&_allZonesLock);
 
     fv_zone_t *zone = (fv_zone_t *)malloc_zone_malloc(malloc_default_zone(), sizeof(fv_zone_t));
     memset(zone, 0, sizeof(fv_zone_t));
-    zone->_basic_zone.size = __FVAllocatorZoneSize;
-    zone->_basic_zone.malloc = __FVAllocatorZoneMalloc;
-    zone->_basic_zone.calloc = __FVAllocatorZoneCalloc;
-    zone->_basic_zone.valloc = __FVAllocatorZoneValloc;
-    zone->_basic_zone.free = __FVAllocatorZoneFree;
-    zone->_basic_zone.realloc = __FVAllocatorZoneRealloc;
-    zone->_basic_zone.destroy = __FVAllocatorZoneDestroy;
+    zone->_basic_zone.size = fv_zone_size;
+    zone->_basic_zone.malloc = fv_zone_malloc;
+    zone->_basic_zone.calloc = fv_zone_calloc;
+    zone->_basic_zone.valloc = fv_zone_valloc;
+    zone->_basic_zone.free = fv_zone_free;
+    zone->_basic_zone.realloc = fv_zone_realloc;
+    zone->_basic_zone.destroy = fv_zone_destroy;
     zone->_basic_zone.zone_name = strdup(name); /* assumes we have the default malloc zone */
     zone->_basic_zone.batch_malloc = NULL;
     zone->_basic_zone.batch_free = NULL;
-    zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__FVAllocatorZoneIntrospect;
+    zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
     zone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
     
     // malloc_set_zone_name calls out to this zone, so we need the array/set to exist
     
     // http://www.cplusplus.com/reference/stl/set/set.html
     // proof that C++ programmers have to be insane
-    bool (*compare_ptr)(fv_allocation_t *, fv_allocation_t *) = __FVAllocationSizeComparator;
-    zone->_availableAllocations = new std::multiset<fv_allocation_t *, bool(*)(fv_allocation_t *, fv_allocation_t *)>(compare_ptr);
-    zone->_allocations = new std::set<fv_allocation_t *>;
+    bool (*compare_ptr)(fv_allocation_t *, fv_allocation_t *) = __fv_alloc_size_compare;
+    zone->_availableAllocations = new multiset<fv_allocation_t *, bool(*)(fv_allocation_t *, fv_allocation_t *)>(compare_ptr);
+    zone->_allocations = new set<fv_allocation_t *>;
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
@@ -661,20 +666,20 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 #pragma mark Setup and cleanup
 
 #if ENABLE_STATS
-static void __FVAllocatorShowStats(fv_zone_t *fvzone);
+static void __fv_zone_show_stats(fv_zone_t *fvzone);
 #endif
 
-static void __FVAllocatorReapZone(fv_zone_t *zone)
+static void __fv_zone_reap_zone(fv_zone_t *zone)
 {
 #if ENABLE_STATS
-    __FVAllocatorShowStats(zone);
+    __fv_zone_show_stats(zone);
 #endif
     // if we can't lock immediately, wait for another opportunity
     if (OSSpinLockTry(&zone->_spinLock)) {
         
         // iterate the free list to see how much memory is unused
         size_t freeMemory = 0;
-        std::set<fv_allocation_t *>::iterator it;
+        set<fv_allocation_t *>::iterator it;
         for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
             freeMemory += (*it)->allocSize;
         }         
@@ -684,10 +689,10 @@ static void __FVAllocatorReapZone(fv_zone_t *zone)
             // clear out all of the available allocations; this could be more intelligent
             for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
                 // remove from the allocation list
-                FVCParameterAssert(zone->_allocations->find(*it) != zone->_allocations->end());
+                fv_zone_assert(zone->_allocations->find(*it) != zone->_allocations->end());
                 zone->_allocations->erase(*it);
                 // deallocate underlying storage
-                __FVAllocationDestroy(*it);
+                __fv_zone_destroy_allocation(*it);
             } 
             // now remove all blocks from the free list
             zone->_availableAllocations->clear();
@@ -697,12 +702,12 @@ static void __FVAllocatorReapZone(fv_zone_t *zone)
 }
 
 // periodically check all zones against the per-zone high water mark for unused memory
-static void *__FVAllocatorReapThread(void *unused)
+static void *__fv_zone_reap_thread(void *unused)
 {
     do {
         sleep(FV_REAP_TIMEINTERVAL);
         pthread_mutex_lock(&_allZonesLock);
-        for_each(_allZones->begin(), _allZones->end(), __FVAllocatorReapZone);
+        for_each(_allZones->begin(), _allZones->end(), __fv_zone_reap_zone);
         pthread_mutex_unlock(&_allZonesLock);
     } while (1);
     
@@ -720,7 +725,7 @@ static void __initialize_reaper_thread()
     
     // not required as an ivar at present
     pthread_t thread;
-    (void)pthread_create(&thread, &attr, __FVAllocatorReapThread, NULL);
+    (void)pthread_create(&thread, &attr, __fv_zone_reap_thread, NULL);
     pthread_attr_destroy(&attr);    
 }
 
@@ -728,11 +733,11 @@ static void __initialize_reaper_thread()
 
 #if ENABLE_STATS
 
-static std::multiset<size_t> __FVAllocatorFreeSizesLocked(fv_zone_t *fvzone, size_t *freeMemPtr)
+static multiset<size_t> __fv_zone_free_sizes_locked(fv_zone_t *fvzone, size_t *freeMemPtr)
 {
     size_t freeMemory = 0;
-    std::multiset<size_t> allocationSet;
-    std::set<fv_allocation_t *>::iterator it;
+    multiset<size_t> allocationSet;
+    set<fv_allocation_t *>::iterator it;
     for (it = fvzone->_availableAllocations->begin(); it != fvzone->_availableAllocations->end(); it++) {
         fv_allocation_t *alloc = *it;
         if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
@@ -748,11 +753,11 @@ static std::multiset<size_t> __FVAllocatorFreeSizesLocked(fv_zone_t *fvzone, siz
     return allocationSet;
 }
 
-static std::multiset<size_t> __FVAllocatorAllSizesLocked(fv_zone_t *fvzone, size_t *totalMemPtr)
+static multiset<size_t> __fv_zone_all_sizes_locked(fv_zone_t *fvzone, size_t *totalMemPtr)
 {
     size_t totalMemory = 0;
-    std::multiset<size_t> allocationSet;
-    std::set<fv_allocation_t *>::iterator it;
+    multiset<size_t> allocationSet;
+    set<fv_allocation_t *>::iterator it;
     for (it = fvzone->_allocations->begin(); it != fvzone->_allocations->end(); it++) {
         fv_allocation_t *alloc = *it;
         if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
@@ -768,22 +773,22 @@ static std::multiset<size_t> __FVAllocatorAllSizesLocked(fv_zone_t *fvzone, size
     return allocationSet;
 }
 
-static std::map<size_t, double> __FVAllocatorAverageUsage(fv_zone_t *zone)
+static map<size_t, double> __fv_zone_average_usage(fv_zone_t *zone)
 {
-    std::map<size_t, double> map;
+    map<size_t, double> map;
     OSSpinLockLock(&zone->_spinLock);
-    std::vector<fv_allocation_t *> vec(zone->_allocations->begin(), zone->_allocations->end());
+    vector<fv_allocation_t *> vec(zone->_allocations->begin(), zone->_allocations->end());
     if (vec.size()) {
-        sort(vec.begin(), vec.end(), __FVAllocationSizeComparator);
-        std::vector<fv_allocation_t *>::iterator it;
-        std::vector<size_t> count;
+        sort(vec.begin(), vec.end(), __fv_alloc_size_compare);
+        vector<fv_allocation_t *>::iterator it;
+        vector<size_t> count;
         size_t prev = vec[0]->ptrSize;
         // average the usage count of each size class
         for (it = vec.begin(); it != vec.end(); it++) {
             
             if ((*it)->ptrSize != prev) {
                 double average = 0;
-                std::vector<size_t>::iterator ait;
+                vector<size_t>::iterator ait;
                 for (ait = count.begin(); ait != count.end(); ait++)
                     average += *ait;
                 if (count.size() > 1)
@@ -797,7 +802,7 @@ static std::map<size_t, double> __FVAllocatorAverageUsage(fv_zone_t *zone)
         // get the last one...
         if (count.size()) {
             double average = 0;
-            std::vector<size_t>::iterator ait;
+            vector<size_t>::iterator ait;
             for (ait = count.begin(); ait != count.end(); ait++)
                 average += *ait;
             if (count.size() > 1)
@@ -811,18 +816,18 @@ static std::map<size_t, double> __FVAllocatorAverageUsage(fv_zone_t *zone)
 }
 
 // can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
-static void __FVAllocatorShowStats(fv_zone_t *fvzone)
+static void __fv_zone_show_stats(fv_zone_t *fvzone)
 {
     // use the default zone explicitly; avoid callout to our custom zone(s)
     OSSpinLockLock(&fvzone->_spinLock);
     // record the actual time of this measurement
     const time_t absoluteTime = time(NULL);
     size_t totalMemory = 0, freeMemory = 0;
-    std::multiset<size_t> allocationSet = __FVAllocatorAllSizesLocked(fvzone, &totalMemory);
-    std::multiset<size_t> freeSet = __FVAllocatorFreeSizesLocked(fvzone, &freeMemory);
+    multiset<size_t> allocationSet = __fv_zone_all_sizes_locked(fvzone, &totalMemory);
+    multiset<size_t> freeSet = __fv_zone_free_sizes_locked(fvzone, &freeMemory);
     OSSpinLockUnlock(&fvzone->_spinLock);
 
-    std::map<size_t, double> usageMap = __FVAllocatorAverageUsage(fvzone);
+    map<size_t, double> usageMap = __fv_zone_average_usage(fvzone);
 
     fprintf(stderr, "------------------------------------\n");
     fprintf(stderr, "Zone name: %s\n", malloc_get_zone_name(&fvzone->_basic_zone));
@@ -830,7 +835,7 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     fprintf(stderr, "   (b)       --    --    (Mb)      ----         --- \n");
     
     const double totalMemoryMbytes = (double)totalMemory / 1024 / 1024;
-    std::multiset<size_t>::iterator it;
+    multiset<size_t>::iterator it;
     for (it = allocationSet.begin(); it != allocationSet.end(); it = allocationSet.upper_bound(*it)) {
         size_t allocationSize = *it;
         size_t count = allocationSet.count(allocationSize);
@@ -838,7 +843,7 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
         double totalMbytes = double(allocationSize) * count / 1024 / 1024;
         double percentOfTotal = totalMbytes / totalMemoryMbytes * 100;
         double averageUsage = 0;
-        std::map<size_t, double>::iterator usageIterator = usageMap.find(allocationSize);
+        map<size_t, double>::iterator usageIterator = usageMap.find(allocationSize);
         averageUsage = usageIterator == usageMap.end() ? nan("") : usageIterator->second;
         
         fprintf(stderr, "%8lu    %3lu  (%3lu)  %5.2f    %5.2f %%  %12.0f\n", (long)allocationSize, (long)count, (long)freeCount, totalMbytes, percentOfTotal, averageUsage);        
