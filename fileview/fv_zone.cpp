@@ -45,15 +45,21 @@
 #import <mach/vm_map.h>
 #import <pthread.h>
 #import <sys/time.h>
+#import <math.h>
 
 #import <set>
+#import <map>
+#import <vector>
 #import <iostream>
 
 #if DEBUG
+#define ENABLE_STATS 1
 #define FVCParameterAssert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
+#define ENABLE_STATS 0
 #define FVCParameterAssert(condition)
 #endif
+
 
 typedef struct _fv_zone_t {
     malloc_zone_t      _basic_zone;
@@ -72,6 +78,9 @@ typedef struct _fv_allocation_t {
     size_t           ptrSize;   /* writable length of ptr        */
     const fv_zone_t *zone;      /* fv_zone_t                     */
     bool             free;      /* in use or in the free list    */
+#if ENABLE_STATS
+    uint32_t         timesUsed; /* for stats logging only        */
+#endif
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
@@ -307,7 +316,7 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
     }
     else {
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheHits);
-        // pass iterator to erase this element, not just any element of this size
+        // pass iterator to erase this element, rather than an arbitrary element of this size
         zone->_availableAllocations->erase(next);
         OSSpinLockUnlock(&zone->_spinLock);
         if (__builtin_expect(origSize > alloc->ptrSize, 0)) {
@@ -317,6 +326,9 @@ static void *__FVAllocatorZoneMalloc(malloc_zone_t *fvzone, size_t size)
         }
     }
     if (__builtin_expect(NULL != alloc, 1)) {
+#if ENABLE_STATS
+        alloc->timesUsed++;
+#endif
         alloc->free = false;
         ret = alloc->ptr;
     }
@@ -443,10 +455,7 @@ static void __FVAllocatorZoneDestroy(malloc_zone_t *fvzone)
     zone->_availableAllocations->clear();
     
     // now deallocate all buffers allocated using this zone, regardless of underlying call
-    std::set<fv_allocation_t *>::iterator it;
-    for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
-        __FVAllocationDestroy(*it);
-    }
+    for_each(zone->_allocations->begin(), zone->_allocations->end(), __FVAllocationDestroy);
     zone->_allocations->clear();
     OSSpinLockUnlock(&zone->_spinLock);
     
@@ -474,11 +483,8 @@ static size_t __FVAllocatorZoneGoodSize(malloc_zone_t *zone, size_t size)
     return __FVAllocatorRoundSize(size, &ignored);
 }
 
-static void __FVAllocatorSumAllocations(const void *value, void *context)
+static inline void __FVAllocatorSumAllocations(fv_allocation_t *alloc, size_t *size)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
-    size_t *size = reinterpret_cast<size_t *>(context);
-    const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
     *size += alloc->ptrSize;
 }
 
@@ -654,14 +660,13 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 
 #pragma mark Setup and cleanup
 
-#define ENABLE_STATS 1
-#if DEBUG && ENABLE_STATS
+#if ENABLE_STATS
 static void __FVAllocatorShowStats(fv_zone_t *fvzone);
 #endif
 
 static void __FVAllocatorReapZone(fv_zone_t *zone)
 {
-#if DEBUG && ENABLE_STATS
+#if ENABLE_STATS
     __FVAllocatorShowStats(zone);
 #endif
     // if we can't lock immediately, wait for another opportunity
@@ -697,10 +702,7 @@ static void *__FVAllocatorReapThread(void *unused)
     do {
         sleep(FV_REAP_TIMEINTERVAL);
         pthread_mutex_lock(&_allZonesLock);
-        std::set<fv_zone_t *>::iterator it;
-        for (it = _allZones->begin(); it != _allZones->end(); it++) {
-            __FVAllocatorReapZone(*it);
-        }
+        for_each(_allZones->begin(), _allZones->end(), __FVAllocatorReapZone);
         pthread_mutex_unlock(&_allZonesLock);
     } while (1);
     
@@ -724,7 +726,7 @@ static void __initialize_reaper_thread()
 
 #pragma mark statistics
 
-#if DEBUG && ENABLE_STATS
+#if ENABLE_STATS
 
 static std::multiset<size_t> __FVAllocatorFreeSizesLocked(fv_zone_t *fvzone, size_t *freeMemPtr)
 {
@@ -766,6 +768,48 @@ static std::multiset<size_t> __FVAllocatorAllSizesLocked(fv_zone_t *fvzone, size
     return allocationSet;
 }
 
+static std::map<size_t, double> __FVAllocatorAverageUsage(fv_zone_t *zone)
+{
+    std::map<size_t, double> map;
+    OSSpinLockLock(&zone->_spinLock);
+    std::vector<fv_allocation_t *> vec(zone->_allocations->begin(), zone->_allocations->end());
+    if (vec.size()) {
+        sort(vec.begin(), vec.end(), __FVAllocationSizeComparator);
+        std::vector<fv_allocation_t *>::iterator it;
+        std::vector<size_t> count;
+        size_t prev = vec[0]->ptrSize;
+        // average the usage count of each size class
+        for (it = vec.begin(); it != vec.end(); it++) {
+            
+            if ((*it)->ptrSize != prev) {
+                double average = 0;
+                std::vector<size_t>::iterator ait;
+                for (ait = count.begin(); ait != count.end(); ait++)
+                    average += *ait;
+                if (count.size() > 1)
+                    average = average / count.size();
+                count.clear();
+                map[prev] = average;
+                prev = (*it)->ptrSize;
+            }
+            count.push_back((*it)->timesUsed);
+        }
+        // get the last one...
+        if (count.size()) {
+            double average = 0;
+            std::vector<size_t>::iterator ait;
+            for (ait = count.begin(); ait != count.end(); ait++)
+                average += *ait;
+            if (count.size() > 1)
+                average = average / count.size();
+            count.clear();
+            map[prev] = average;
+        }
+    }
+    OSSpinLockUnlock(&zone->_spinLock);
+    return map;
+}
+
 // can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
 static void __FVAllocatorShowStats(fv_zone_t *fvzone)
 {
@@ -777,11 +821,13 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     std::multiset<size_t> allocationSet = __FVAllocatorAllSizesLocked(fvzone, &totalMemory);
     std::multiset<size_t> freeSet = __FVAllocatorFreeSizesLocked(fvzone, &freeMemory);
     OSSpinLockUnlock(&fvzone->_spinLock);
-    
+
+    std::map<size_t, double> usageMap = __FVAllocatorAverageUsage(fvzone);
+
     fprintf(stderr, "------------------------------------\n");
     fprintf(stderr, "Zone name: %s\n", malloc_get_zone_name(&fvzone->_basic_zone));
-    fprintf(stderr, "   Size     Count(Free)  Total  Percentage\n");
-    fprintf(stderr, "   (b)       --    --    (Mb)      ----   \n");
+    fprintf(stderr, "   Size     Count(Free)  Total  Percentage     Reuse\n");
+    fprintf(stderr, "   (b)       --    --    (Mb)      ----         --- \n");
     
     const double totalMemoryMbytes = (double)totalMemory / 1024 / 1024;
     std::multiset<size_t>::iterator it;
@@ -791,7 +837,11 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
         size_t freeCount = freeSet.count(allocationSize);
         double totalMbytes = double(allocationSize) * count / 1024 / 1024;
         double percentOfTotal = totalMbytes / totalMemoryMbytes * 100;
-        fprintf(stderr, "%8lu    %3lu  (%3lu)  %5.2f    %5.2f %%\n", (long)allocationSize, (long)count, (long)freeCount, totalMbytes, percentOfTotal);        
+        double averageUsage = 0;
+        std::map<size_t, double>::iterator usageIterator = usageMap.find(allocationSize);
+        averageUsage = usageIterator == usageMap.end() ? nan("") : usageIterator->second;
+        
+        fprintf(stderr, "%8lu    %3lu  (%3lu)  %5.2f    %5.2f %%  %12.0f\n", (long)allocationSize, (long)count, (long)freeCount, totalMbytes, percentOfTotal, averageUsage);        
     }
     
     // avoid divide-by-zero
@@ -805,7 +855,7 @@ static void __FVAllocatorShowStats(fv_zone_t *fvzone)
     char timeString[32] = { '\0' };
     strftime(timeString, sizeof(timeString), timeFormat, &time);
     fprintf(stderr, "%s: %d hits and %d misses for a cache failure rate of %.2f%%\n", timeString, fvzone->_cacheHits, fvzone->_cacheMisses, missRate);
-    fprintf(stderr, "%s: total in use: %.2f Mbytes, total available: %.2f Mbytes, %d reallocations, \n", timeString, double(totalMemory) / 1024 / 1024, double(freeMemory) / 1024 / 1024, fvzone->_reallocCount);
+    fprintf(stderr, "%s: total in use: %.2f Mbytes, total available: %.2f Mbytes, %d reallocations\n", timeString, double(totalMemory) / 1024 / 1024, double(freeMemory) / 1024 / 1024, fvzone->_reallocCount);
 }
 
 #endif
