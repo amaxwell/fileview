@@ -36,7 +36,12 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <Cocoa/Cocoa.h>
+#ifndef _FVALLOCATOR_H_
+#define _FVALLOCATOR_H_
+
+#import <Foundation/NSZone.h>
+
+__BEGIN_DECLS
 
 /** @file FVAllocator.h @brief Allocator for moderate-to-large blocks.
  
@@ -57,3 +62,7 @@
 FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void);
 
 FV_PRIVATE_EXTERN NSZone *FVDefaultZone(void);
+
+__END_DECLS
+
+#endif /* _FVALLOCATOR_H_ */

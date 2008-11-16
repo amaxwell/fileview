@@ -38,6 +38,15 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _FVZONE_H_
+#define _FVZONE_H_
+
 #import <malloc/malloc.h>
 
+__BEGIN_DECLS
+
 FV_PRIVATE_EXTERN malloc_zone_t * fv_create_zone_named(const char *name);
+
+__END_DECLS
+
+#endif /* _FV_ZONE_H_ */
