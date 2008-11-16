@@ -36,7 +36,12 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _FVUTILITIES_H_
+#define _FVUTILITIES_H_
+
 #import <Cocoa/Cocoa.h>
+
+__BEGIN_DECLS
 
 /** @file FVUtilities.h  Various useful functions. */
 
@@ -118,3 +123,7 @@ FV_PRIVATE_EXTERN bool FVCanMapFileAtURL(NSURL *fileURL);
 /** Draw round rects.  On 10.5 and later, this is a wrapper for +[NSBezierPath bezierPathWithRoundedRect:xRadius:yRadius:].  On Tiger, yRadius is set equal to xRadius. */
 + (NSBezierPath*)fv_bezierPathWithRoundRect:(NSRect)rect xRadius:(CGFloat)xRadius yRadius:(CGFloat)yRadius;
 @end
+
+__END_DECLS
+
+#endif /* _FVUTILITIES_H_ */

@@ -36,7 +36,12 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _FVBITMAPCONTEXT_H_
+#define _FVBITMAPCONTEXT_H_
+
 #import <Cocoa/Cocoa.h>
+
+__BEGIN_DECLS
 
 /** @file FVBitmapContext.h  Bitmap context creation and disposal. */
 
@@ -72,3 +77,7 @@ FV_PRIVATE_EXTERN void FVIconBitmapContextRelease(FVBitmapContextRef ctxt);
  @return true if the image does not need to be redrawn. 
  @todo Move this elsewhere. */
 FV_PRIVATE_EXTERN bool FVImageIsIncompatible(CGImageRef image);
+
+__END_DECLS
+
+#endif /* _FVBITMAPCONTEXT_H_ */

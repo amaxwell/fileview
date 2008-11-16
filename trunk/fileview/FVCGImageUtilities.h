@@ -36,7 +36,12 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#ifndef _FVCGIMAGEUTILITIES_H_
+#define _FVCGIMAGEUTILITIES_H_
+
 #import <Cocoa/Cocoa.h>
+
+__BEGIN_DECLS
 
 /** @file FVCGImageUtilities.h  Manipulate CGImages. */
 
@@ -97,3 +102,7 @@ FV_PRIVATE_EXTERN CGColorSpaceModel __FVGetColorSpaceModelOfColorSpace(CGColorSp
  The ImageShear test project uses this to draw tiles for diagnostic purposes.  It has no other useful function.
  @return An array of NSRect structures.  The caller is responsible for freeing this list with NSZoneFree. */
 FV_PRIVATE_EXTERN NSRect * FVCopyRectListForImageWithScaledSize(CGImageRef image, const NSSize desiredSize, NSUInteger *rectCount);
+
+__END_DECLS
+
+#endif /* _FVCGIMAGEUTILITIES_H_ */
