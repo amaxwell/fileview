@@ -626,9 +626,10 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 {
     // can't rely on initializers to do this early enough, since FVAllocator creates a zone in a __constructor__
     pthread_mutex_lock(&_allZonesLock);
+    // TODO: is using new okay?
     if (NULL == _allZones) _allZones = new set<fv_zone_t *>;
     pthread_mutex_unlock(&_allZonesLock);
-
+    
     fv_zone_t *zone = (fv_zone_t *)malloc_zone_malloc(malloc_default_zone(), sizeof(fv_zone_t));
     memset(zone, 0, sizeof(fv_zone_t));
     zone->_basic_zone.size = fv_zone_size;
@@ -638,22 +639,22 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.free = fv_zone_free;
     zone->_basic_zone.realloc = fv_zone_realloc;
     zone->_basic_zone.destroy = fv_zone_destroy;
-    zone->_basic_zone.zone_name = strdup(name); /* assumes we have the default malloc zone */
     zone->_basic_zone.batch_malloc = NULL;
     zone->_basic_zone.batch_free = NULL;
     zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
     zone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
-    
-    // malloc_set_zone_name calls out to this zone, so we need the array/set to exist
-    
+        
     // http://www.cplusplus.com/reference/stl/set/set.html
     // proof that C++ programmers have to be insane
-    bool (*compare_ptr)(fv_allocation_t *, fv_allocation_t *) = __fv_alloc_size_compare;
-    zone->_availableAllocations = new multiset<fv_allocation_t *, bool(*)(fv_allocation_t *, fv_allocation_t *)>(compare_ptr);
-    zone->_allocations = new set<fv_allocation_t *>;
+    bool (*compare_ptr)(ALLOC, ALLOC) = __fv_alloc_size_compare;
+    zone->_availableAllocations = new multiset<MSALLOC>(compare_ptr);
+    zone->_allocations = new set<ALLOC>;
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
+    
+    // malloc_set_zone_name calls out to this zone, so call it after setup is complete
+    malloc_set_zone_name(&zone->_basic_zone, name);
     
     // register for timer
     pthread_mutex_lock(&_allZonesLock);
@@ -818,11 +819,11 @@ static map<size_t, double> __fv_zone_average_usage(fv_zone_t *zone)
 // can't make this public, since it relies on the argument being an fv_zone_t (which must not be exposed)
 static void __fv_zone_show_stats(fv_zone_t *fvzone)
 {
-    // use the default zone explicitly; avoid callout to our custom zone(s)
-    OSSpinLockLock(&fvzone->_spinLock);
     // record the actual time of this measurement
     const time_t absoluteTime = time(NULL);
     size_t totalMemory = 0, freeMemory = 0;
+    
+    OSSpinLockLock(&fvzone->_spinLock);
     multiset<size_t> allocationSet = __fv_zone_all_sizes_locked(fvzone, &totalMemory);
     multiset<size_t> freeSet = __fv_zone_free_sizes_locked(fvzone, &freeMemory);
     OSSpinLockUnlock(&fvzone->_spinLock);
