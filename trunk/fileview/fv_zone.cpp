@@ -476,7 +476,7 @@ static void fv_zone_log(malloc_zone_t *zone, void *address) {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
 }
 
-static boolean_t fv_zone_introspect_true(malloc_zone_t *zone) {
+static boolean_t fv_zone_check(malloc_zone_t *zone) {
     fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
     return 1;
 }
@@ -610,7 +610,7 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
 static const struct malloc_introspection_t __fv_zone_introspect = {
     fv_zone_enumerator,
     fv_zone_good_size,
-    fv_zone_introspect_true,
+    fv_zone_check,
     fv_zone_print,
     fv_zone_log,
     fv_zone_force_lock,
