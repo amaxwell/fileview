@@ -74,7 +74,7 @@ static void * __FVReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, voi
 
 static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 {
-    malloc_zone_t *zone = (malloc_zone_t *)zone;
+    malloc_zone_t *zone = (malloc_zone_t *)info;
     return zone->introspect->good_size(zone, size);
 }
 
