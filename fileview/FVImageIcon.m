@@ -220,10 +220,10 @@ static CFDictionaryRef _imsrcOptions = NULL;
         if (FVShouldDrawFullImageWithThumbnailSize(_desiredSize, _thumbnailSize) == NO) {
             CGImageRelease(_fullImage);
             _fullImage = NULL;
-        }
-                
-        CFRelease(src);
+        }                
     } 
+    
+    if (src) CFRelease(src);
     
     if (NULL == _thumbnail && NULL == _fullImage) {
         _loadFailed = YES;
