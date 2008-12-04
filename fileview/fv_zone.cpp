@@ -95,7 +95,7 @@ static char _vm_guard;      /* indicates vm_allocate was used for this block    
 
 // track all zones allocated by fv_create_zone_named()
 static set<fv_zone_t *> *_allZones = NULL;
-static pthread_mutex_t        _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t   _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
 
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
