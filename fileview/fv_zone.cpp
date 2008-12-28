@@ -54,7 +54,7 @@
 using namespace std;
 
 #if DEBUG
-#define ENABLE_STATS 1
+#define ENABLE_STATS 0
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define ENABLE_STATS 0
@@ -67,9 +67,10 @@ using namespace std;
 
 typedef struct _fv_zone_t {
     malloc_zone_t      _basic_zone;
-    multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size */
-    set<ALLOC>        *_allocations;          /* all allocations, ordered by address  */
-    OSSpinLock         _spinLock;             /* lock before manipulating sets        */
+    void              *_reserved[2];          /* for future expansion of malloc_zone_t */
+    multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size  */
+    set<ALLOC>        *_allocations;          /* all allocations, ordered by address   */
+    OSSpinLock         _spinLock;             /* lock before manipulating sets         */
     volatile uint32_t  _cacheHits;
     volatile uint32_t  _cacheMisses;
     volatile uint32_t  _reallocCount;
