@@ -50,6 +50,6 @@
 }
 
 - (id)initWithColorSpace:(CGColorSpaceRef)colorSpace;
-- (CGColorSpaceRef)createColorSpace;
+- (CGColorSpaceRef)newColorSpace;
 
 @end

@@ -99,7 +99,7 @@
 - (CGImageRef)newImage;
 {
     if (NULL == _image) {
-        CGColorSpaceRef cspace = [_colorSpaceDescription createColorSpace];
+        CGColorSpaceRef cspace = [_colorSpaceDescription newColorSpace];
         CGDataProviderRef provider = CGDataProviderCreateWithCFData(_bitmapData);
         _image = CGImageCreate(_width, _height, _bitsPerComponent, _bitsPerPixel, _bytesPerRow, cspace, _bitmapInfo, provider, _decode, _shouldInterpolate, _renderingIntent);
         CGDataProviderRelease(provider);
