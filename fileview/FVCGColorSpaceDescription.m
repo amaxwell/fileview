@@ -87,7 +87,7 @@ static inline bool __FVCGCanSaveIndexedSpaces(void)
     [super dealloc];
 }
 
-- (CGColorSpaceRef)_createDeviceColorSpaceForComponents:(size_t)components
+- (CGColorSpaceRef)_newDeviceColorSpaceForComponents:(size_t)components
 {
     CGColorSpaceRef colorSpace = NULL;
     switch(components) {
@@ -107,9 +107,9 @@ static inline bool __FVCGCanSaveIndexedSpaces(void)
 }
 
 
-- (CGColorSpaceRef)_createIndexedColorSpace
+- (CGColorSpaceRef)_newIndexedColorSpace
 {
-    CGColorSpaceRef baseColorSpace = [self _createDeviceColorSpaceForComponents:_baseColorSpaceComponents];
+    CGColorSpaceRef baseColorSpace = [self _newDeviceColorSpaceForComponents:_baseColorSpaceComponents];
     CGColorSpaceRef cspace = CGColorSpaceCreateIndexed(baseColorSpace, _colorTableCount - 1, _colorTable);
     if (NULL != cspace)
         CGColorSpaceRelease(baseColorSpace);
@@ -118,7 +118,7 @@ static inline bool __FVCGCanSaveIndexedSpaces(void)
     return (cspace == NULL ? baseColorSpace : cspace);
 }
 
-- (CGColorSpaceRef)createColorSpace;
+- (CGColorSpaceRef)newColorSpace;
 {
     CGColorSpaceRef cspace = NULL;
     switch (_colorSpaceModel) {
@@ -132,10 +132,10 @@ static inline bool __FVCGCanSaveIndexedSpaces(void)
             cspace = CGColorSpaceCreateDeviceCMYK();
             break;
         case kCGColorSpaceModelIndexed:
-            cspace = [self _createIndexedColorSpace];
+            cspace = [self _newIndexedColorSpace];
             break;
         default:
-            cspace = [self _createDeviceColorSpaceForComponents:_components];
+            cspace = [self _newDeviceColorSpaceForComponents:_components];
             FVLog(@"Unsupported colorspace model %d, using %@ instead", _colorSpaceModel, cspace);
     }
     return cspace;
