@@ -72,7 +72,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
         _activeOperations = [NSMutableSet new];     
         
         CFRunLoopObserverContext context = { 0, self, NULL, NULL, NULL };
-        _observer = CFRunLoopObserverCreate(NULL, kCFRunLoopBeforeWaiting, TRUE, 0, __FVProcessSingleEntry, &context);
+        _observer = CFRunLoopObserverCreate(NULL, kCFRunLoopAllActivities, TRUE, 0, __FVProcessSingleEntry, &context);
         CFRunLoopAddCommonMode(CFRunLoopGetMain(), (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes);
@@ -176,7 +176,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
     NSLog(@"*** WARNING *** %@ ignoring request to change main thread priority", self);
 }
 
-// finishedOperation: callback received on the main thread
+// finishedOperation: callback, typically received on the main thread
 - (void)finishedOperation:(FVOperation *)anOperation;
 {
     OSSpinLockLock(&_queueLock);
