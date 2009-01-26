@@ -127,7 +127,7 @@ enum {
 
 /** Maximum value of iconScale
  
- Default value is 10.  Legitmate values are from 0.01 -- 100 in IB, but this is not enforced in the view (i.e. you can set anything programmatically).  Can be bound.*/
+ Default value is 10.  Legitimate values are from 0.01 -- 100 in IB, but this is not enforced in the view (i.e. you can set anything programmatically).  Can be bound.*/
 - (double)maxIconScale;
 
 /** Set maximum value of iconScale
