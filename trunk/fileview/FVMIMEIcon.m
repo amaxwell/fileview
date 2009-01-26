@@ -109,14 +109,13 @@ static FVMIMEIcon *defaultPlaceholderIcon = nil;
         icon = (FVMIMEIcon *)NSAllocateObject(FVMIMEIconClass, 0, [self zone]);
         FVInvocationOperation *operation = [[FVInvocationOperation alloc] initWithTarget:icon selector:@selector(_initWithMIMEType:) object:type];
         [operation setConcurrent:NO];
+        // make sure this operation gets invoked first when we run the runloop
+        [operation setQueuePriority:FVOperationQueuePriorityVeryHigh];
         [[FVOperationQueue mainQueue] addOperation:operation];
         [operation autorelease];
-        // If this is already the main thread, running it in the default runloop mode should cause the operation to complete, but may lead to a deadlock since webview callouts can be sent multiple times due to server push or multiple views loading the same icon simultaneously (and this method is not reentrant)
-        while (NO == [operation isFinished]) {
-            NSAutoreleasePool *pool = [NSAutoreleasePool new];
-            [[NSRunLoop currentRunLoop] runMode:FVMainQueueRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
-            [pool release];
-        }
+        // If this is already the main thread, running it in the default runloop mode should cause the operation to complete, but may lead to a deadlock since webview callouts can be sent multiple times due to server push or multiple views loading the same icon simultaneously (and this method is not reentrant).  The problem is that it can flush all pending operations.
+        while (NO == [operation isFinished])
+            CFRunLoopRunInMode((CFStringRef)FVMainQueueRunLoopMode, 0.1, YES);
         
         icon = [operation result];
         if (icon) {
