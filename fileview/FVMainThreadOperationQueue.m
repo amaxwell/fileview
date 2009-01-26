@@ -50,7 +50,7 @@
     FVINITIALIZE(FVMainThreadOperationQueue);
 }
 
-static void __FVProcessQueueEntries(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info);
+static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info);
 
 - (id)init
 {
@@ -73,7 +73,7 @@ static void __FVProcessQueueEntries(CFRunLoopObserverRef observer, CFRunLoopActi
         
         CFRunLoopObserverContext context = { 0, self, NULL, NULL, NULL };
         CFRunLoopActivity activity =  kCFRunLoopEntry | kCFRunLoopBeforeWaiting;
-        _observer = CFRunLoopObserverCreate(NULL, activity, TRUE, 0, __FVProcessQueueEntries, &context);
+        _observer = CFRunLoopObserverCreate(NULL, activity, TRUE, 0, __FVProcessSingleEntry, &context);
         CFRunLoopAddCommonMode(CFRunLoopGetMain(), (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes);
@@ -143,25 +143,33 @@ static void __FVProcessQueueEntries(CFRunLoopObserverRef observer, CFRunLoopActi
     CFRunLoopWakeUp(CFRunLoopGetMain());
 }
 
-static void __FVProcessQueueEntries(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
+/*
+ Process a single entry, and let the finishedOperation: callback wake the runloop for the next one.
+ This potentially allows other processing to take place between queued operations and avoids blocking
+ the main thread's runloop (and event loop) while processing operations.
+ */
+static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActivity activity, void *info)
 {
     NSCAssert(pthread_main_np() != 0, @"incorrect thread for main queue");
-    FVMainThreadOperationQueue *queue = info;
-    
+    FVMainThreadOperationQueue *queue = info;    
+    FVOperation *op = nil;
+
+    // ignore cancelled operations, so we get finishedOperation: (no coalescing on _activeOperations)
     OSSpinLockLock(&(queue->_queueLock));
-    while ([queue->_pendingOperations count]) {
-        
-        FVOperation *op = [queue->_pendingOperations pop];
-        
-        if (NO == [op isCancelled] && NO == [queue->_activeOperations containsObject:op]) {
-            [queue->_activeOperations addObject:op];
-            // avoid deadlock: next call will (probably) trigger finishedOperation: on this thread
-            OSSpinLockUnlock(&(queue->_queueLock));
-            [op start];
-            OSSpinLockLock(&(queue->_queueLock));
-        }                
+    do {
+        op = [queue->_pendingOperations pop];
+    } while ([op isCancelled]);
+    
+    // !!! unlock on all branches
+    if (op) {
+        [queue->_activeOperations addObject:op];
+        // avoid deadlock: next call may trigger finishedOperation: on this thread
+        OSSpinLockUnlock(&(queue->_queueLock));
+        [op start];
     }
-    OSSpinLockUnlock(&(queue->_queueLock));
+    else {
+        OSSpinLockUnlock(&(queue->_queueLock));
+    }
 }
 
 - (void)setThreadPriority:(double)p;
@@ -174,7 +182,14 @@ static void __FVProcessQueueEntries(CFRunLoopObserverRef observer, CFRunLoopActi
 {
     OSSpinLockLock(&_queueLock);
     [_activeOperations removeObject:anOperation];
+    NSUInteger cnt = [_pendingOperations count];
     OSSpinLockUnlock(&_queueLock);
+    
+    /*
+     Process another operation if necessary.  If multiple ops added at once, we only get
+     a wakeup message for the entire batch, but they're processed singly.
+     */
+    if (cnt) CFRunLoopWakeUp(CFRunLoopGetMain());
 }
 
 @end
