@@ -72,8 +72,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
         _activeOperations = [NSMutableSet new];     
         
         CFRunLoopObserverContext context = { 0, self, NULL, NULL, NULL };
-        CFRunLoopActivity activity =  kCFRunLoopEntry | kCFRunLoopBeforeWaiting;
-        _observer = CFRunLoopObserverCreate(NULL, activity, TRUE, 0, __FVProcessSingleEntry, &context);
+        _observer = CFRunLoopObserverCreate(NULL, kCFRunLoopBeforeWaiting, TRUE, 0, __FVProcessSingleEntry, &context);
         CFRunLoopAddCommonMode(CFRunLoopGetMain(), (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes);
