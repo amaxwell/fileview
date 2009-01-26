@@ -39,6 +39,8 @@
 #import "FVMovieIcon.h"
 #import "FVFinderIcon.h"
 #import "FVAllocator.h"
+#import "FVOperationQueue.h"
+#import "FVInvocationOperation.h"
 
 #import <QTKit/QTKit.h>
 
@@ -53,12 +55,11 @@
  
  */
 
-+ (NSData *)_copyTIFFDataFromMovieAtURL:(NSURL *)aURL
+- (NSData *)_copyTIFFDataFromMovie
 {
-    NSParameterAssert(nil != aURL);
     NSAssert2(pthread_main_np() != 0, @"*** threading violation *** +[%@ %@] requires main thread", self, NSStringFromSelector(_cmd));
     NSMutableDictionary *attributes = [NSMutableDictionary new];
-    [attributes setObject:aURL forKey:QTMovieURLAttribute];
+    [attributes setObject:_fileURL forKey:QTMovieURLAttribute];
     
     // Loading /DevTools/Documentation/DocSets/com.apple.ADC_Reference_Library.CoreReference.docset/Contents/Resources/Documents/documentation/QuickTime/REF/Effects/gradwip2.mov puts up a stupid modal dialog about searching for resources /after/ blocking for a long time.
     [attributes setObject:[NSNumber numberWithBool:NO] forKey:QTMovieResolveDataRefsAttribute];
@@ -90,29 +91,9 @@
     return data;
 }
 
-+ (CFDataRef)_copyTIFFDataFromMovieOnMainThreadWithURL:(NSURL *)aURL
-{
-    NSMethodSignature *sig = [self methodSignatureForSelector:@selector(_copyTIFFDataFromMovieAtURL:)];
-    NSParameterAssert(nil != sig);
-    NSInvocation *movieInvocation = [NSInvocation invocationWithMethodSignature:sig];
-    [movieInvocation setTarget:self];
-    [movieInvocation setSelector:@selector(_copyTIFFDataFromMovieAtURL:)];
-    [movieInvocation setArgument:&aURL atIndex:2];
-    [movieInvocation performSelectorOnMainThread:@selector(invoke) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
-
-    NSData *imageData;
-    [movieInvocation getReturnValue:&imageData];
-    return (CFDataRef)imageData;
-}
-
 + (BOOL)canInitWithURL:(NSURL *)url;
 {
     return [QTMovie canInitWithURL:url];
-}
-
-- (void)dealloc
-{
-    [super dealloc];
 }
 
 - (BOOL)canReleaseResources;
@@ -125,8 +106,19 @@
 {
     NSAssert2([self tryLock] == NO, @"*** threading violation *** -[%@ %@] requires caller to lock self", [self class], NSStringFromSelector(_cmd));
     
+    FVInvocationOperation *op;
+    op = [[FVInvocationOperation alloc] initWithTarget:self selector:@selector(_copyTIFFDataFromMovie) object:nil];
+    [op setConcurrent:NO];
+    [[FVOperationQueue mainQueue] addOperation:op];
+    while (NO == [op isFinished])
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, TRUE);
+    
+    CFDataRef data = (CFDataRef)[op result];
+    // result isn't owned by the operation, but the containing invocation is
+    [op release];
+
     // superclass will cache the resulting images to disk unconditionally, in order to avoid hitting the main thread again
-    return [[self class] _copyTIFFDataFromMovieOnMainThreadWithURL:_fileURL];
+    return data;        
 }
 
 @end
