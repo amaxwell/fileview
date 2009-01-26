@@ -154,6 +154,7 @@ static NSString * const FVColorNameUpdateNotification = @"FVColorNameUpdateNotif
             if ([objects objectAtIndex:i] != NSApp)
                 menuView = [[[objects objectAtIndex:i] retain] autorelease];
         }
+        [objects makeObjectsPerformSelector:@selector(release)];
     }
     [nib release];
     return menuView;
