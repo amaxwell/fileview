@@ -66,14 +66,13 @@
 // set to YES when creating a content binding, and NO when removing the binding
 - (void)setBound:(BOOL)flag;
 
-// independent of cached state
+// dependent on cached state (always consistent)
 - (NSUInteger)numberOfIcons;
 - (NSURL *)URLAtIndex:(NSUInteger)anIndex;  // never returns NSNull
-
-// dependent on cached state
 - (FVIcon *)iconAtIndex:(NSUInteger)anIndex;
 - (NSArray *)iconsAtIndexes:(NSIndexSet *)indexes;
 - (NSString *)subtitleAtIndex:(NSUInteger)anIndex;
+
 - (void)reload;
 
 // okay to pass NULL for name or label
