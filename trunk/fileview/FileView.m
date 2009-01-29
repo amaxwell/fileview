@@ -1673,9 +1673,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 }
 
 - (void)drawRect:(NSRect)rect;
-{
-    [super drawRect:rect];
-    
+{    
     BOOL isDrawingToScreen = [[NSGraphicsContext currentContext] isDrawingToScreen];
 
     if (isDrawingToScreen) {
