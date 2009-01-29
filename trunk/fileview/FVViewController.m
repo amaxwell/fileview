@@ -187,19 +187,32 @@
 
 #pragma mark -
 
-// Wraps datasource/bindings and returns [FVIcon missingFileURL] when the datasource or bound array returns nil or NSNull, or else we end up with exceptions everywhere
+/*
+ Wrap datasource/bindings and return [FVIcon missingFileURL] when the datasource or bound array 
+ returns nil or NSNull, or else we end up with exceptions everywhere.
+ */
 
-// used by -reload; always returns a value independent of cached state
-- (NSURL *)URLAtIndex:(NSUInteger)anIndex { 
+// public methods must be consistent at all times
+- (NSURL *)URLAtIndex:(NSUInteger)anIndex {
     NSParameterAssert(anIndex < [self numberOfIcons]);
+    NSURL *aURL = [_orderedURLs objectAtIndex:anIndex];
+    if (__builtin_expect(nil == aURL || [NSNull null] == (id)aURL, 0))
+        aURL = [FVIcon missingFileURL];
+    return aURL;
+}
+
+- (NSUInteger)numberOfIcons { return [_orderedURLs count]; }
+
+// only used by -reload; always returns a value independent of cached state
+- (NSURL *)_URLAtIndex:(NSUInteger)anIndex { 
     NSURL *aURL = _isBound ? [_orderedURLs objectAtIndex:anIndex] : [_dataSource fileView:_view URLAtIndex:anIndex];
     if (__builtin_expect(nil == aURL || [NSNull null] == (id)aURL, 0))
         aURL = [FVIcon missingFileURL];
     return aURL;
 }
 
-// used by -reload; always returns a value independent of cached state
-- (NSUInteger)numberOfIcons { return _isBound ? [_orderedURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
+// only used by -reload; always returns a value independent of cached state
+- (NSUInteger)_numberOfIcons { return _isBound ? [_orderedURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
 
 - (void)reload;
 {
@@ -222,8 +235,8 @@
     cachedIcon = (id (*)(id, SEL, id))[self methodForSelector:@selector(_cachedIconForURL:)];
     
     // -[FVViewController URLAtIndex:] guaranteed non-nil/non-NSNULL
-    id (*URLAtIndex)(id, SEL, NSUInteger);
-    URLAtIndex = (id (*)(id, SEL, NSUInteger))[self methodForSelector:@selector(URLAtIndex:)];
+    id (*_URLAtIndex)(id, SEL, NSUInteger);
+    _URLAtIndex = (id (*)(id, SEL, NSUInteger))[self methodForSelector:@selector(_URLAtIndex:)];
     
     // -[NSCFArray insertObject:atIndex:] (do /not/ use +[NSMutableArray instanceMethodForSelector:]!)
     SEL insertSel = @selector(insertObject:atIndex:);
@@ -235,10 +248,10 @@
     id (*subtitleAtIndex)(id, SEL, id, NSUInteger);
     subtitleAtIndex = (id (*)(id, SEL, id, NSUInteger))[_dataSource methodForSelector:subtitleSel];
     
-    NSUInteger i, iMax = [self numberOfIcons];
+    NSUInteger i, iMax = [self _numberOfIcons];
     
     for (i = 0; i < iMax; i++) {
-        NSURL *aURL = URLAtIndex(self, @selector(URLAtIndex:), i);
+        NSURL *aURL = _URLAtIndex(self, @selector(_URLAtIndex:), i);
         NSParameterAssert(nil != aURL && [NSNull null] != (id)aURL);
         FVIcon *icon = cachedIcon(self, @selector(_cachedIconForURL:), aURL);
         NSParameterAssert(nil != icon);
