@@ -156,9 +156,12 @@
     [_operationQueue cancel];
     
     [self cancelDownloads];
-    
-    if ([obj respondsToSelector:@selector(fileView:subtitleAtIndex:)] == NO) {
-        [_orderedSubtitles release];
+
+    [_orderedSubtitles release];
+    if ([obj respondsToSelector:@selector(fileView:subtitleAtIndex:)]) {
+        _orderedSubtitles = [NSMutableArray new];
+    }
+    else {
         _orderedSubtitles = nil;
     }
     
