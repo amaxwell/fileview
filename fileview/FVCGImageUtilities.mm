@@ -163,7 +163,10 @@ static void __FVGetPermuteMapToARGB(CGBitmapInfo bitmapInfo, uint8_t permuteMap[
     
     switch (order) {
 #ifdef __LITTLE_ENDIAN__
-            /* !!! I came up with this by error-and-trial for CGImageAlphaInfo = kCGImageAlphaLast, using a png screenshot.  This appears to be the same for ppc and i386, and would be equivalent to BARG.  No idea what's going on here, since I think kCGBitmapByteOrderDefault should be endian-dependent.  Same ordering works under Rosetta, but I've no idea what happens with other CGImageAlphaInfo values.
+            /* !!! I came up with this by error-and-trial for CGImageAlphaInfo = kCGImageAlphaLast, using a png screenshot.  
+               This appears to be the same for ppc and i386, and would be equivalent to BARG.  No idea what's going on here, 
+               since I think kCGBitmapByteOrderDefault should be endian-dependent.  Same ordering works under Rosetta, but 
+               I've no idea what happens with other CGImageAlphaInfo values.
              */
         case kCGBitmapByteOrderDefault:
             permuteMap[0] = 1;
@@ -194,15 +197,15 @@ static void __FVGetPermuteMapToARGB(CGBitmapInfo bitmapInfo, uint8_t permuteMap[
             }
             break;
 #ifdef __BIG_ENDIAN__
-            case kCGBitmapByteOrderDefault:
+        case kCGBitmapByteOrderDefault:
             permuteMap[0] = 1;
             permuteMap[1] = 2;
             permuteMap[2] = 3;
             permuteMap[3] = 0;
             break;
 #endif
-            case kCGBitmapByteOrder16Big:
-            case kCGBitmapByteOrder32Big:
+        case kCGBitmapByteOrder16Big:
+        case kCGBitmapByteOrder32Big:
             if (kCGImageAlphaPremultipliedLast == alphaInfo || kCGImageAlphaLast == alphaInfo) {
                 // RGBA format
                 permuteMap[0] = 3;
@@ -221,7 +224,7 @@ static void __FVGetPermuteMapToARGB(CGBitmapInfo bitmapInfo, uint8_t permuteMap[
                 FVLog(@"big endian: unhandled alphaInfo %d", alphaInfo);
             }
             break;
-            default:
+        default:
             FVLog(@"unhandled byte order %d", order);
             NSCParameterAssert(0);
             permuteMap[0] = 0;
