@@ -319,8 +319,8 @@ static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef alloc
     } ctxt_u;
     ctxt_u.v1.c1 = context;
     CFRunLoopSourceRef source = CFRunLoopSourceCreate(NULL, 0, &ctxt_u.c);
+    // runloop retains the source, but keep a retain on it until we've called invalidate
     CFRunLoopAddSource(rl, source, kCFRunLoopDefaultMode);
-    CFRelease(source);
     
     [_threadLock unlockWithCondition:QUEUE_STARTUP_COMPLETE];
     [_threadLock lockWhenCondition:QUEUE_RUNNING];
@@ -330,6 +330,7 @@ static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef alloc
         [pool release];
         pool = [NSAutoreleasePool new];
         
+        // timeout is only here in case the mach port dies
         SInt32 result = CFRunLoopRunInMode(kCFRunLoopDefaultMode, 10, TRUE);
         if (kCFRunLoopRunFinished == result || kCFRunLoopRunStopped == result)
             OSAtomicCompareAndSwap32Barrier(0, 1, &_terminate);
@@ -337,6 +338,8 @@ static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef alloc
     } while (0 == _terminate);
 
     CFRunLoopSourceInvalidate(source);
+    CFRelease(source);
+
     mach_port_t port = _threadPort;
     _threadPort = MACH_PORT_NULL;
     __FVPortFree(port);
