@@ -378,7 +378,7 @@ static bool __FVURLIsOnInternalVolume(NSURL *fileURL)
     GetVolParmsInfoBuffer infoBuffer;
     memset(&infoBuffer, 0, sizeof(GetVolParmsInfoBuffer));
     
-#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+#if (__LP64__ || MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
     if (noErr == err)
         err = FSGetVolumeParms(volume, &infoBuffer, sizeof(GetVolParmsInfoBuffer));
 #else

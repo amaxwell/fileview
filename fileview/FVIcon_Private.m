@@ -74,7 +74,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
         
         for (int classIndex = 0; classIndex < numClasses; classIndex++) {
             Class aClass = classes[classIndex];
-#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+#if (__LP64__ || MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
             Class superClass = class_getSuperclass(aClass);
 #else
             Class superClass = aClass->super_class;
@@ -88,7 +88,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
                     [qkeys release];
                     break;
                 }
-#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+#if (__LP64__ || MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
                 superClass = class_getSuperclass(superClass);
 #else
                 superClass = superClass->super_class;
