@@ -61,11 +61,6 @@
     // initWithWindowNibName searches the class' bundle automatically
     self = [super initWithWindowNibName:[self windowNibName]];
     if (self) {
-        NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
-        // Finder hides QL when it loses focus, then restores when it regains it; we can't do that easily, so just get rid of it
-        [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillHideNotification object:nil];
-        [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillResignActiveNotification object:nil];
-        [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillTerminateNotification object:nil];
         // window is now loaded lazily, but we have to use a flag to avoid a hit when calling isPreviewing
         windowLoaded = NO;
     }
@@ -95,6 +90,12 @@
 
 - (void)windowDidLoad
 {
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    // Finder hides QL when it loses focus, then restores when it regains it; we can't do that easily, so just get rid of it
+    [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillHideNotification object:nil];
+    [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillResignActiveNotification object:nil];
+    [nc addObserver:self selector:@selector(stopPreview:) name:NSApplicationWillTerminateNotification object:nil];
+    
     windowLoaded = YES;
 }
 
@@ -200,7 +201,7 @@
 {
     [self _killTask];
 
-    if ([[self window] isVisible]) {
+    if (windowLoaded && [[self window] isVisible]) {
         
         if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4 && [[[self window] contentView] isInFullScreenMode]) {
             [[[self window] contentView] exitFullScreenModeWithOptions:nil];
