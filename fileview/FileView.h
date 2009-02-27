@@ -186,7 +186,7 @@ enum {
 /** Invalidates existing cached data.
  
  Invalidates any cached bitmaps for the selected icons and marks the view for redisplay.*/
-- (void)reloadSelectedIcons:(id)sender;
+- (IBAction)reloadSelectedIcons:(id)sender;
 
 /** Change Finder label color for selected icons.
  
