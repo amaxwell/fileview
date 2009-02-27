@@ -2671,13 +2671,15 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     else NSBeep();
 }
 
-- (void)reloadSelectedIcons:(id)sender;
+- (IBAction)reloadSelectedIcons:(id)sender;
 {
     NSEnumerator *iconEnum = [[_controller iconsAtIndexes:[self selectionIndexes]] objectEnumerator];
     FVIcon *anIcon;
     while ((anIcon = [iconEnum nextObject]) != nil)
         [anIcon recache];
-    [self setNeedsDisplay:YES];
+
+    // ensure consistency between controller and icon, since this will require re-reading the URL from disk/net
+    [self _reloadIconsAndController:YES];
 }
 
 #pragma mark Context menu
