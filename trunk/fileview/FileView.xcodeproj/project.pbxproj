@@ -75,7 +75,7 @@
 		F963C3950E180FCB0066B20F /* FileViewIBPluginLibrary.nib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3940E180FCB0066B20F /* FileViewIBPluginLibrary.nib */; };
 		F963C3970E180FD70066B20F /* FileViewIBPluginInspector.xib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3960E180FD70066B20F /* FileViewIBPluginInspector.xib */; };
 		F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = F980F0920CCC3C2E0067C1DF /* libz.dylib */; };
-		F9865B540E3AC65300B7A373 /* QuickLook.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F946922F0CA5710500AC2772 /* QuickLook.framework */; };
+		F9865B540E3AC65300B7A373 /* QuickLook.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F946922F0CA5710500AC2772 /* QuickLook.framework */; settings = {ATTRIBUTES = (Weak, ); }; };
 		F98D3A5E0D82EFD300ED9D22 /* FVCGImageUtilities.h in Headers */ = {isa = PBXBuildFile; fileRef = F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */; };
 		F98D3A5F0D82EFD300ED9D22 /* FVCGImageUtilities.mm in Sources */ = {isa = PBXBuildFile; fileRef = F98D3A5D0D82EFD300ED9D22 /* FVCGImageUtilities.mm */; };
 		F991B8680E2C5D4F0046000A /* _FVMappedDataProvider.h in Headers */ = {isa = PBXBuildFile; fileRef = F991B8660E2C5D4F0046000A /* _FVMappedDataProvider.h */; };
