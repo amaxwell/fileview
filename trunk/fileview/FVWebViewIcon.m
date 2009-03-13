@@ -197,8 +197,15 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
 
     // allow current waiters on LOADING to exit
-    if ([_condLock tryLockWhenCondition:LOADING])
+    if ([_condLock tryLockWhenCondition:LOADING]) {
+        // should never happen, but make sure we can't cache garbage...
+        if (_viewImage) {
+            FVLog(@"%s found a non-NULL _viewImage, and is disposing of it", __func__);
+            CFRelease(_viewImage);
+            _viewImage = NULL;
+        }
         [_condLock unlockWithCondition:LOADED];
+    }
     
     // block until IDLE is set, so current waiters don't get hosed by resetting the condition to IDLE
     [_condLock lockWhenCondition:IDLE];
