@@ -649,8 +649,11 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     size_t destRowBytes = FVPaddedRowBytesForWidth(4, desiredSize.width);
     FVImageBuffer *interleavedImageBuffer = [[FVImageBuffer alloc] initWithWidth:desiredSize.width height:desiredSize.height rowBytes:destRowBytes];
     vImage_Buffer *interleavedBuffer = interleavedImageBuffer->buffer;
-#warning fixme
-    // Not all columns are being filled when scaling; need to work around that somehow.
+
+    /*
+     !!! Not all columns are being filled when scaling; need to work around that somehow.  
+     There is at least a partial workaround in place as of r205.
+     */
     uint8_t fillColor = 0xaf;
     memset(interleavedBuffer->data, fillColor, interleavedBuffer->rowBytes * interleavedBuffer->height);
     const double scale = desiredSize.width / (double)originalWidth;
