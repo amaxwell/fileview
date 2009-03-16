@@ -1252,11 +1252,26 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     return attrString;
 }
 
+#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5
+/*
+ Redeclare these CF symbols since they don't have the appropriate __attribute__((weak_import))
+ decorator, so checking for a non-NULL function causes a crash on 10.4.
+ */
+CF_EXPORT
+CFStringTokenizerRef CFStringTokenizerCreate(CFAllocatorRef alloc, CFStringRef string, CFRange range, CFOptionFlags options, CFLocaleRef locale) AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
+CF_EXPORT
+CFStringTokenizerTokenType CFStringTokenizerAdvanceToNextToken(CFStringTokenizerRef tokenizer) AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
+CF_EXPORT
+CFTypeRef CFStringTokenizerCopyCurrentTokenAttribute(CFStringTokenizerRef tokenizer, CFOptionFlags attribute) AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
+#endif
+
 static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString)
 {
     NSString *string = [attributedString string];
-    // checking CFStringTokenizerCreate != NULL doesn't work, since the header doesn't have the appropriate weak import decorator
-#if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
+
+    if (NULL == CFStringTokenizerCreate)
+        return [string componentsSeparatedByString:@" "];
+    
     CFStringTokenizerRef tokenizer = CFStringTokenizerCreate(NULL, (CFStringRef)string, CFRangeMake(0, [string length]), kCFStringTokenizerUnitWord, NULL);
     NSMutableArray *words = [NSMutableArray array];
     while (kCFStringTokenizerTokenNone != CFStringTokenizerAdvanceToNextToken(tokenizer)) {
@@ -1268,9 +1283,6 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     }
     CFRelease(tokenizer);
     return words;
-#else
-    return [string componentsSeparatedByString:@" "];
-#endif
 }
 
 - (CGFloat)_widthOfLongestWordInDropMessage
