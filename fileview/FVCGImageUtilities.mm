@@ -112,8 +112,8 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
 }
 
 // private on all versions of OS X
-FV_EXTERN void * CGDataProviderGetBytePtr(CGDataProviderRef provider);
-FV_EXTERN size_t CGDataProviderGetSize(CGDataProviderRef provider);
+FV_EXTERN void * CGDataProviderGetBytePtr(CGDataProviderRef provider) WEAK_IMPORT_ATTRIBUTE;
+FV_EXTERN size_t CGDataProviderGetSize(CGDataProviderRef provider) WEAK_IMPORT_ATTRIBUTE;
 
 const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len)
 {
