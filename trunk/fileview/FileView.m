@@ -1255,11 +1255,8 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString)
 {
     NSString *string = [attributedString string];
-    
-    // !!! early return on 10.4
-    if (NULL == CFStringTokenizerCreate)
-        return [string componentsSeparatedByString:@" "];
-    
+    // checking CFStringTokenizerCreate != NULL doesn't work, since the header doesn't have the appropriate weak import decorator
+#if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
     CFStringTokenizerRef tokenizer = CFStringTokenizerCreate(NULL, (CFStringRef)string, CFRangeMake(0, [string length]), kCFStringTokenizerUnitWord, NULL);
     NSMutableArray *words = [NSMutableArray array];
     while (kCFStringTokenizerTokenNone != CFStringTokenizerAdvanceToNextToken(tokenizer)) {
@@ -1271,6 +1268,9 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     }
     CFRelease(tokenizer);
     return words;
+#else
+    return [string componentsSeparatedByString:@" "];
+#endif
 }
 
 - (CGFloat)_widthOfLongestWordInDropMessage
