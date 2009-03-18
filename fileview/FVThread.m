@@ -305,6 +305,8 @@ static void *__FVThread_main(void *obj)
 #if DEBUG_REAPER
             NSLog(@"Time to die.  %@", self);
 #endif            
+            NSCParameterAssert(nil == self->_target);
+            NSCParameterAssert(nil == self->_argument);
             pthread_mutex_unlock(&self->_mutex);
             break;
         }
@@ -315,6 +317,10 @@ static void *__FVThread_main(void *obj)
                 [self->_target performSelector:self->_selector];
             __FVBitClear(self->_flags, FVThreadWake);
             __FVBitSet(self->_flags, FVThreadWaiting);
+            [self->_target release];
+            self->_target = nil;
+            [self->_argument release];
+            self->_argument = nil;
             pthread_cond_signal(&self->_condition);
             pthread_mutex_unlock(&self->_mutex);
             
