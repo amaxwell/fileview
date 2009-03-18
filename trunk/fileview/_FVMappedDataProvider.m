@@ -102,6 +102,7 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
          Open the file so no one unlinks it until we're done here (may be a temporary PS file).  This means that stat and the assertion here will succeed if the file still exists.  The provider is supposed to handle mmap failures gracefully, so we just close the file descriptor when the provider info is set up. 
          */
         int fd = open(path, O_RDONLY);
+        fcntl(fd, F_NOCACHE, 1);
         struct stat sb;
         if (-1 != fd && -1 != fstat(fd, &sb)) {
             
@@ -114,8 +115,20 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
             mapInfo->zone = zone;
             mapInfo->path = NSZoneCalloc(zone, strlen(path) + 1, sizeof(char));
             strcpy(mapInfo->path, path);
-            mapInfo->length = sb.st_size;                
-            mapInfo->mapregion = NULL;
+            mapInfo->length = sb.st_size;   
+            // map immediately instead of lazily in __FVGetMappedRegion, since someone might edit the file
+            mapInfo->mapregion = mmap(0, mapInfo->length, PROT_READ, MAP_PRIVATE, fd, 0);
+            if (mapInfo->mapregion == (void *)-1) {
+                perror("failed to mmap file");
+                mapInfo->mapregion = NULL;
+            }
+            else {
+                bool swap;
+                do {
+                    int32_t newSize = _mappedDataSizeKB + (mapInfo->length) / 1024;
+                    swap = OSAtomicCompareAndSwap32Barrier(_mappedDataSizeKB, newSize, &_mappedDataSizeKB);
+                } while (false == swap);
+            }
 #if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
             pInfo->_provider = CGDataProviderCreateDirect(mapInfo, mapInfo->length, &_FVMappedDataProviderDirectCallBacks);
 #else
@@ -159,28 +172,6 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
 static const void *__FVGetMappedRegion(void *info)
 {
     FVMappedRegion *mapInfo = info;
-    if (NULL == mapInfo->mapregion) {
-        int fd = open(mapInfo->path, O_RDONLY);
-        if (-1 == fd) {
-            perror("failed to open PDF file");
-        }
-        else {
-            fcntl(fd, F_NOCACHE, 1);
-            mapInfo->mapregion = mmap(0, mapInfo->length, PROT_READ, MAP_SHARED, fd, 0);
-            if (mapInfo->mapregion == (void *)-1) {
-                perror("failed to mmap file");
-                mapInfo->mapregion = NULL;
-            }
-            else {
-                bool swap;
-                do {
-                    int32_t newSize = _mappedDataSizeKB + (mapInfo->length) / 1024;
-                    swap = OSAtomicCompareAndSwap32Barrier(_mappedDataSizeKB, newSize, &_mappedDataSizeKB);
-                } while (false == swap);
-            }
-            close(fd);
-        }
-    }
     return mapInfo->mapregion;
 }
 
