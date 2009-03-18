@@ -391,7 +391,7 @@ static NSInteger FVCacheLogLevel = 0;
             
             void *mapregion = NULL;
             const size_t mapLength = location->_compressedLength + location->_padLength;
-            if ((mapregion = mmap(0, mapLength, PROT_READ, MAP_SHARED, _fileDescriptor, location->_offset)) == (void *)-1) {
+            if ((mapregion = mmap(0, mapLength, PROT_READ, MAP_SHARED, _fileDescriptor, location->_offset)) == MAP_FAILED) {
                 perror("mmap failed");
                 return nil;
             }

@@ -118,7 +118,7 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
             mapInfo->length = sb.st_size;   
             // map immediately instead of lazily in __FVGetMappedRegion, since someone might edit the file
             mapInfo->mapregion = mmap(0, mapInfo->length, PROT_READ, MAP_PRIVATE, fd, 0);
-            if (mapInfo->mapregion == (void *)-1) {
+            if (mapInfo->mapregion == MAP_FAILED) {
                 perror("failed to mmap file");
                 mapInfo->mapregion = NULL;
             }
