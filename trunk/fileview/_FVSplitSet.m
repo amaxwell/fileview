@@ -43,6 +43,7 @@
 
 - (id)initWithSplit:(NSUInteger)split
 {
+    NSParameterAssert(split > 0);
     self = [super init];
     if (self) {
         _old = CFSetCreateMutable(CFAllocatorGetDefault(), 0, NULL);
@@ -65,13 +66,12 @@
 
 - (void)addObject:(id)obj
 {
-    if ((NSUInteger)CFSetGetCount(_new) < _split) {
-        CFSetAddValue(_new, obj);
-    }
-    else {
+    if (_split == (NSUInteger)CFSetGetCount(_new)) {
         [(NSMutableSet *)_old unionSet:(NSSet *)_new];
         CFSetRemoveAllValues(_new);
     }
+    CFSetAddValue(_new, obj);
+    CFSetRemoveValue(_old, obj);
 }
 
 - (void)removeObject:(id)obj
