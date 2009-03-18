@@ -307,20 +307,28 @@ static void *__FVThread_main(void *obj)
 #endif            
             NSCParameterAssert(nil == self->_target);
             NSCParameterAssert(nil == self->_argument);
+            NSCParameterAssert(NULL == self->_selector);
             pthread_mutex_unlock(&self->_mutex);
             break;
         }
         else {
+            
+            // this is certainly a developer error
+            FVAPIParameterAssert(NULL != self->_selector);
             if (self->_argument)
                 [self->_target performSelector:self->_selector withObject:self->_argument];
             else
                 [self->_target performSelector:self->_selector];
             __FVBitClear(self->_flags, FVThreadWake);
             __FVBitSet(self->_flags, FVThreadWaiting);
+            
+            // reset all ivars
             [self->_target release];
             self->_target = nil;
             [self->_argument release];
             self->_argument = nil;
+            self->_selector = NULL;
+            
             pthread_cond_signal(&self->_condition);
             pthread_mutex_unlock(&self->_mutex);
             
