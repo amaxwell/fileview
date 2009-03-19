@@ -48,6 +48,7 @@
     NSMutableArray         *_orderedURLs;
     NSMutableArray         *_orderedSubtitles;
     CFRunLoopTimerRef       _zombieTimer;
+    NSMutableDictionary    *_zombieIconCache;
     NSMutableDictionary    *_iconCache;
     CFMutableDictionaryRef  _infoTable;
     FVOperationQueue       *_operationQueue;
