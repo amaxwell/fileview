@@ -430,7 +430,9 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         
         [_webView setFrameLoadDelegate:self];
         [_webView setPolicyDelegate:self];
-        [[_webView mainFrame] loadRequest:[NSURLRequest requestWithURL:_httpURL]];        
+        
+        NSURLRequest *request = [NSURLRequest requestWithURL:_httpURL cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:60.0];
+        [[_webView mainFrame] loadRequest:request];        
     }
 }
 
