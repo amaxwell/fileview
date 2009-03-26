@@ -103,10 +103,25 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     FVAPIAssert2(pthread_main_np() != 0, @"*** threading violation *** -[%@ %@] requires main thread", [self class], NSStringFromSelector(_cmd));
     FVAPIParameterAssert(_maxWebViews > 0);
     WebView *view = nil;
-    if (_numberOfWebViews <= _maxWebViews) {
+    if (_numberOfWebViews < _maxWebViews) {
         NSSize size = [self _webViewSize];
         view = [[WebView alloc] initWithFrame:NSMakeRect(0, 0, size.width, size.height)];
         _numberOfWebViews++;
+        
+        
+        NSString *prefIdentifier = [NSString stringWithFormat:@"%@.%@", [[NSBundle bundleForClass:self] bundleIdentifier], self];
+        [view setPreferencesIdentifier:prefIdentifier];
+        
+        WebPreferences *prefs = [view preferences];
+        [prefs setPlugInsEnabled:NO];
+        [prefs setJavaEnabled:NO];
+        [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
+        [prefs setJavaScriptEnabled:NO];
+        [prefs setAllowsAnimatedImages:NO];
+        
+        // most memory-efficient setting; remote resources are still cached to disk
+        if ([prefs respondsToSelector:@selector(setCacheModel:)])
+            [prefs setCacheModel:WebCacheModelDocumentViewer];
     }
     return view;
 }
@@ -144,6 +159,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         
         _cacheKey = [FVIconCache newKeyForURL:_httpURL];
         _condLock = [[NSConditionLock allocWithZone:[self zone]] initWithCondition:IDLE];
+        _cancelledLoad = false;
     }
     return self;
 }
@@ -203,7 +219,9 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
             FVLog(@"%s found a non-NULL _viewImage, and is disposing of it", __func__);
             CFRelease(_viewImage);
             _viewImage = NULL;
-        }
+        }        
+        // need to avoid creating the fallback icon in this case, so we know to retry later
+        _cancelledLoad = true;
         [_condLock unlockWithCondition:LOADED];
     }
     
@@ -226,6 +244,13 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 {
     [FVIconCache invalidateCachesForKey:_cacheKey];
     [self releaseResources];
+    
+    // this is a sentinel value for needsRenderForSize:
+    [self lock];    
+    _cancelledLoad = false;
+    [_fallbackIcon release];
+    _fallbackIcon = nil;
+    [self unlock];
 }
 
 - (BOOL)tryLock { return [_condLock tryLock]; }
@@ -399,30 +424,13 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(_handleWebViewAvailableNotification:) name:FVWebIconWebViewAvailableNotificationName object:[self class]];
     }
     else {
-        // always use the WebKit cache, and use the default timeout
-        NSURLRequest *request = [NSURLRequest requestWithURL:_httpURL cachePolicy:NSURLRequestReturnCacheDataElseLoad timeoutInterval:60.0];
         
         // See also http://lists.apple.com/archives/quicklook-dev/2007/Nov/msg00047.html
         // Note: changed from blocking to non-blocking; we now just keep state and rely on the delegate methods.
         
-        Class cls = [self class];
-        NSString *prefIdentifier = [NSString stringWithFormat:@"%@.%@", [[NSBundle bundleForClass:cls] bundleIdentifier], cls];
-        [_webView setPreferencesIdentifier:prefIdentifier];
-        
-        WebPreferences *prefs = [_webView preferences];
-        [prefs setPlugInsEnabled:NO];
-        [prefs setJavaEnabled:NO];
-        [prefs setJavaScriptCanOpenWindowsAutomatically:NO];
-        [prefs setJavaScriptEnabled:NO];
-        [prefs setAllowsAnimatedImages:NO];
-        
-        // most memory-efficient setting; remote resources are still cached to disk
-        if ([prefs respondsToSelector:@selector(setCacheModel:)])
-            [prefs setCacheModel:WebCacheModelDocumentViewer];
-        
         [_webView setFrameLoadDelegate:self];
         [_webView setPolicyDelegate:self];
-        [[_webView mainFrame] loadRequest:request];        
+        [[_webView mainFrame] loadRequest:[NSURLRequest requestWithURL:_httpURL]];        
     }
 }
 
@@ -469,6 +477,14 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         
         CGImageRef fullImage = NULL, thumbnail = NULL;
         
+        /*
+         Possible states:
+         1) non-NULL _viewImage: successfull load
+         2) NULL view image
+            a) cancelled load
+            b) failed to load
+         */
+        
         if (NULL != _viewImage) {
             
             CGImageRelease(_fullImage);
@@ -486,9 +502,10 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
             fullImage = CGImageRetain(_fullImage);
             thumbnail = CGImageRetain(_thumbnail);
         }
-        else if (nil == _fallbackIcon) {
+        else if (nil == _fallbackIcon && false == _cancelledLoad) {
             _fallbackIcon = [[FVFinderIcon allocWithZone:[self zone]] initWithURL:_httpURL];
         }
+        // don't allocate anything for a load that was cancelled (releaseResources called during load)
         
         // unlock before caching images so drawing can take place
         [_condLock unlockWithCondition:IDLE];

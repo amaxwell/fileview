@@ -55,6 +55,7 @@
     NSSize           _desiredSize;
     WebView         *_webView;
     id               _cacheKey;
+    bool             _cancelledLoad;
     NSConditionLock *_condLock;
 }
 
