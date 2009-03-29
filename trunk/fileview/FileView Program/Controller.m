@@ -104,6 +104,8 @@
     [arrayController insertObject:[NSURL URLWithString:@"doi:10.2112/06-0677.1"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"mailto:amaxwell@users.sourceforge.net"] atArrangedObjectIndex:insertIndex++];
     
+    [arrayController insertObject:[NSURL URLWithString:@"http://192.168.0.1"] atArrangedObjectIndex:insertIndex++];
+    
     // nonexistent domain
     [arrayController insertObject:[NSURL URLWithString:@"http://bibdesk.sourceforge.tld/"] atArrangedObjectIndex:insertIndex++];
 
