@@ -895,8 +895,10 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     // Mmalc's example unbinds here for a nil superview, and that's the only way I see at present to unbind without having the client do it explicitly, for instance in a windowWillClose:.  Perhaps it would be better for register for that in the view?   Old comment: this causes problems if you remove the view and add it back in later (and also can cause crashes as a side effect, if we're not careful with the datasource).
     if (nil == newSuperview) {
         
-        if (_fvFlags.isObservingSelectionIndexes) 
+        if (_fvFlags.isObservingSelectionIndexes) {
             [self removeObserver:self forKeyPath:@"selectionIndexes"];
+            _fvFlags.isObservingSelectionIndexes = NO;
+        }
         
         [self unbindExposedBindings];
 
@@ -908,8 +910,10 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     }
     else {
         
-        if (NO == _fvFlags.isObservingSelectionIndexes)
+        if (NO == _fvFlags.isObservingSelectionIndexes) {
             [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:&_FVInternalSelectionObserverContext];
+            _fvFlags.isObservingSelectionIndexes = YES;
+        }
         
         // bind here (noop if we don't have a slider)
         FVSlider *slider = [_sliderWindow slider];
