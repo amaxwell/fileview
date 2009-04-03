@@ -1361,7 +1361,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         [message drawWithRect:containerRect options:NSStringDrawingUsesLineFragmentOrigin];
 }
 
-- (void)handleKeyNotification:(NSNotification *)aNote
+- (void)handleMainNotification:(NSNotification *)aNote
 {
     [self setNeedsDisplay:YES];
 }
@@ -1372,12 +1372,12 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
     NSWindow *window = [self window];
     if (window) {
-        [nc addObserver:self selector:@selector(handleKeyNotification:) name:NSWindowDidBecomeKeyNotification object:window];
-        [nc addObserver:self selector:@selector(handleKeyNotification:) name:NSWindowDidResignKeyNotification object:window];
+        [nc addObserver:self selector:@selector(handleMainNotification:) name:NSWindowDidBecomeMainNotification object:window];
+        [nc addObserver:self selector:@selector(handleMainNotification:) name:NSWindowDidResignMainNotification object:window];
     }
     else {
-        [nc removeObserver:self name:NSWindowDidBecomeKeyNotification object:nil];
-        [nc removeObserver:self name:NSWindowDidResignKeyNotification object:nil];
+        [nc removeObserver:self name:NSWindowDidBecomeMainNotification object:nil];
+        [nc removeObserver:self name:NSWindowDidResignMainNotification object:nil];
     }
 }
 
