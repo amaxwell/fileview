@@ -151,9 +151,7 @@
 {
     if (_orderedURLs != array) {
         [_orderedURLs release];
-        
-        // The array parameter will typically be an NSArrayController proxy object.  The view observes mutations to the collection and calls -reload, so we can retain instead of copying (which creates an NSCFArray).
-        _orderedURLs = [array retain];
+        _orderedURLs = [array copyWithZone:[self zone]];
     }    
 }
 

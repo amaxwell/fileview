@@ -734,16 +734,13 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 #pragma mark Binding support
 
-// should only be called when establishing a new binding
-- (void)setContent:(NSArray *)anArray;
+- (void)setContent:(NSArray *)content
 {
-    [_controller setIconURLs:anArray];
-    [self setSelectionIndexes:[NSIndexSet indexSet]];
-    // datasource methods all trigger a redisplay, so we have to do the same here
+    [_controller setIconURLs:content];
     [self reloadIcons];
 }
 
-- (NSArray *)content;
+- (NSArray *)content
 {
     return [_controller iconURLs];
 }
@@ -786,8 +783,11 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         }
     }
     else if (context == &_FVContentBindingToControllerObserverContext) {
-        NSParameterAssert([keyPath isEqualToString:@"content"]);
+        NSParameterAssert(nil != _contentBinding);
+        _FVBinding *contentBinding = _contentBinding;
+        NSParameterAssert([keyPath isEqualToString:contentBinding->_keyPath]);
         // change to the number of icons or some rearrangement
+        [_controller setIconURLs:[contentBinding->_observable valueForKeyPath:contentBinding->_keyPath]];
         [self reloadIcons];
     }
     else {
@@ -810,19 +810,30 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         // Create an object to handle the binding mechanics manually; it's deallocated when the client unbinds.
         _selectionBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
         [observable addObserver:self forKeyPath:keyPath options:0 context:&_FVSelectionBindingToControllerObserverContext];
+        
+        // set initial values
+        _selectedIndexes = [[observable valueForKeyPath:keyPath] mutableCopy];
+        [self setNeedsDisplay:YES];
     }
     else if ([binding isEqualToString:@"content"]) {
      
         FVAPIAssert3(nil == _contentBinding, @"attempt to bind %@ to %@ when bound to %@", keyPath, observable, ((_FVBinding *)_contentBinding)->_observable);
-        
+                
         // keep a record of the observervable object for unbinding; this is strictly for observation, not a manual binding
         _contentBinding = [[_FVBinding alloc] initWithObservable:observable keyPath:keyPath options:options];
-        [observable addObserver:self forKeyPath:@"content" options:0 context:&_FVContentBindingToControllerObserverContext];
+        [observable addObserver:self forKeyPath:keyPath options:0 context:&_FVContentBindingToControllerObserverContext];
         [_controller setBound:YES];
+        
+        // set initial values
+        [_controller setIconURLs:[observable valueForKeyPath:keyPath]];
+        [self reloadIcons];
     }
+    else {
     
-    // ??? the IB inspector doesn't show values properly unless I call super for that case as well
-    [super bind:binding toObject:observable withKeyPath:keyPath options:options];
+        // ??? the IB inspector doesn't show values properly unless I call super for that case as well
+#warning check this again
+        [super bind:binding toObject:observable withKeyPath:keyPath options:options];
+    }
 }
 
 - (void)unbind:(NSString *)binding
@@ -838,7 +849,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         FVAPIAssert2(nil != _contentBinding, @"%@: attempt to unbind %@ when unbound", self, binding);
         
         _FVBinding *contentBinding = (_FVBinding *)_contentBinding;
-        [contentBinding->_observable removeObserver:self forKeyPath:@"content"];
+        [contentBinding->_observable removeObserver:self forKeyPath:contentBinding->_keyPath];
         [_contentBinding release];
         _contentBinding = nil;
         [_controller setBound:NO];
