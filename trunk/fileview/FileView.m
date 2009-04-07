@@ -830,9 +830,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [self reloadIcons];
     }
     else {
-    
-        // ??? the IB inspector doesn't show values properly unless I call super for that case as well
-#warning check this again
         [super bind:binding toObject:observable withKeyPath:keyPath options:options];
     }
 }
