@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<archive type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="7.02">
+<archive type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="7.03">
 	<data>
 		<int key="IBDocument.SystemTarget">1050</int>
-		<string key="IBDocument.SystemVersion">9E17</string>
-		<string key="IBDocument.InterfaceBuilderVersion">670</string>
-		<string key="IBDocument.AppKitVersion">949.33</string>
-		<string key="IBDocument.HIToolboxVersion">352.00</string>
+		<string key="IBDocument.SystemVersion">9J39</string>
+		<string key="IBDocument.InterfaceBuilderVersion">677</string>
+		<string key="IBDocument.AppKitVersion">949.46</string>
+		<string key="IBDocument.HIToolboxVersion">353.00</string>
 		<object class="NSMutableArray" key="IBDocument.EditedObjectIDs">
 			<bool key="EncodedWithXMLCoder">YES</bool>
 			<integer value="372"/>
@@ -15,6 +15,15 @@
 			<string>com.apple.InterfaceBuilderKit</string>
 			<string>com.mac.amaxwell.FileViewIBPlugin</string>
 			<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
+		</object>
+		<object class="NSMutableDictionary" key="IBDocument.Metadata">
+			<bool key="EncodedWithXMLCoder">YES</bool>
+			<object class="NSArray" key="dict.sortedKeys">
+				<bool key="EncodedWithXMLCoder">YES</bool>
+			</object>
+			<object class="NSMutableArray" key="dict.values">
+				<bool key="EncodedWithXMLCoder">YES</bool>
+			</object>
 		</object>
 		<object class="NSMutableArray" key="IBDocument.RootObjects" id="1048">
 			<bool key="EncodedWithXMLCoder">YES</bool>
@@ -1106,7 +1115,7 @@
 				<int key="NSWindowStyleMask">15</int>
 				<int key="NSWindowBacking">2</int>
 				<string key="NSWindowRect">{{335, 389}, {480, 361}}</string>
-				<int key="NSWTFlags">1946157056</int>
+				<int key="NSWTFlags">872415232</int>
 				<string key="NSWindowTitle">Window</string>
 				<string key="NSWindowClass">NSWindow</string>
 				<nil key="NSViewClass"/>
@@ -1375,6 +1384,22 @@
 				<bool key="NSSelectsInsertedObjects">YES</bool>
 				<bool key="NSFilterRestrictsInsertion">YES</bool>
 				<bool key="NSClearsFilterPredicateOnInsertion">YES</bool>
+			</object>
+			<object class="NSObjectController" id="347519552">
+				<object class="NSMutableArray" key="NSDeclaredKeys">
+					<bool key="EncodedWithXMLCoder">YES</bool>
+					<object class="NSMutableString">
+						<characters key="NS.bytes">_fileView.backgroundColor</characters>
+					</object>
+					<object class="NSMutableString">
+						<characters key="NS.bytes">_fileView.iconScale</characters>
+					</object>
+					<object class="NSMutableString">
+						<characters key="NS.bytes">_iconURLs</characters>
+					</object>
+				</object>
+				<bool key="NSEditable">YES</bool>
+				<object class="_NSManagedProxy" key="_NSManagedProxy"/>
 			</object>
 		</object>
 		<object class="IBObjectContainer" key="IBDocument.Objects">
@@ -1917,22 +1942,6 @@
 					<int key="connectionID">452</int>
 				</object>
 				<object class="IBConnectionRecord">
-					<object class="IBBindingConnection" key="connection">
-						<string key="label">contentArray: self._iconURLs</string>
-						<reference key="source" ref="172140943"/>
-						<reference key="destination" ref="770101982"/>
-						<object class="NSNibBindingConnector" key="connector">
-							<reference key="NSSource" ref="172140943"/>
-							<reference key="NSDestination" ref="770101982"/>
-							<string key="NSLabel">contentArray: self._iconURLs</string>
-							<string key="NSBinding">contentArray</string>
-							<string key="NSKeyPath">self._iconURLs</string>
-							<int key="NSNibBindingConnectorVersion">2</int>
-						</object>
-					</object>
-					<int key="connectionID">453</int>
-				</object>
-				<object class="IBConnectionRecord">
 					<object class="IBOutletConnection" key="connection">
 						<string key="label">delegate</string>
 						<reference key="source" ref="1050"/>
@@ -1991,38 +2000,6 @@
 				</object>
 				<object class="IBConnectionRecord">
 					<object class="IBBindingConnection" key="connection">
-						<string key="label">value: self._fileView.iconScale</string>
-						<reference key="source" ref="132006194"/>
-						<reference key="destination" ref="770101982"/>
-						<object class="NSNibBindingConnector" key="connector">
-							<reference key="NSSource" ref="132006194"/>
-							<reference key="NSDestination" ref="770101982"/>
-							<string key="NSLabel">value: self._fileView.iconScale</string>
-							<string key="NSBinding">value</string>
-							<string key="NSKeyPath">self._fileView.iconScale</string>
-							<int key="NSNibBindingConnectorVersion">2</int>
-						</object>
-					</object>
-					<int key="connectionID">471</int>
-				</object>
-				<object class="IBConnectionRecord">
-					<object class="IBBindingConnection" key="connection">
-						<string key="label">value: self._fileView.backgroundColor</string>
-						<reference key="source" ref="685220921"/>
-						<reference key="destination" ref="770101982"/>
-						<object class="NSNibBindingConnector" key="connector">
-							<reference key="NSSource" ref="685220921"/>
-							<reference key="NSDestination" ref="770101982"/>
-							<string key="NSLabel">value: self._fileView.backgroundColor</string>
-							<string key="NSBinding">value</string>
-							<string key="NSKeyPath">self._fileView.backgroundColor</string>
-							<int key="NSNibBindingConnectorVersion">2</int>
-						</object>
-					</object>
-					<int key="connectionID">484</int>
-				</object>
-				<object class="IBConnectionRecord">
-					<object class="IBBindingConnection" key="connection">
 						<string key="label">displayPatternValue1: selection.@count</string>
 						<reference key="source" ref="15303279"/>
 						<reference key="destination" ref="172140943"/>
@@ -2061,6 +2038,70 @@
 						</object>
 					</object>
 					<int key="connectionID">492</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBOutletConnection" key="connection">
+						<string key="label">window</string>
+						<reference key="source" ref="770101982"/>
+						<reference key="destination" ref="972006081"/>
+					</object>
+					<int key="connectionID">493</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBOutletConnection" key="connection">
+						<string key="label">content</string>
+						<reference key="source" ref="347519552"/>
+						<reference key="destination" ref="770101982"/>
+					</object>
+					<int key="connectionID">495</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: selection._fileView.backgroundColor</string>
+						<reference key="source" ref="685220921"/>
+						<reference key="destination" ref="347519552"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="685220921"/>
+							<reference key="NSDestination" ref="347519552"/>
+							<string key="NSLabel">value: selection._fileView.backgroundColor</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">selection._fileView.backgroundColor</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">498</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">value: selection._fileView.iconScale</string>
+						<reference key="source" ref="132006194"/>
+						<reference key="destination" ref="347519552"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="132006194"/>
+							<reference key="NSDestination" ref="347519552"/>
+							<string key="NSLabel">value: selection._fileView.iconScale</string>
+							<string key="NSBinding">value</string>
+							<string key="NSKeyPath">selection._fileView.iconScale</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">499</int>
+				</object>
+				<object class="IBConnectionRecord">
+					<object class="IBBindingConnection" key="connection">
+						<string key="label">contentArray: selection._iconURLs</string>
+						<reference key="source" ref="172140943"/>
+						<reference key="destination" ref="347519552"/>
+						<object class="NSNibBindingConnector" key="connector">
+							<reference key="NSSource" ref="172140943"/>
+							<reference key="NSDestination" ref="347519552"/>
+							<string key="NSLabel">contentArray: selection._iconURLs</string>
+							<string key="NSBinding">contentArray</string>
+							<string key="NSKeyPath">selection._iconURLs</string>
+							<int key="NSNibBindingConnectorVersion">2</int>
+						</object>
+					</object>
+					<int key="connectionID">501</int>
 				</object>
 			</object>
 			<object class="IBMutableOrderedSet" key="objectRecords">
@@ -3058,6 +3099,11 @@
 						<reference key="object" ref="685220921"/>
 						<reference key="parent" ref="439893737"/>
 					</object>
+					<object class="IBObjectRecord">
+						<int key="objectID">494</int>
+						<reference key="object" ref="347519552"/>
+						<reference key="parent" ref="1049"/>
+					</object>
 				</object>
 			</object>
 			<object class="NSMutableDictionary" key="flattenedProperties">
@@ -3197,7 +3243,6 @@
 					<string>354.IBPluginDependency</string>
 					<string>354.ImportedFromIB2</string>
 					<string>371.IBEditorWindowLastContentRect</string>
-					<string>371.IBPluginDependency</string>
 					<string>371.IBWindowTemplateEditedContentRect</string>
 					<string>371.NSWindowTemplate.visibleAtLaunch</string>
 					<string>371.editorWindowContentRectSynchronizationRect</string>
@@ -3252,6 +3297,7 @@
 					<string>417.IBPluginDependency</string>
 					<string>418.IBPluginDependency</string>
 					<string>419.IBPluginDependency</string>
+					<string>420.IBPluginDependency</string>
 					<string>450.IBPluginDependency</string>
 					<string>451.IBPluginDependency</string>
 					<string>454.IBPluginDependency</string>
@@ -3266,6 +3312,7 @@
 					<string>477.IBPluginDependency</string>
 					<string>478.IBPluginDependency</string>
 					<string>483.IBPluginDependency</string>
+					<string>494.IBPluginDependency</string>
 					<string>5.IBPluginDependency</string>
 					<string>5.ImportedFromIB2</string>
 					<string>56.IBPluginDependency</string>
@@ -3436,9 +3483,8 @@
 					<reference ref="9"/>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<reference ref="9"/>
-					<string>{{217, 389}, {480, 361}}</string>
-					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
-					<string>{{217, 389}, {480, 361}}</string>
+					<string>{{224, 522}, {480, 361}}</string>
+					<string>{{224, 522}, {480, 361}}</string>
 					<reference ref="9"/>
 					<string>{{33, 99}, {480, 360}}</string>
 					<reference ref="9"/>
@@ -3494,10 +3540,12 @@
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
+					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.mac.amaxwell.FileViewIBPlugin</string>
 					<string>com.mac.amaxwell.FileViewIBPlugin</string>
 					<string>com.mac.amaxwell.FileViewIBPlugin</string>
 					<string>com.mac.amaxwell.FileViewIBPlugin</string>
+					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
 					<string>com.apple.InterfaceBuilder.CocoaPlugin</string>
@@ -3563,7 +3611,7 @@
 				</object>
 			</object>
 			<nil key="sourceID"/>
-			<int key="maxID">492</int>
+			<int key="maxID">501</int>
 		</object>
 		<object class="IBClassDescriber" key="IBDocument.Classes">
 			<object class="NSMutableArray" key="referencedPartialClassDescriptions">
