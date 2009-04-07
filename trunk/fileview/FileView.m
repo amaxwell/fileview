@@ -2689,13 +2689,19 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 - (IBAction)reloadSelectedIcons:(id)sender;
 {
-    NSEnumerator *iconEnum = [[_controller iconsAtIndexes:[self selectionIndexes]] objectEnumerator];
-    FVIcon *anIcon;
-    while ((anIcon = [iconEnum nextObject]) != nil)
-        [anIcon recache];
+    // callers aren't required to validate based on selection, so make this a noop in that case
+    if ([[self selectionIndexes] count]) {
+        NSEnumerator *iconEnum = [[_controller iconsAtIndexes:[self selectionIndexes]] objectEnumerator];
+        FVIcon *anIcon;
+        while ((anIcon = [iconEnum nextObject]) != nil)
+            [anIcon recache];
 
-    // ensure consistency between controller and icon, since this will require re-reading the URL from disk/net
-    [self _reloadIconsAndController:YES];
+        // ensure consistency between controller and icon, since this will require re-reading the URL from disk/net
+        [self _reloadIconsAndController:YES];
+    }
+    else {
+        NSBeep();
+    }
 }
 
 #pragma mark Context menu
