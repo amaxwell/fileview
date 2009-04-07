@@ -812,6 +812,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [observable addObserver:self forKeyPath:keyPath options:0 context:&_FVSelectionBindingToControllerObserverContext];
         
         // set initial values
+        [_selectedIndexes release];
         _selectedIndexes = [[observable valueForKeyPath:keyPath] mutableCopy];
         [self setNeedsDisplay:YES];
     }
