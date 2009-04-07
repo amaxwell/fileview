@@ -423,7 +423,7 @@ static char _FVContentBindingToControllerObserverContext;
         NSString *weblocType = @"CorePasteboardFlavorType 0x75726C20";
         [self registerForDraggedTypes:[NSArray arrayWithObjects:NSFilenamesPboardType, NSURLPboardType, weblocType, (NSString *)kUTTypeURL, (NSString *)kUTTypeUTF8PlainText, NSStringPboardType, nil]];
     } else {
-        [self registerForDraggedTypes:nil];
+        [self unregisterDraggedTypes];
     }
 }
 
