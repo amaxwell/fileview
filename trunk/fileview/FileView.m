@@ -865,12 +865,12 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 - (NSDictionary *)infoForBinding:(NSString *)binding;
 {
     NSDictionary *info = nil;
-    if ([binding isEqualToString:@"selectionIndexes"] && nil != _selectionBinding) {
+    if (([binding isEqualToString:@"selectionIndexes"] && nil != _selectionBinding) || ([binding isEqualToString:@"content"] && nil != _contentBinding)) {
         NSMutableDictionary *bindingInfo = [NSMutableDictionary dictionary];
-        _FVBinding *selBinding = _selectionBinding;
-        if (selBinding->_observable) [bindingInfo setObject:selBinding->_observable forKey:NSObservedObjectKey];
-        if (selBinding->_keyPath) [bindingInfo setObject:selBinding->_keyPath forKey:NSObservedKeyPathKey];
-        if (selBinding->_options) [bindingInfo setObject:selBinding->_options forKey:NSOptionsKey];
+        _FVBinding *theBinding = [binding isEqualToString:@"selectionIndexes"] ? _selectionBinding : _contentBinding;
+        if (theBinding->_observable) [bindingInfo setObject:theBinding->_observable forKey:NSObservedObjectKey];
+        if (theBinding->_keyPath) [bindingInfo setObject:theBinding->_keyPath forKey:NSObservedKeyPathKey];
+        if (theBinding->_options) [bindingInfo setObject:theBinding->_options forKey:NSOptionsKey];
         info = bindingInfo;
     }
     else {
