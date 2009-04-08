@@ -71,7 +71,7 @@
 - (void)ibPopulateKeyPaths:(NSMutableDictionary *)keyPaths {
     [super ibPopulateKeyPaths:keyPaths];
 	
-    [[keyPaths objectForKey:IBAttributeKeyPaths] addObjectsFromArray:[NSArray arrayWithObjects:@"backgroundColor", @"iconScale", @"editable", @"content", @"selectionIndexes", @"minIconScale", @"maxIconScale", nil]];
+    [[keyPaths objectForKey:IBAttributeKeyPaths] addObjectsFromArray:[NSArray arrayWithObjects:@"backgroundColor", @"iconScale", @"editable", @"selectionIndexes", @"minIconScale", @"maxIconScale", nil]];
 }
 
 - (void)ibPopulateAttributeInspectorClasses:(NSMutableArray *)classes {
