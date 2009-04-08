@@ -734,17 +734,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 #pragma mark Binding support
 
-- (void)setContent:(NSArray *)content
-{
-    [_controller setIconURLs:content];
-    [self reloadIcons];
-}
-
-- (NSArray *)content
-{
-    return [_controller iconURLs];
-}
-
 - (void)observeValueForKeyPath:(NSString *)keyPath ofObject:(id)object change:(NSDictionary *)change context:(void *)context
 {    
     if (context == &_FVInternalSelectionObserverContext || context == &_FVSelectionBindingToControllerObserverContext) {
@@ -881,6 +870,12 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     Class valueClass = Nil;
     if ([binding isEqualToString:@"selectionIndexes"])
         valueClass = [NSIndexSet class];
+    else if ([binding isEqualToString:@"content"])
+        valueClass = [NSArray class];
+    else if ([binding isEqualToString:@"backgroundColor"])
+        valueClass = [NSColor class];
+    else if ([binding isEqualToString:@"iconScale"] || [binding isEqualToString:@"maxIconScale"] || [binding isEqualToString:@"minIconScale"])
+        valueClass = [NSNumber class];
     else
         valueClass = [super valueClassForBinding:binding];
     return valueClass;
