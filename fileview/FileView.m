@@ -1197,7 +1197,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 {
     CGContextRef drawingContext = [[NSGraphicsContext currentContext] graphicsPort];
     
-    // drawing into a CGImage and then overlaying it keeps the rubber band highlight much more responsive
+    // drawing into a CGLayer and then overlaying it keeps the rubber band highlight much more responsive
     if (NULL == _selectionOverlay) {
         
         _selectionOverlay = CGLayerCreateWithContext(drawingContext, CGSizeMake(NSWidth(aRect), NSHeight(aRect)), NULL);
@@ -1227,7 +1227,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [nsContext restoreGraphicsState];
         [NSGraphicsContext restoreGraphicsState];
     }
-    // make sure we use source over for drawing the image
+    // make sure we use source over for drawing the layer
     CGContextSaveGState(drawingContext);
     CGContextSetBlendMode(drawingContext, kCGBlendModeNormal);
     CGContextDrawLayerInRect(drawingContext, NSRectToCGRect(aRect), _selectionOverlay);
@@ -1263,7 +1263,8 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 #if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5
 /*
  Redeclare these CF symbols since they don't have the appropriate __attribute__((weak_import))
- decorator, so checking for a non-NULL function causes a crash on 10.4.
+ decorator.  This is sufficient to allow checking for NULL (tested on 10.4.11 Server).
+ rdar://problem/6781636
  */
 CF_EXPORT
 CFStringTokenizerRef CFStringTokenizerCreate(CFAllocatorRef alloc, CFStringRef string, CFRange range, CFOptionFlags options, CFLocaleRef locale) AVAILABLE_MAC_OS_X_VERSION_10_5_AND_LATER;
