@@ -3010,23 +3010,129 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     [self setNeedsDisplayInRect:dirtyRect];
 }
 
+static NSScrollView * __FVHidingScrollView()
+{
+    static NSScrollView *scrollView = nil;
+    if (nil == scrollView) {
+        NSRect frame = NSMakeRect(0, 0, 10, 10);
+        scrollView = [[NSScrollView allocWithZone:NULL] initWithFrame:frame];
+        NSView *docView = [[NSView allocWithZone:NULL] initWithFrame:frame];
+        [scrollView setDocumentView:docView];
+        [docView release];
+        [scrollView setHasVerticalScroller:YES];
+        [scrollView setHasHorizontalScroller:YES];
+        [scrollView setAutohidesScrollers:YES];
+    }
+    return scrollView;
+}
+
+static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
+{
+    if (scrollView == nil || [scrollView autohidesScrollers] == NO)
+        return NO;
+
+    if ([scrollView hasVerticalScroller] == NO)
+        return NO;
+    
+    NSSize contentSize = [scrollView contentSize];
+    NSSize contentSizeWithScroller = [NSScrollView contentSizeForFrameSize:[scrollView frame].size
+                                                     hasHorizontalScroller:NO
+                                                       hasVerticalScroller:YES
+                                                                borderType:[scrollView borderType]];
+    return ((NSInteger)contentSize.width == (NSInteger)contentSizeWithScroller.width);
+}
+
+- (BOOL)willUnhideVerticalScrollerWithFrame:(NSRect)frame
+{
+    // !!! early return; nothing to do in this case
+    if (__FVScrollViewHasVerticalScroller([self enclosingScrollView]))
+        return NO;
+
+    NSScrollView *scrollView = __FVHidingScrollView();
+    [scrollView setBorderType:[[self enclosingScrollView] borderType]];
+    
+    // scrollview has same frame as our enclosing scrollview
+    [scrollView setFrame:[[self enclosingScrollView] frame]];    
+    [[scrollView documentView] setFrame:frame];
+    
+    return __FVScrollViewHasVerticalScroller(scrollView);
+}
+
 - (void)_recalculateGridSize
 {
-    NSClipView *cv = [[self enclosingScrollView] contentView];
-    NSRect minFrame = cv ? [cv bounds] : [self frame];
-    NSRect frame = NSZeroRect;
+    NSRect minFrame = [self frame];
+    
+    // using the scrollview's frame is incorrect if it has a border, and using the clip view has other complications
+    NSScrollView *sv = [self enclosingScrollView];
+    if (sv) {
+        minFrame.size = [NSScrollView contentSizeForFrameSize:[sv frame].size
+                                        hasHorizontalScroller:NO
+                                          hasVerticalScroller:NO
+                                                   borderType:[sv borderType]];
+    }
     
     _padding = [self _defaultPaddingForScale:0];
     CGFloat length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin];    
     _iconSize = NSMakeSize(length, length);
     
+    // compute a preliminary guess for the frame size
+    NSRect frame = NSZeroRect;
     frame.size.width = NSWidth(minFrame);
     frame.size.height = MAX([self _rowHeight] * [self numberOfRows] + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
     
-    if (NSEqualRects(frame, [self frame]) == NO)
-        [self setFrame:frame];       
-} 
+    // see if the vertical scroller will show its ugly face and muck up the layout...
+    if ([self willUnhideVerticalScrollerWithFrame:frame]) {
+        
+        CGFloat scrollerWidth = [NSScroller scrollerWidthForControlSize:[[[self enclosingScrollView] verticalScroller] controlSize]];
+                    
+        // shrink by the scroller width and recompute icon size
+        length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin] - scrollerWidth;    
+        _iconSize = NSMakeSize(length, length);
+        frame.size.height = MAX([self _rowHeight] * [self numberOfRows] + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
+        
+        // after icon size adjustment, width adjustment may not be necessary since height is smaller
+        if ([self willUnhideVerticalScrollerWithFrame:frame] && __FVScrollViewHasVerticalScroller([self enclosingScrollView]) == NO)
+            frame.size.width -= scrollerWidth;
+        
+        /*
+         It should be possible to be more clever here, but NSScrollView has some odd behavior
+         when autohiding is enabled.  It's fairly easy to get it into a state where it "has" 
+         a scroller but doesn't draw it, or scrolls without a visible scroller.  NB: may be
+         fixed by taking border into account now...
+         */
 
+    }
+    else if (__FVScrollViewHasVerticalScroller([self enclosingScrollView])) {
+        CGFloat scrollerWidth = [NSScroller scrollerWidthForControlSize:[[[self enclosingScrollView] verticalScroller] controlSize]];
+        
+        // shrink by the scroller width and recompute icon size
+        length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin] - scrollerWidth;    
+        _iconSize = NSMakeSize(length, length);
+        frame.size.height = MAX([self _rowHeight] * [self numberOfRows] + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));   
+        frame.size.width -= scrollerWidth;
+    }
+    
+    // handling the willHide case isn't necessary
+
+    if (NSEqualRects(frame, [self frame]) == NO) {
+        [self setFrame:frame]; 
+        [[self enclosingScrollView] reflectScrolledClipView:[[self enclosingScrollView] contentView]];
+    }
+} 
+#if 0
+- (void)drawRect:(NSRect)aRect
+{
+    [super drawRect:aRect];
+    NSRect bounds = [self bounds];
+    NSRect cvFrame = [[[self enclosingScrollView] contentView] frame];
+    NSRect svFrame = [[self enclosingScrollView] frame];
+    NSString *s = [NSString stringWithFormat:@"bounds = %@\nsv frame = %@\ncv frame = %@", NSStringFromSize(bounds.size), NSStringFromSize(svFrame.size), NSStringFromSize(cvFrame.size)];
+    s = [s stringByAppendingFormat:@"\nscroller frame = %@", NSStringFromRect([[[self enclosingScrollView] verticalScroller] frame])];
+    s = [s stringByAppendingFormat:@"\niconSize = %@", NSStringFromSize(_iconSize)];
+    NSPoint p = { 2, 2 };
+    [s drawAtPoint:p withAttributes:nil];
+}
+#endif
 - (void)setIconScale:(double)scale;
 {
     // may be called by initWithCoder:
