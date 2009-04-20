@@ -1156,6 +1156,28 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 // no save/restore needed because of when these are called in -drawRect: (this is why they're private)
 
+- (NSBezierPath *)_insertionHighlightPathInRect:(NSRect)aRect
+{
+    NSBezierPath *p;
+    NSRect rect = aRect;
+    // similar to NSTableView's between-row drop indicator
+    rect.size.height = NSWidth(aRect);
+    rect.origin.y -= NSWidth(aRect);
+    p = [NSBezierPath bezierPathWithOvalInRect:rect];
+    
+    NSPoint point = NSMakePoint(NSMidX(aRect), NSMinY(aRect));
+    [p moveToPoint:point];
+    point = NSMakePoint(NSMidX(aRect), NSMaxY(aRect));
+    [p lineToPoint:point];
+    
+    rect = aRect;
+    rect.origin.y = NSMaxY(aRect);
+    rect.size.height = NSWidth(aRect);
+    [p appendBezierPathWithOvalInRect:rect];
+    
+    return p;
+}
+
 - (void)_drawDropHighlightInRect:(NSRect)aRect;
 {
     [[[NSColor alternateSelectedControlColor] colorWithAlphaComponent:0.8] setStroke];
@@ -1171,21 +1193,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     }
     else {
         
-        // similar to NSTableView's between-row drop indicator
-        NSRect rect = aRect;
-        rect.size.height = NSWidth(aRect);
-        rect.origin.y -= NSWidth(aRect);
-        p = [NSBezierPath bezierPathWithOvalInRect:rect];
-        
-        NSPoint point = NSMakePoint(NSMidX(aRect), NSMinY(aRect));
-        [p moveToPoint:point];
-        point = NSMakePoint(NSMidX(aRect), NSMaxY(aRect));
-        [p lineToPoint:point];
-        
-        rect = aRect;
-        rect.origin.y = NSMaxY(aRect);
-        rect.size.height = NSWidth(aRect);
-        [p appendBezierPathWithOvalInRect:rect];
+        p = [self _insertionHighlightPathInRect:aRect];
     }
     [p setLineWidth:lineWidth];
     [p stroke];
@@ -2965,6 +2973,8 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
         [_controller downloadURLAtIndex:selIndex];
 }
 
+- (FVViewController *)_controller { return _controller; }
+
 @end
 
 @implementation FVColumnView
@@ -3141,6 +3151,82 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
 - (double)iconScale;
 {
     return _iconSize.width / DEFAULT_ICON_SIZE.width;
+}
+
+- (NSBezierPath *)_insertionHighlightPathInRect:(NSRect)aRect
+{
+    NSBezierPath *p;
+    NSRect rect = aRect;
+    // similar to NSTableView's between-row drop indicator
+    rect.size.width = NSHeight(aRect);
+    p = [NSBezierPath bezierPathWithOvalInRect:rect];
+    
+    NSPoint point = NSMakePoint(NSMaxX(rect), NSMidY(aRect));
+    [p moveToPoint:point];
+    point = NSMakePoint(NSMaxX(aRect) - NSHeight(aRect), NSMidY(aRect));
+    [p lineToPoint:point];
+    
+    rect = aRect;
+    rect.origin.x = NSMaxX(aRect) - NSHeight(aRect);
+    rect.size.width = NSHeight(aRect);
+    [p appendBezierPathWithOvalInRect:rect];
+    
+    return p;
+}
+
+- (FVDropOperation)_dropOperationAtPointInView:(NSPoint)point highlightRect:(NSRect *)dropRect insertionIndex:(NSUInteger *)anIndex
+{
+    NSUInteger r, c;
+    FVDropOperation op;
+    NSRect aRect;
+    NSUInteger insertIndex = NSNotFound;
+    
+    if ([self _getGridRow:&r column:&c atPoint:point]) {
+        
+        // check to avoid highlighting empty cells as individual icons; that's a DropOnView, not DropOnIcon
+        
+        if ([self _indexForGridRow:r column:c] > [[self _controller] numberOfIcons]) {
+            aRect = [self visibleRect];
+            op = FVDropOnView;
+        }
+        else {
+            aRect = [self _rectOfIconInRow:r column:c];
+            op = FVDropOnIcon;
+        }
+    }
+    else {
+        
+        NSPoint lower = NSMakePoint(point.x, point.y - _iconSize.width), upper = NSMakePoint(point.x, point.y + _iconSize.width);
+        
+        // can't insert between nonexisting cells either, so check numberOfIcons first...
+        
+        if ([self _getGridRow:&r column:&c atPoint:lower] && ([self _indexForGridRow:r column:c] < [[self _controller] numberOfIcons])) {
+
+            aRect = [self _rectOfIconInRow:r column:c];
+            // rect size is 6, and should be centered between icons horizontally
+            aRect.origin.y += _iconSize.height + _padding.height - 3.0;
+            aRect.size.height = 6.0;    
+            op = FVDropInsert;
+            insertIndex = [self _indexForGridRow:r column:c] + 1;
+        }
+        else if ([self _getGridRow:&r column:&c atPoint:upper] && ([self _indexForGridRow:r column:c] < [[self _controller] numberOfIcons])) {
+            
+            aRect = [self _rectOfIconInRow:r column:c];
+            aRect.origin.y -= 3.0;
+            aRect.size.height = 6.0;
+            op = FVDropInsert;
+            insertIndex = [self _indexForGridRow:r column:c];
+        }
+        else {
+            
+            aRect = [self visibleRect];
+            op = FVDropOnView;
+        }
+    }
+    
+    if (NULL != dropRect) *dropRect = aRect;
+    if (NULL != anIndex) *anIndex = insertIndex;
+    return op;
 }
 
 - (BOOL)validateMenuItem:(NSMenuItem *)anItem
