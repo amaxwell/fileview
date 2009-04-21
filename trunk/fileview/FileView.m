@@ -617,7 +617,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     if ([self _showsSlider]) {
         NSPoint mouseLoc = [self convertPoint:[[self window] mouseLocationOutsideOfEventStream] fromView:nil];
         NSRect sliderRect = [self _sliderRect];
-        _sliderTag = [self addTrackingRect:sliderRect owner:self userData:_sliderWindow assumeInside:NSPointInRect(mouseLoc, sliderRect)];  
+        _sliderTag = [self addTrackingRect:sliderRect owner:self userData:_sliderWindow assumeInside:NSMouseInRect(mouseLoc, sliderRect, [self isFlipped])];  
     }
 }
 
@@ -643,7 +643,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
                 NSRect iconRect = NSIntersectionRect(visibleRect, [self _rectOfIconInRow:r column:c]);
                 
                 if (NSIsEmptyRect(iconRect) == NO) {
-                    BOOL mouseInside = NSPointInRect(mouseLoc, iconRect);
+                    BOOL mouseInside = NSMouseInRect(mouseLoc, iconRect, [self isFlipped]);
                     
                     if (mouseInside)
                         mouseIndex = i;
