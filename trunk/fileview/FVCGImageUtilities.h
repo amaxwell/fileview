@@ -49,20 +49,6 @@ __BEGIN_DECLS
  @return CGImage size in pixels. */
 FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image);
 
-/** @internal @brief Maximum width of tiles.
- 
- Returns the maximum width of tiles that will be created in scaling using vImage.
- @warning Only exported for FVImageBuffer; do not use. 
- @return Tile width in pixels. */
-FV_PRIVATE_EXTERN size_t __FVMaximumTileWidth(void);
-
-/** @internal @brief Maximum height of tiles.
- 
- Returns the maximum height of tiles that will be created in scaling using vImage.
- @warning Only exported for FVImageBuffer; do not use. 
- @return Tile height in pixels. */
-FV_PRIVATE_EXTERN size_t __FVMaximumTileHeight(void);
-
 /** @internal @brief Resample an image.
  
  This function is used for resampling CGImages or converting an image to be compatible with cache limitations (if it uses the wrong colorspace, for instance).  Tiling and scaling are performed using vImage, which may give unacceptable results at very small scale levels due to limitations in the tiling scheme.  However, it should be more memory-efficient than using FVCGCreateResampledImageOfSize.  Images returned are always host-order 8-bit with alpha channel.

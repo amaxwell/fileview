@@ -43,9 +43,7 @@
 #import "FVBitmapContext.h"
 #import "FVAllocator.h"
 
-static NSMutableSet *_availableBuffers = nil;
-static NSMutableSet *_workingBuffers = nil;
-static OSSpinLock _bufferCacheLock = OS_SPINLOCK_INIT;
+
 static CFAllocatorRef _allocator = NULL;
 
 static OSSpinLock _monitorLock = OS_SPINLOCK_INIT;
@@ -105,8 +103,6 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
 + (void)initialize
 {
     FVINITIALIZE(FVImageBuffer);
-    _availableBuffers = [NSMutableSet new];
-    _workingBuffers = [NSMutableSet new];
 
     // create before _allocator
     _monitoredPointers = CFDictionaryCreateMutable(NULL, 0, NULL, &FVIntegerValueDictionaryCallBacks);
@@ -130,36 +126,10 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
     return _allocatedBytes;
 }
 
-+ (id)new
-{
-    OSSpinLockLock(&_bufferCacheLock);
-    id obj = nil;
-    if ([_availableBuffers count]) {
-        obj = [_availableBuffers anyObject];
-        [_workingBuffers addObject:obj];
-        [_availableBuffers removeObject:obj];
-    }
-    if (nil == obj) {
-        obj = [super new];
-        [_workingBuffers addObject:obj];
-    }
-    OSSpinLockUnlock(&_bufferCacheLock);
-    return obj;
-}
-
-+ (id)newPlanarBufferWithScale:(double)scale
-{
-    NSParameterAssert(scale > 0);
-    if (scale < 1) return [self new];
-    
-    size_t w = __FVMaximumTileWidth() * ceil(scale);
-    size_t h = __FVMaximumTileHeight() * ceil(scale);
-    return [[self allocWithZone:[self zone]] initWithWidth:w height:h bytesPerSample:1];
-}
-
 - (id)init
 {
-    return [self initWithWidth:__FVMaximumTileWidth() height:__FVMaximumTileHeight() bytesPerSample:1];
+    [self doesNotRecognizeSelector:_cmd];
+    return nil;
 }
 
 // safe initializer for copy, in case there's a mismatch between width/height/rowBytes
@@ -223,20 +193,6 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
     [super dealloc];
 }
 
-- (oneway void)dispose;
-{
-    OSSpinLockLock(&_bufferCacheLock);
-    // if previously cached, return to the cache; otherwise, release
-    if ([_workingBuffers containsObject:self]) {
-        NSAssert(_freeBufferOnDealloc, @"returning buffer to cache after transferring contents ownership");
-        [_availableBuffers addObject:self];
-        [_workingBuffers removeObject:self];
-    } else {
-        [self release];
-    }
-    OSSpinLockUnlock(&_bufferCacheLock);
-}
-
 - (void)setFreeBufferOnDealloc:(BOOL)flag;
 {
     if (NO == flag) {
@@ -252,5 +208,7 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
 }
 
 - (CFAllocatorRef)allocator { return _allocator; }
+
+- (size_t)bufferSize { return _bufferSize; }
 
 @end
