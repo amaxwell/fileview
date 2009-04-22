@@ -470,7 +470,7 @@ static inline size_t __FVOptimumTileDimension(size_t minimum, size_t maximum, si
  Regions are guaranteed to have nonzero height and width when scaled by the passed-in scale factor and 
  truncated.  Callers use round(), so this should be conservative.  Not checking for zero width/height
  can lead to problems with vImage at best and buffer overflows at worst (although the assertions
- added in r353 should catch that now).
+ added in r355 should catch that now).
  */
 static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double scale)
 {
@@ -618,7 +618,7 @@ static size_t __FVScaledHeightOfRegions(std::vector <FVRegion> regions, const do
  
  The accumulatedRows check has to be done in the scaling function, but we check columns each time; computationally this is negligible, especially compared with scaling.  IMP caching is there just because it's easy, and the next best thing to for...in syntax.
  
- Note that an additional problem occurs when the image buffers have a zero width, although this should not occur after r353.  Subtracting the shrinkage in that case leads to integer wraparound on the height/width and another buffer overflow (now asserted against).
+ Note that an additional problem occurs when the image buffers have a zero width, although this should not occur after r355.  Subtracting the shrinkage in that case leads to integer wraparound on the height/width and another buffer overflow (now asserted against).
  */
 static void __FVCheckAndTrimRow(NSArray *regionRow, vImage_Buffer *destinationBuffer, size_t accumulatedRows)
 {
