@@ -466,6 +466,12 @@ static inline size_t __FVOptimumTileDimension(size_t minimum, size_t maximum, si
     return tileSide;
 }
 
+/*
+ Regions are guaranteed to have nonzero height and width when scaled by the passed-in scale factor and 
+ truncated.  Callers use round(), so this should be conservative.  Not checking for zero width/height
+ can lead to problems with vImage at best and buffer overflows at worst (although the assertions
+ added in r353 should catch that now).
+ */
 static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double scale)
 {
     const size_t originalHeight = CGImageGetHeight(image);
@@ -485,14 +491,29 @@ static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double s
         rows++;
     
     std::vector <FVRegion> regions;
-    
-    for (NSUInteger rowIndex = 0; rowIndex < rows; rowIndex++) {
+    bool addFinalRow = true;
+    for (NSUInteger rowIndex = 0; rowIndex < rows && addFinalRow; rowIndex++) {
         
         size_t regionHeight = tileHeight;
         size_t yloc = rowIndex * tileHeight;
         
+        if (rows >= 2 && rowIndex == (rows - 2)) {
+            
+            // check the final row; if the scaled height is zero, add it to this one
+            size_t lastRegionHeight = originalHeight - (rowIndex + 1) * tileHeight;
+            size_t s = trunc(lastRegionHeight * scale);
+            if (0 == s) {
+                //FVLog(@"increasing next to last row height from %lu to %lu", regionHeight, regionHeight + lastRegionHeight);
+                regionHeight += lastRegionHeight;
+                addFinalRow = false;
+            }
+        }
+        
         if (yloc + regionHeight > originalHeight)
             regionHeight = originalHeight - yloc;
+        
+        size_t s = trunc(regionHeight * scale);
+        NSCParameterAssert(s > 0);
         
         for (NSUInteger columnIndex = 0; columnIndex < columns; columnIndex++) {
             
@@ -502,8 +523,16 @@ static std::vector <FVRegion> __FVTileRegionsForImage(CGImageRef image, double s
             if (xloc + regionWidth > originalWidth)
                 regionWidth = originalWidth - xloc;
             
-            FVRegion region = { xloc, yloc, regionWidth, regionHeight, rowIndex, columnIndex };
-            regions.push_back(region);
+            // scaling can produce a region with zero width, causing various assertion failures
+            s = trunc(regionWidth * scale);
+            if (s > 0) {
+                FVRegion region = { xloc, yloc, regionWidth, regionHeight, rowIndex, columnIndex };
+                regions.push_back(region);
+            }
+            else {
+                //FVLog(@"appending column to previous region (%lu to %lu)", regions.back().w, regions.back().w + regionWidth);
+                regions.back().w += regionWidth;
+            }
         }
     }
     return regions;
@@ -588,6 +617,8 @@ static size_t __FVScaledHeightOfRegions(std::vector <FVRegion> regions, const do
  Use to avoid buffer overruns; due to scaling and tolerance buildup, we can easily end up with a column or row outside the destination image.  In that case, we just truncate the input region before passing it to __FVAddRowOfARGB8888BuffersToImage.  This led to a really insidious crashing bug, since we generally have enough horizontal padding to avoid the overrun on memcpy in __FVAddRowOfARGB8888BuffersToImage.
  
  The accumulatedRows check has to be done in the scaling function, but we check columns each time; computationally this is negligible, especially compared with scaling.  IMP caching is there just because it's easy, and the next best thing to for...in syntax.
+ 
+ Note that an additional problem occurs when the image buffers have a zero width, although this should not occur after r353.  Subtracting the shrinkage in that case leads to integer wraparound on the height/width and another buffer overflow (now asserted against).
  */
 static void __FVCheckAndTrimRow(NSArray *regionRow, vImage_Buffer *destinationBuffer, size_t accumulatedRows)
 {
@@ -608,17 +639,19 @@ static void __FVCheckAndTrimRow(NSArray *regionRow, vImage_Buffer *destinationBu
     ssize_t shrinkage = accumulatedColumns - destinationBuffer->width;
     // ... and trim the last (far right) column if necessary
     if (shrinkage > 0) {
-        // NSLog(@"horizontal shrinkage: %ld pixel(s)", (long)shrinkage);
+        // FVLog(@"horizontal shrinkage: %ld pixel(s)", (long)shrinkage);
         imageBuffer = [regionRow lastObject];
+        NSCParameterAssert(imageBuffer->buffer->width >= (size_t)shrinkage);
         imageBuffer->buffer->width -= shrinkage;
     }
     
     // trim the last (bottom) row if we're too tall
     shrinkage = accumulatedRows - destinationBuffer->height;
     if (shrinkage > 0) {
-        // NSLog(@"vertical shrinkage: %ld pixel(s)", (long)shrinkage);
+        // FVLog(@"vertical shrinkage: %ld pixel(s)", (long)shrinkage);
         for (regionIndex = 0; regionIndex < regionCount; regionIndex++) {
             imageBuffer = objectAtIndex(regionRow, @selector(objectAtIndex:), regionIndex);
+            NSCParameterAssert(imageBuffer->buffer->height >= (size_t)shrinkage);
             imageBuffer->buffer->height -= shrinkage;
         }
     }
@@ -750,6 +783,8 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
             planarB[i]->buffer->width = scaledWidth;
             planarB[i]->buffer->height = region.h;
             planarB[i]->buffer->rowBytes = scaledRowBytes;
+            NSCParameterAssert(scaledWidth);
+            NSCParameterAssert(region.h);
             ret = vImageHorizontalShear_Planar8(planarA[i]->buffer, planarB[i]->buffer, 0, 0, offset, 0, filter, 0, SHEAR_OPTIONS);
             if (kvImageNoError != ret) FVLog(@"vImageHorizontalShear_Planar8 failed with error %d", ret);
         }
@@ -762,6 +797,8 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
             planarA[i]->buffer->width = planarB[i]->buffer->width;
             planarA[i]->buffer->rowBytes = planarB[i]->buffer->rowBytes;
             planarA[i]->buffer->height = scaledHeight;
+            NSCParameterAssert(planarB[i]->buffer->width);
+            NSCParameterAssert(scaledHeight);
             ret = vImageVerticalShear_Planar8(planarB[i]->buffer, planarA[i]->buffer, 0, 0, offset, 0, filter, 0, SHEAR_OPTIONS);
             if (kvImageNoError != ret) FVLog(@"vImageVerticalShear_Planar8 failed with error %d", ret);
         }
@@ -917,6 +954,5 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
         ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
     pthread_mutex_unlock(&_memoryMutex);
 #endif
-
     return __FVTileAndScale_8888_or_888_Image(image, desiredSize);
 }
