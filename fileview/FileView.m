@@ -372,6 +372,14 @@ static char _FVContentBindingToControllerObserverContext;
     [self scrollPoint:desiredRect.origin];
 }
 
+- (void)_invalidateSelectionOverlay
+{
+    if (_selectionOverlay) {
+        CFRelease(_selectionOverlay);
+        _selectionOverlay = NULL;
+    }
+}
+
 - (void)setIconScale:(double)scale;
 {
     // formerly asserted this, but it caused problems with archiving
@@ -383,8 +391,8 @@ static char _FVContentBindingToControllerObserverContext;
     // arrows out of place now, they will be added again when required when resetting the tracking rects
     [self _hideArrows];
     
-    CGLayerRelease(_selectionOverlay);
-    _selectionOverlay = NULL;
+    // need to resize border
+    [self _invalidateSelectionOverlay];
     
     NSPoint scrollPoint = [self scrollPercentage];
     
@@ -3124,10 +3132,16 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
     
     // handling the willHide case isn't necessary
 
-    if (NSEqualRects(frame, [self frame]) == NO) {
+    // any icon size change will invalidate the selection layer size
+    [self _invalidateSelectionOverlay];
+    
+    // this actually isn't true very often
+    if (NSEqualRects(frame, [self frame]) == NO)
         [self setFrame:frame]; 
-        [[self enclosingScrollView] reflectScrolledClipView:[[self enclosingScrollView] contentView]];
-    }
+
+    // need to call even if frame isn't set
+    [[self enclosingScrollView] reflectScrolledClipView:[[self enclosingScrollView] contentView]];
+
 } 
 #if 0
 - (void)drawRect:(NSRect)aRect
