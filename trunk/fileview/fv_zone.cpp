@@ -644,6 +644,10 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.batch_free = NULL;
     zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
     zone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
+    
+    // explicitly initialize padding to NULL
+    zone->_reserved[0] = NULL;
+    zone->_reserved[1] = NULL;
         
     // http://www.cplusplus.com/reference/stl/set/set.html
     // proof that C++ programmers have to be insane
