@@ -11,6 +11,7 @@
 		8D11072D0486CEB800E47090 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 29B97316FDCFA39411CA2CEA /* main.m */; settings = {ATTRIBUTES = (); }; };
 		8D11072F0486CEB800E47090 /* Cocoa.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 1058C7A1FEA54F0111CA2CBB /* Cocoa.framework */; };
 		F9105FD50D8DE6D200AC32D1 /* FVImageBuffer.m in Sources */ = {isa = PBXBuildFile; fileRef = F9105FD40D8DE6D200AC32D1 /* FVImageBuffer.m */; };
+		F91ED7940F9F72980015A608 /* fv_zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F91ED7920F9F72980015A608 /* fv_zone.cpp */; };
 		F92AB6380DCCE6B100F82452 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = F92AB6360DCCE6B100F82452 /* MainMenu.xib */; };
 		F92ABB690DCE2D3100F82452 /* FVImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F92ABB680DCE2D3100F82452 /* FVImageView.m */; };
 		F99C0A950E1EC5E4003255C7 /* Debug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = F99C0A930E1EC5E4003255C7 /* Debug.xcconfig */; };
@@ -37,6 +38,8 @@
 		8D1107320486CEB800E47090 /* ImageShear.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ImageShear.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9105FD30D8DE6D200AC32D1 /* FVImageBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FVImageBuffer.h; path = ../FVImageBuffer.h; sourceTree = "<group>"; };
 		F9105FD40D8DE6D200AC32D1 /* FVImageBuffer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = FVImageBuffer.m; path = ../FVImageBuffer.m; sourceTree = "<group>"; };
+		F91ED7920F9F72980015A608 /* fv_zone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = fv_zone.cpp; path = ../fv_zone.cpp; sourceTree = SOURCE_ROOT; };
+		F91ED7930F9F72980015A608 /* fv_zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = fv_zone.h; path = ../fv_zone.h; sourceTree = SOURCE_ROOT; };
 		F92AB6370DCCE6B100F82452 /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		F92ABB670DCE2D3100F82452 /* FVImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVImageView.h; sourceTree = "<group>"; };
 		F92ABB680DCE2D3100F82452 /* FVImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVImageView.m; sourceTree = "<group>"; };
@@ -75,6 +78,8 @@
 		080E96DDFE201D6D7F000001 /* Classes */ = {
 			isa = PBXGroup;
 			children = (
+				F91ED7920F9F72980015A608 /* fv_zone.cpp */,
+				F91ED7930F9F72980015A608 /* fv_zone.h */,
 				F92ABB6E0DCE2DB600F82452 /* FileView classes */,
 				F9A812B70D862CE6000114B0 /* Controller.h */,
 				F9A812B80D862CE6000114B0 /* Controller.m */,
@@ -239,6 +244,7 @@
 				F92ABB690DCE2D3100F82452 /* FVImageView.m in Sources */,
 				F9EAE5C30E5106C600143F22 /* FVAllocator.m in Sources */,
 				F9EAE5C40E5106C600143F22 /* FVObject.m in Sources */,
+				F91ED7940F9F72980015A608 /* fv_zone.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
