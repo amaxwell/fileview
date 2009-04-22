@@ -41,19 +41,9 @@
 
 /** @internal @brief Wrapper around vImage_Buffer.
  
- FVImageBuffer provides a Cocoa object wrapper around a vImage_Buffer structure.  It also provides thread-safe caching of tile-sized buffers in order to avoid repeated malloc/free overhead, since each thread needs its own buffers.  Additionally, it uses a custom allocator to track memory allocations, and can report the number of bytes allocated for all threads.
+ FVImageBuffer provides a Cocoa object wrapper around a vImage_Buffer structure.  It uses a custom allocator to track memory allocations, and can report the number of bytes allocated for all threads.
  
  FVImageBuffer can also be set to not free its underlying vImage_Buffer data pointer in dealloc, which allows transfer of ownership of the raw byte pointer to another object without copying.  This data pointer will have been allocated using the CFAllocator returned by FVImageBuffer::allocator, so CFDataCreateWithBytesNoCopy() should be passed this allocator in order to ensure proper cleanup.
- 
- Cache management is slightly confusing here, but the intended lifecycle goes like this:
- 
- @li Create an FVImageBuffer via alloc/init... or new... method
- @li Add to an array, retain/release
- @li Mess with bytes, manipulate vImage_Buffer, etc.
- @li Do more things with the buffer, retain/autorelease
- @li When done with the buffer, call FVImageBuffer::dispose
- 
- <b>Only the first allocation message is balanced by a call to FVImageBuffer::dispose</b>.  FVImage::dispose is not a general-purpose replacement for release; it is only sent when you are done with the object.  For now, deal with this weirdness; this one of the reasons  it's a private class.
  
  @warning FVImageBuffer is designed for usage with FVCGImageUtilities.h functions and should not be used elsewhere as-is.  FVImageBuffer instances must not be shared between threads unless protected by a mutex.
  
@@ -73,31 +63,11 @@
  @return The number of bytes in use by FVImageBuffer instances. */
 + (uint64_t)allocatedBytes;
 
-/** @internal @brief Initialize a new tile buffer.
+/** @internal @brief Raises an exception.
  
- Returns a planar buffer of appropriate size for tiling.  Dimensions are (FVCGImageUtilities.h::__FVMaximumTileWidth() x FVCGImageUtilities.h::__FVMaximumTileHeight()).
+ Callers must pass an explicit size.
  @return An initialized buffer instance. */
 - (id)init;
-
-/** @internal @brief Get a cached tile buffer.
- 
- Returns a previously cached buffer of the same size as that returned by FVImageBuffer::init.  
- @warning You must call FVImageBuffer::dispose to transfer ownership back to the cache, or else you will leak the instance. 
- @return An initialized buffer instance. */
-+ (id)new;
-
-/** @internal @brief Scaled tile buffer.
-
- Creates a buffer of the default size with each side multiplied by scale.  
- @warning You must call FVImageBuffer::dispose to transfer ownership back to the cache, since this may return a cached instance.
- @return An initialized buffer instance. */
-+ (id)newPlanarBufferWithScale:(double)scale;
-
-/** @internal @brief Transfer ownership.
- 
- Transfers ownership of the receiver back to the cache if it was previously cached, or calls release.  
- @warning Must only be called once, and you must not use the object after calling this method. */
-- (oneway void)dispose;
 
 /** @internal @brief Designated initializer.
  
@@ -126,5 +96,10 @@
  If you set _freeBufferOnDealloc to NO, use this allocator to free buffer->data when you're finished with it.  Do not rely on this returning the same allocator for all instances.
  @return A CFAllocator instance. */
 - (CFAllocatorRef)allocator;
+
+/** @internal @brief Internal buffer size.
+ 
+ Use for debugging and asserting.  In case of reshaping the underlying buffer, this preserves the original size.  If you change the data pointer in the buffer and then call this, you'll get what you deserve. */
+- (size_t)bufferSize;
 
 @end

@@ -47,6 +47,10 @@
 // http://lists.apple.com/archives/perfoptimization-dev/2005/Mar/msg00041.html
 
 // this is a good size for the MBP, and presumably other vector units
+/*
+ NOTE: MIN/MAX are advisory limits only, and may be exceeded.  Do not make
+ allocation decisions based on these limits anymore.
+ */
 #define DEFAULT_TILE_WIDTH 1024
 #define MAX_TILE_WIDTH     2048
 #define MIN_TILE_WIDTH      512
@@ -90,9 +94,6 @@ NSSize FVCGImageSize(CGImageRef image)
     s.height = CGImageGetHeight(image);
     return s;
 }
-
-size_t __FVMaximumTileWidth(void) { return MAX_TILE_WIDTH; }
-size_t __FVMaximumTileHeight(void) { return MAX_TILE_HEIGHT; }
 
 static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize size)
 {
@@ -320,6 +321,10 @@ static vImage_Error __FVConvertRGB888ImageRegionToPlanar8_buffers(CGImageRef ima
 {
     const size_t bytesPerSample = 3;
     vImage_Buffer *dstBuffer = destBuffer->buffer;
+    if (region.h * FVPaddedRowBytesForWidth(bytesPerSample, region.w) > [destBuffer bufferSize]) {
+        FVLog(@"invalid reshape: %lu height and %lu rowBytes from buffer with size %lu", region.h, FVPaddedRowBytesForWidth(bytesPerSample, region.w), [destBuffer bufferSize]);
+        HALT;
+    }
     dstBuffer->width = region.w;
     dstBuffer->height = region.h;
     dstBuffer->rowBytes = FVPaddedRowBytesForWidth(bytesPerSample, region.w);
@@ -374,6 +379,10 @@ static vImage_Error __FVConvertARGB8888ImageRegionToPlanar8_buffers(CGImageRef i
 {
     const size_t bytesPerSample = 4;
     vImage_Buffer *dstBuffer = destBuffer->buffer;
+    if (region.h * FVPaddedRowBytesForWidth(bytesPerSample, region.w) > [destBuffer bufferSize]) {
+        FVLog(@"invalid reshape: %lu height and %lu rowBytes from buffer with size %lu", region.h, FVPaddedRowBytesForWidth(bytesPerSample, region.w), [destBuffer bufferSize]);
+        HALT;
+    }
     dstBuffer->width = region.w;
     dstBuffer->height = region.h;
     dstBuffer->rowBytes = FVPaddedRowBytesForWidth(bytesPerSample, region.w);
@@ -661,7 +670,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
 {
     // make this call early so we avoid other allocations on this thread in case we have to wait on _copyLock
     CFDataRef originalImageData = NULL;
-    const uint8_t *srcBytes = __FVCGImageGetBytePtr(image, NULL);    
+    const uint8_t *srcBytes = __FVCGImageGetBytePtr(image, NULL);   
     if (NULL == srcBytes) {
         // block other threads from copying at the same time; this tends to be a large memory hit
         [_copyLock lock];
@@ -681,6 +690,17 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     
     size_t destRowBytes = FVPaddedRowBytesForWidth(4, desiredSize.width);
     FVImageBuffer *interleavedImageBuffer = [[FVImageBuffer alloc] initWithWidth:desiredSize.width height:desiredSize.height rowBytes:destRowBytes];
+    
+    // this is the most likely to fail, since it's the largest contiguous allocation
+    if (nil == interleavedImageBuffer) {
+        if (originalImageData) {
+            CFRelease(originalImageData);
+            [_copyLock unlock];
+        }
+        FVLog(@"Unable to allocate memory for image of size %.0f x %.0f", desiredSize.width, desiredSize.height);
+        return NULL;
+    }
+    
     vImage_Buffer *interleavedBuffer = interleavedImageBuffer->buffer;
 
     /*
@@ -694,19 +714,34 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     
     std::vector <FVRegion> regions = __FVTileRegionsForImage(image, scale);
     
-    // we don't need to retain the tiles, since we don't release them after adding to the arrays
-    NSMutableArray *planarTilesA = (NSMutableArray *)CFArrayCreateMutable(NULL, 4, NULL);
-    NSMutableArray *planarTilesB = (NSMutableArray *)CFArrayCreateMutable(NULL, 4, NULL);
+    // fixed size mutable arrays
+    NSMutableArray *planarTilesA = (NSMutableArray *)CFArrayCreateMutable(NULL, 4, &kCFTypeArrayCallBacks);
+    NSMutableArray *planarTilesB = (NSMutableArray *)CFArrayCreateMutable(NULL, 4, &kCFTypeArrayCallBacks);
     
+    // first region is not necessarily the largest region anymore; figure out the maximum height and width for tiles
+    size_t maxWidth = 0, maxHeight = 0;
+    std::vector<FVRegion>::iterator iter;
+    for (iter = regions.begin(); iter < regions.end(); iter++) {
+        maxWidth = std::max(maxWidth, iter->w);
+        maxHeight = std::max(maxHeight, iter->h);
+    }
+    
+    // if scaling up, allocate extra memory for usage as a scaling destination
+    if (scale > 1) {
+        maxWidth = ceil(scale * maxWidth);
+        maxHeight = ceil(scale * maxHeight);
+    }
+        
     FVImageBuffer *imageBuffer;
     NSUInteger i;
     for (i = 0; i < 4; i++) {
-        // if scaling up, allocate extra memory, since we reuse these buffers    
-        imageBuffer = [FVImageBuffer newPlanarBufferWithScale:ceil(scale)];
+        imageBuffer = [[FVImageBuffer alloc] initWithWidth:maxWidth height:maxHeight bytesPerSample:1];
         [planarTilesA addObject:imageBuffer];
+        [imageBuffer release];
         
-        imageBuffer = [FVImageBuffer newPlanarBufferWithScale:ceil(scale)];
+        imageBuffer = [[FVImageBuffer alloc] initWithWidth:maxWidth height:maxHeight bytesPerSample:1];
         [planarTilesB addObject:imageBuffer];
+        [imageBuffer release];
     }
     imageBuffer = nil;
     
@@ -725,16 +760,16 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     NSUInteger regionRowIndex = 0;
     NSMutableArray *currentRegionRow = [NSMutableArray new];
     
-    // first region should be the largest region; this is a temporary buffer passed to the planar conversion function
     // NB: not required for the indexed images, since we copy those directly to the planar buffers
-    FVImageBuffer *regionBuffer = isIndexedImage ? nil : [[FVImageBuffer alloc] initWithWidth:regions[0].w height:regions[0].h bytesPerSample:4];
+    // this is a temporary buffer passed to the planar conversion function
+    FVImageBuffer *regionBuffer = isIndexedImage ? nil : [[FVImageBuffer alloc] initWithWidth:maxWidth height:maxHeight bytesPerSample:4];
     
     // maintain these instead of creating new buffers on each pass through the loop
     NSUInteger regionColumnIndex = __FVGetNumberOfColumnsInRegionVector(regions);
     for (NSUInteger j = 0; j < regionColumnIndex; j++) {
         imageBuffer = [[FVImageBuffer alloc] initWithWidth:(regions[j].w * ceil(scale)) height:(regions[j].h * ceil(scale)) bytesPerSample:4];
         [currentRegionRow addObject:imageBuffer];
-        [imageBuffer dispose];
+        [imageBuffer release];
     }
     
     // reset to zero so we can use this as index into currentRegionRow
@@ -841,15 +876,13 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     
     // cleanup is safe now
     
-    // call -dispose on the tiles so they're returned to the cache
-    [planarTilesA makeObjectsPerformSelector:@selector(dispose)];
+    // dispose of the tiles
     [planarTilesA release];
-    [planarTilesB makeObjectsPerformSelector:@selector(dispose)];
     [planarTilesB release];
     [currentRegionRow release];
     
     // could probably cache a few of these
-    [regionBuffer dispose];
+    [regionBuffer release];
     
 #if FV_LIMIT_TILEMEMORY_USAGE
     pthread_mutex_lock(&_memoryMutex);
@@ -873,8 +906,8 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     CGDataProviderRelease(provider);
     CGColorSpaceRelease(cspace);
     
-    // we need to release this one, since its memory is now transferred to NSData (and it's too big to cache)
-    [interleavedImageBuffer dispose];
+    // memory is now transferred to NSData
+    [interleavedImageBuffer release];
     
     return image; 
 }
