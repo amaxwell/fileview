@@ -847,7 +847,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         }
                 
         // reset from the scaled values, so the region extraction knows the tiles are large enough
-        size_t rowBytes = FVPaddedRowBytesForWidth(1, region.w);
+        const size_t rowBytes = FVPaddedRowBytesForWidth(1, region.w);
         for (i = 0; i < 4; i++) {
             planarA[i]->buffer->rowBytes = rowBytes;
             planarB[i]->buffer->rowBytes = rowBytes;
@@ -865,9 +865,9 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         float offset = 0;
         
         // do horizontal shear for all channels, with A as source and B as destination
-        size_t scaledWidth = round(scale * double(region.w));
-        size_t scaledRowBytes = FVPaddedRowBytesForWidth(1, scaledWidth);
-        for (i = 0; i < 4; i++) {
+        const size_t scaledWidth = round(scale * double(region.w));
+        const size_t scaledRowBytes = FVPaddedRowBytesForWidth(1, scaledWidth);
+        for (i = 0; i < 4 && kvImageNoError == ret; i++) {
             planarB[i]->buffer->width = scaledWidth;
             planarB[i]->buffer->height = region.h;
             planarB[i]->buffer->rowBytes = scaledRowBytes;
@@ -879,8 +879,8 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         
         // do vertical shear for all channels, with B as source and A as destination
         offset = scale * (float(region.h) - round(float(region.h) * scale));
-        size_t scaledHeight = round(scale * double(region.h));
-        for (i = 0; i < 4; i++) {
+        const size_t scaledHeight = round(scale * double(region.h));
+        for (i = 0; i < 4 && kvImageNoError == ret; i++) {
             // use the scaled value from the buffer
             planarA[i]->buffer->width = planarB[i]->buffer->width;
             planarA[i]->buffer->rowBytes = planarB[i]->buffer->rowBytes;
@@ -893,8 +893,9 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         
         // premultiply alpha in place if it wasn't previously premultiplied (A is now the source)
         if (alphaInfo != kCGImageAlphaPremultipliedFirst && alphaInfo != kCGImageAlphaPremultipliedLast) {
-            for (i = 1; i < 4; i++)
+            for (i = 1; i < 4 && kvImageNoError == ret; i++)
                 ret = vImagePremultiplyData_Planar8(planarA[i]->buffer, planarA[0]->buffer, planarA[i]->buffer, DEFAULT_OPTIONS);
+            if (kvImageNoError != ret) FVLog(@"vImagePremultiplyData_Planar8 failed with error %d", ret);
         }    
         
         // now convert to a mesh format, using the appropriate column buffer as destination
@@ -909,7 +910,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         
     }
     
-    if ([currentRegionRow count]) {
+    if ([currentRegionRow count] && kvImageNoError == ret) {
         accumulatedRows += imageBuffer->buffer->height;
         ret = __FVCheckAndTrimRow(currentRegionRow, interleavedBuffer, accumulatedRows);
         __FVAddRowOfARGB8888BuffersToImage(currentRegionRow, nextScanline, interleavedBuffer);
