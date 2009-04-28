@@ -109,7 +109,12 @@
     CGContextSetAlpha(ctxt, alpha);
     NSRect circleFrame = NSInsetRect(frame, 2.0, 2.0);
     NSBezierPath *circlePath = [NSBezierPath bezierPathWithOvalInRect:circleFrame];
-    CGContextSetShadow(ctxt, CGSizeZero, 0.5);
+    CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
+    CGFloat rgba[] = { 0, 0, 0, 1.0 };
+    CGColorRef shadowColor = CGColorCreate(cspace, rgba);
+    CGColorSpaceRelease(cspace);
+    CGContextSetShadowWithColor(ctxt, CGSizeZero, 2.0, shadowColor);
+    CGColorRelease(shadowColor);
     [bgColor setFill];
     [circlePath fill];
     [arrowColor setStroke];
