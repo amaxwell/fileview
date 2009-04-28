@@ -58,6 +58,16 @@ typedef NSUInteger FVArrowDirection;
  @param anArrowDirection Whether the arrow points left or right.
  @return An initialized cell. */
 - (id)initWithArrowDirection:(FVArrowDirection)anArrowDirection;
+
+/** @brief Draw with alpha blending.
+ 
+ Draws the cell in a view with transparency; useful for animating.
+ 
+ @param frame Passed to drawWithFrame:inView:
+ @param controlView Passed to drawWithFrame:inView:
+ @param alpha 1.0 for opaque, 0.0 for transparent. */
+- (void)drawWithFrame:(NSRect)frame inView:(NSView *)controlView alpha:(CGFloat)alpha;
+
 @end
 
 /** @typedef NSUInteger FVArrowDirection 
