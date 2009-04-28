@@ -85,6 +85,11 @@
 
 - (void)drawWithFrame:(NSRect)frame inView:(NSView *)controlView;
 {
+    [self drawWithFrame:frame inView:controlView alpha:1.0];
+}
+
+- (void)drawWithFrame:(NSRect)frame inView:(NSView *)controlView alpha:(CGFloat)alpha;
+{
     // NSCell's highlight drawing does not look correct against a dark background, so override it completely
     NSColor *bgColor = nil;
     NSColor *arrowColor = nil;
@@ -101,12 +106,19 @@
         
     CGContextRef ctxt = [[NSGraphicsContext currentContext] graphicsPort];
     CGContextSaveGState(ctxt);
+    CGContextSetAlpha(ctxt, alpha);
+    NSRect circleFrame = NSInsetRect(frame, 2.0, 2.0);
+    NSBezierPath *circlePath = [NSBezierPath bezierPathWithOvalInRect:circleFrame];
+    CGContextSetShadow(ctxt, CGSizeZero, 0.5);
     [bgColor setFill];
-    [[NSBezierPath bezierPathWithOvalInRect:frame] fill];
+    [circlePath fill];
+    [arrowColor setStroke];
+    [circlePath setLineWidth:1.0];
+    [circlePath stroke];
 
-    CGContextTranslateCTM(ctxt, NSMinX(frame), NSMinY(frame));
+    CGContextTranslateCTM(ctxt, NSMinX(circleFrame), NSMinY(circleFrame));
     [arrowColor setFill];
-    [[self arrowBezierPathWithSize:frame.size] fill];
+    [[self arrowBezierPathWithSize:circleFrame.size] fill];
     CGContextRestoreGState(ctxt);
 }
 
