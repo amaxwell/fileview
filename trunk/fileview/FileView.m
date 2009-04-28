@@ -61,7 +61,6 @@
 - (NSUInteger)_indexForGridRow:(NSUInteger)rowIndex column:(NSUInteger)colIndex;
 - (void)_showArrowsForIconAtIndex:(NSUInteger)anIndex;
 - (void)_hideArrows;
-- (BOOL)_hasArrows;
 - (BOOL)_showsSlider;
 - (void)_reloadIconsAndController:(BOOL)shouldReloadController;
 
@@ -206,6 +205,9 @@ static char _FVContentBindingToControllerObserverContext;
     
     _leftArrowFrame = NSZeroRect;
     _rightArrowFrame = NSZeroRect;
+    _arrowAlpha = 0.0;
+    _fvFlags.isAnimatingArrowAlpha = NO;
+    _fvFlags.hasArrows = NO;
     
     _minScale = 0.5;
     _maxScale = 10;
@@ -1742,11 +1744,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     
     if (isDrawingToScreen) {
         
-        if ([self _hasArrows] && _fvFlags.isDrawingDragImage == NO) {
+        if ((_fvFlags.hasArrows || _fvFlags.isAnimatingArrowAlpha) && _fvFlags.isDrawingDragImage == NO) {
             if (NSIntersectsRect(rect, _leftArrowFrame))
-                [_leftArrow drawWithFrame:_leftArrowFrame inView:self];
+                [(FVArrowButtonCell *)_leftArrow drawWithFrame:_leftArrowFrame inView:self alpha:_arrowAlpha];
             if (NSIntersectsRect(rect, _rightArrowFrame))
-                [_rightArrow drawWithFrame:_rightArrowFrame inView:self];
+                [(FVArrowButtonCell *)_rightArrow drawWithFrame:_rightArrowFrame inView:self alpha:_arrowAlpha];
         }
         
         // drop highlight and rubber band are mutually exclusive
@@ -1870,8 +1872,41 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     [self _redisplayIconAfterPageChanged:anIcon];
 }
 
-- (BOOL)_hasArrows {
-    return [_leftArrow representedObject] != nil;
+// note that hasArrows has to have the desired state before this fires
+- (void)_updateArrowAlpha:(NSTimer *)timer
+{
+    NSAnimation *animation = [timer userInfo];
+    CGFloat value = [animation currentValue];
+    if (value > 0.99) {
+        [animation stopAnimation];
+        [timer invalidate];
+        _fvFlags.isAnimatingArrowAlpha = NO;
+        _arrowAlpha = _fvFlags.hasArrows ? 1.0 : 0.0;
+    }
+    else {
+        _arrowAlpha = _fvFlags.hasArrows ? value : (1 - value);
+    }
+    [self setNeedsDisplayInRect:NSUnionRect(_leftArrowFrame, _rightArrowFrame)];
+}
+
+- (void)_startArrowAlphaTimer
+{
+    _fvFlags.isAnimatingArrowAlpha = YES;
+    // animate ~30 fps for 0.3 seconds, using NSAnimation to get the alpha curve
+    NSAnimation *animation = [[NSAnimation alloc] initWithDuration:0.3 animationCurve:NSAnimationEaseInOut]; 
+    // runloop mode is irrelevant for non-blocking threaded
+    [animation setAnimationBlockingMode:NSAnimationNonblockingThreaded];
+    // explicitly alloc/init so it can be added to all the common modes instead of the default mode
+    NSTimer *timer = [[NSTimer alloc] initWithFireDate:[NSDate date]
+                                              interval:0.03
+                                                target:self 
+                                              selector:@selector(_updateArrowAlpha:)
+                                              userInfo:animation
+                                               repeats:YES];
+    [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+    [timer release];
+    [animation startAnimation];
+    [animation release];  
 }
 
 - (void)_showArrowsForIconAtIndex:(NSUInteger)anIndex
@@ -1904,21 +1939,30 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
             
             [_leftArrow setRepresentedObject:anIcon];
             [_rightArrow setRepresentedObject:anIcon];
-            
+            _fvFlags.hasArrows = YES;
+
             // set enabled states
-            [self _updateButtonsForIcon:anIcon];
-            
-            [self setNeedsDisplayInRect:NSUnionRect(_leftArrowFrame, _rightArrowFrame)];
+            [self _updateButtonsForIcon:anIcon];  
+                        
+            if (_fvFlags.isAnimatingArrowAlpha) {
+                // make sure we redraw whatever area previously had the arrows
+                [self setNeedsDisplay:YES];
+            }
+            else {
+                [self _startArrowAlphaTimer];
+            }
         }
     }
 }
 
 - (void)_hideArrows
 {
-    if ([self _hasArrows]) {
+    if (_fvFlags.hasArrows) {
+        _fvFlags.hasArrows = NO;
         [_leftArrow setRepresentedObject:nil];
         [_rightArrow setRepresentedObject:nil];
-        [self setNeedsDisplayInRect:NSUnionRect(_leftArrowFrame, _rightArrowFrame)];
+        if (NO == _fvFlags.isAnimatingArrowAlpha)
+            [self _startArrowAlphaTimer];
     }
 }
 
@@ -2043,10 +2087,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     NSUInteger flags = [event modifierFlags];
     NSUInteger r, c, i;
     
-    if ([self _hasArrows] && NSMouseInRect(p, _leftArrowFrame, [self isFlipped])) {
+    if (_fvFlags.hasArrows && NSMouseInRect(p, _leftArrowFrame, [self isFlipped])) {
         [_leftArrow trackMouse:event inRect:_leftArrowFrame ofView:self untilMouseUp:YES];
     }
-    else if ([self _hasArrows] && NSMouseInRect(p, _rightArrowFrame, [self isFlipped])) {
+    else if (_fvFlags.hasArrows && NSMouseInRect(p, _rightArrowFrame, [self isFlipped])) {
         [_rightArrow trackMouse:event inRect:_rightArrowFrame ofView:self untilMouseUp:YES];
     }
     // mark this icon for highlight if necessary

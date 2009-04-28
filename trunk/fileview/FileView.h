@@ -85,6 +85,8 @@ enum {
         unsigned int scheduledLiveResize : 1;
         unsigned int isDrawingDragImage : 1;
         unsigned int isObservingSelectionIndexes : 1;
+        unsigned int hasArrows : 1;
+        unsigned int isAnimatingArrowAlpha : 1;
     } _fvFlags;
     NSRect                  _dropRectForHighlight;
     double                  _maxScale;
@@ -95,6 +97,7 @@ enum {
     CFMutableDictionaryRef  _trackingRectMap;
     NSButtonCell           *_leftArrow;
     NSButtonCell           *_rightArrow;
+    CGFloat                 _arrowAlpha;
     NSRect                  _leftArrowFrame;
     NSRect                  _rightArrowFrame;
     FVSliderWindow         *_sliderWindow;
