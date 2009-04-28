@@ -104,17 +104,18 @@
         arrowColor = [NSColor colorWithCalibratedWhite:1.0 alpha:0.9];
     }
         
-    CGContextRef ctxt = [[NSGraphicsContext currentContext] graphicsPort];
-    CGContextSaveGState(ctxt);
-    CGContextSetAlpha(ctxt, alpha);
     NSRect circleFrame = NSInsetRect(frame, 2.0, 2.0);
     NSBezierPath *circlePath = [NSBezierPath bezierPathWithOvalInRect:circleFrame];
-    CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
-    CGFloat rgba[] = { 0, 0, 0, 1.0 };
-    CGColorRef shadowColor = CGColorCreate(cspace, rgba);
-    CGColorSpaceRelease(cspace);
-    CGContextSetShadowWithColor(ctxt, CGSizeZero, 2.0, shadowColor);
-    CGColorRelease(shadowColor);
+    NSShadow *buttonShadow = [[NSShadow new] autorelease];
+    [buttonShadow setShadowBlurRadius:1.5];
+    [buttonShadow setShadowColor:[NSColor blackColor]];
+
+    CGContextRef ctxt = [[NSGraphicsContext currentContext] graphicsPort];
+    CGContextSaveGState(ctxt);
+
+    CGContextSetAlpha(ctxt, alpha);
+    NSRectClip(frame);
+    [buttonShadow set];
     [bgColor setFill];
     [circlePath fill];
     [arrowColor setStroke];
@@ -124,6 +125,7 @@
     CGContextTranslateCTM(ctxt, NSMinX(circleFrame), NSMinY(circleFrame));
     [arrowColor setFill];
     [[self arrowBezierPathWithSize:circleFrame.size] fill];
+    
     CGContextRestoreGState(ctxt);
 }
 
