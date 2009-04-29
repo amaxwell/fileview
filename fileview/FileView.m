@@ -1903,7 +1903,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                                               selector:@selector(_updateArrowAlpha:)
                                               userInfo:animation
                                                repeats:YES];
-    [[NSRunLoop currentRunLoop] addTimer:timer forMode:NSRunLoopCommonModes];
+    [[NSRunLoop currentRunLoop] addTimer:timer forMode:(NSString *)kCFRunLoopCommonModes];
     [timer release];
     [animation startAnimation];
     [animation release];  
