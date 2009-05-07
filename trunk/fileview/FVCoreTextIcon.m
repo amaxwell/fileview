@@ -42,6 +42,7 @@
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
 
+// attrString may be nil, in which case we draw an error message
 - (CGImageRef)_newImageWithAttributedString:(NSMutableAttributedString *)attrString documentAttributes:(NSDictionary *)documentAttributes
 {
     CFMutableAttributedStringRef cfAttrString = (CFMutableAttributedStringRef)attrString;
@@ -62,12 +63,12 @@
     CGContextSaveGState(ctxt);
 
     // use a monospaced font for plain text
-    if (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
+    if (cfAttrString && (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType])) {
         CTFontRef font = CTFontCreateUIFontForLanguage(kCTFontUserFixedPitchFontType, 0, NULL);
         CFAttributedStringSetAttribute(cfAttrString, CFRangeMake(0, [attrString length]), kCTFontAttributeName, font);
         CFRelease(font);
     }
-    else if (nil != documentAttributes) {
+    else if (cfAttrString && nil != documentAttributes) {
         
         CGFloat left, right, top, bottom;
         
