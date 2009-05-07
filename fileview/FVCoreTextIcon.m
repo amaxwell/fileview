@@ -63,28 +63,30 @@
     CGContextSaveGState(ctxt);
 
     // use a monospaced font for plain text
-    if (cfAttrString && (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType])) {
-        CTFontRef font = CTFontCreateUIFontForLanguage(kCTFontUserFixedPitchFontType, 0, NULL);
-        CFAttributedStringSetAttribute(cfAttrString, CFRangeMake(0, [attrString length]), kCTFontAttributeName, font);
-        CFRelease(font);
-    }
-    else if (cfAttrString && nil != documentAttributes) {
-        
-        CGFloat left, right, top, bottom;
-        
-        left = [[documentAttributes objectForKey:NSLeftMarginDocumentAttribute] floatValue];
-        right = [[documentAttributes objectForKey:NSRightMarginDocumentAttribute] floatValue];
-        top = [[documentAttributes objectForKey:NSTopMarginDocumentAttribute] floatValue];
-        bottom = [[documentAttributes objectForKey:NSBottomMarginDocumentAttribute] floatValue];
-        NSSize paperSize = [[documentAttributes objectForKey:NSPaperSizeDocumentAttribute] sizeValue];
-        textRect.size.width = paperSize.width - left - right;
-        textRect.size.height = paperSize.height - top - bottom;
-        textRect.origin.x = left;
-        textRect.origin.y = bottom;
-        
-        NSColor *nsColor = [documentAttributes objectForKey:NSBackgroundColorDocumentAttribute];
-        nsColor = [nsColor colorUsingColorSpaceName:NSDeviceRGBColorSpace];  
-        [nsColor getRed:&backgroundComps[0] green:&backgroundComps[1] blue:&backgroundComps[2] alpha:&backgroundComps[3]];
+    if (cfAttrString) {
+        if (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
+            CTFontRef font = CTFontCreateUIFontForLanguage(kCTFontUserFixedPitchFontType, 0, NULL);
+            CFAttributedStringSetAttribute(cfAttrString, CFRangeMake(0, [attrString length]), kCTFontAttributeName, font);
+            CFRelease(font);
+        }
+        else if (nil != documentAttributes) {
+            
+            CGFloat left, right, top, bottom;
+            
+            left = [[documentAttributes objectForKey:NSLeftMarginDocumentAttribute] floatValue];
+            right = [[documentAttributes objectForKey:NSRightMarginDocumentAttribute] floatValue];
+            top = [[documentAttributes objectForKey:NSTopMarginDocumentAttribute] floatValue];
+            bottom = [[documentAttributes objectForKey:NSBottomMarginDocumentAttribute] floatValue];
+            NSSize paperSize = [[documentAttributes objectForKey:NSPaperSizeDocumentAttribute] sizeValue];
+            textRect.size.width = paperSize.width - left - right;
+            textRect.size.height = paperSize.height - top - bottom;
+            textRect.origin.x = left;
+            textRect.origin.y = bottom;
+            
+            NSColor *nsColor = [documentAttributes objectForKey:NSBackgroundColorDocumentAttribute];
+            nsColor = [nsColor colorUsingColorSpaceName:NSDeviceRGBColorSpace];  
+            [nsColor getRed:&backgroundComps[0] green:&backgroundComps[1] blue:&backgroundComps[2] alpha:&backgroundComps[3]];
+        }
     }
     
     if (NULL == cfAttrString) {
