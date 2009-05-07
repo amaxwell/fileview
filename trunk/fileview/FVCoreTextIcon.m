@@ -42,9 +42,9 @@
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_5)
 
-// attrString may be nil, in which case we draw an error message
 - (CGImageRef)_newImageWithAttributedString:(NSMutableAttributedString *)attrString documentAttributes:(NSDictionary *)documentAttributes
 {
+    NSParameterAssert(attrString);
     CFMutableAttributedStringRef cfAttrString = (CFMutableAttributedStringRef)attrString;
     
     // set up page layout parameters
@@ -63,39 +63,29 @@
     CGContextSaveGState(ctxt);
 
     // use a monospaced font for plain text
-    if (cfAttrString) {
-        if (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
-            CTFontRef font = CTFontCreateUIFontForLanguage(kCTFontUserFixedPitchFontType, 0, NULL);
-            CFAttributedStringSetAttribute(cfAttrString, CFRangeMake(0, [attrString length]), kCTFontAttributeName, font);
-            CFRelease(font);
-        }
-        else if (nil != documentAttributes) {
-            
-            CGFloat left, right, top, bottom;
-            
-            left = [[documentAttributes objectForKey:NSLeftMarginDocumentAttribute] floatValue];
-            right = [[documentAttributes objectForKey:NSRightMarginDocumentAttribute] floatValue];
-            top = [[documentAttributes objectForKey:NSTopMarginDocumentAttribute] floatValue];
-            bottom = [[documentAttributes objectForKey:NSBottomMarginDocumentAttribute] floatValue];
-            NSSize paperSize = [[documentAttributes objectForKey:NSPaperSizeDocumentAttribute] sizeValue];
-            textRect.size.width = paperSize.width - left - right;
-            textRect.size.height = paperSize.height - top - bottom;
-            textRect.origin.x = left;
-            textRect.origin.y = bottom;
-            
-            NSColor *nsColor = [documentAttributes objectForKey:NSBackgroundColorDocumentAttribute];
-            nsColor = [nsColor colorUsingColorSpaceName:NSDeviceRGBColorSpace];  
-            [nsColor getRed:&backgroundComps[0] green:&backgroundComps[1] blue:&backgroundComps[2] alpha:&backgroundComps[3]];
-        }
+    if (nil == documentAttributes || [[documentAttributes objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
+        CTFontRef font = CTFontCreateUIFontForLanguage(kCTFontUserFixedPitchFontType, 0, NULL);
+        CFAttributedStringSetAttribute(cfAttrString, CFRangeMake(0, [attrString length]), kCTFontAttributeName, font);
+        CFRelease(font);
     }
-    
-    if (NULL == cfAttrString) {
-        // display a mildly unhelpful error message
-        NSBundle *bundle = [NSBundle bundleForClass:[FVCoreTextIcon class]];
+    else if (nil != documentAttributes) {
         
-        NSString *err = [NSLocalizedStringFromTableInBundle(@"Unable to read text file ", @"FileView", bundle, @"error message with single trailing space") stringByAppendingString:[_fileURL path]];
-        cfAttrString = (CFMutableAttributedStringRef)[[[NSMutableAttributedString alloc] initWithString:err] autorelease];
-    }  
+        CGFloat left, right, top, bottom;
+        
+        left = [[documentAttributes objectForKey:NSLeftMarginDocumentAttribute] floatValue];
+        right = [[documentAttributes objectForKey:NSRightMarginDocumentAttribute] floatValue];
+        top = [[documentAttributes objectForKey:NSTopMarginDocumentAttribute] floatValue];
+        bottom = [[documentAttributes objectForKey:NSBottomMarginDocumentAttribute] floatValue];
+        NSSize paperSize = [[documentAttributes objectForKey:NSPaperSizeDocumentAttribute] sizeValue];
+        textRect.size.width = paperSize.width - left - right;
+        textRect.size.height = paperSize.height - top - bottom;
+        textRect.origin.x = left;
+        textRect.origin.y = bottom;
+        
+        NSColor *nsColor = [documentAttributes objectForKey:NSBackgroundColorDocumentAttribute];
+        nsColor = [nsColor colorUsingColorSpaceName:NSDeviceRGBColorSpace];  
+        [nsColor getRed:&backgroundComps[0] green:&backgroundComps[1] blue:&backgroundComps[2] alpha:&backgroundComps[3]];
+    }
     
     CGContextSetTextMatrix(ctxt, CGAffineTransformIdentity);
     CGContextSetRGBFillColor(ctxt, backgroundComps[0], backgroundComps[1], backgroundComps[2], backgroundComps[3]);
@@ -110,7 +100,9 @@
     CFRelease(framesetter);
     
     /*
-     NSGraphicsContext is required for NSColor attributes.  See http://lists.apple.com/archives/Quartz-dev/2008/Jun/msg00043.html  Unfortunately, colored underlines apparently aren't supported by CT; CTStringAttributes.h says that the color of those attributes is taken from the foreground text color, which is kind of lame.  Strikethrough apparently isn't supported at all.
+     NSGraphicsContext is required for NSColor attributes.  See http://lists.apple.com/archives/Quartz-dev/2008/Jun/msg00043.html  
+     Unfortunately, colored underlines apparently aren't supported by CT; CTStringAttributes.h says that the color of those 
+     attributes is taken from the foreground text color, which is kind of lame.  Strikethrough apparently isn't supported at all.
      */
     [NSGraphicsContext saveGraphicsState];
     [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:ctxt flipped:NO]];
