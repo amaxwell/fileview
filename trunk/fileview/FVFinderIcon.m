@@ -68,14 +68,14 @@
 {
     FVINITIALIZE(FVFinderIcon);
     
-    // init on main thread to avoid race conditions
-    [[FVMissingFinderIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-    [[FVHTTPURLIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-    [[FVGenericURLIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-    [[FVFTPURLIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-    [[FVMailURLIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-    [[FVGenericFolderIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
-    [[FVSavedSearchIcon self] performSelectorOnMainThread:@selector(sharedIcon) withObject:nil waitUntilDone:NO];
+    // create all singletons now to avoid locking
+    [FVMissingFinderIcon sharedIcon];
+    [FVHTTPURLIcon sharedIcon];
+    [FVGenericURLIcon sharedIcon];
+    [FVFTPURLIcon sharedIcon];
+    [FVMailURLIcon sharedIcon];
+    [FVGenericFolderIcon sharedIcon];
+    [FVSavedSearchIcon sharedIcon];
 }
 
 + (BOOL)_isSavedSearchURL:(NSURL *)aURL
