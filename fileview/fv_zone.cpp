@@ -165,7 +165,7 @@ static inline size_t __fv_zone_round_size(const size_t requestedSize, bool *useV
     // allocate at least requestedSize
     size_t actualSize = requestedSize;
     *useVM = __fv_zone_use_vm(actualSize);
-    if (true == *useVM) {
+    if (*useVM) {
         
         if (actualSize < 102400) 
             actualSize = round_page(actualSize);
