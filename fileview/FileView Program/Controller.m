@@ -99,6 +99,7 @@
     [arrayController insertObject:[NSURL URLWithString:@"http://www-chaos.engr.utk.edu/pap/crg-aiche2000daw-paper.pdf"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://dx.doi.org/10.1023/A:1018361121952"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://searchenginewatch.com/_static/example1.html"] atArrangedObjectIndex:insertIndex++];
+    [arrayController insertObject:[NSURL URLWithString:@"http://dx.doi.org/10.1016/j.scitotenv.2008.12.012"] atArrangedObjectIndex:insertIndex++];
     
     // this scheme is seldom (if ever) defined by any app; the delegate implementation demonstrates opening them
     [arrayController insertObject:[NSURL URLWithString:@"doi:10.2112/06-0677.1"] atArrangedObjectIndex:insertIndex++];
@@ -183,7 +184,7 @@
 
 - (NSString *)fileView:(FileView *)aFileView subtitleAtIndex:(NSUInteger)anIndex;
 {
-    return [NSString stringWithFormat:@"Subtitle %d", anIndex];
+    return [NSString stringWithFormat:@"Check pq for %d", anIndex];
 }
 
 - (void)fileView:(FileView *)aFileView willPopUpMenu:(NSMenu *)aMenu onIconAtIndex:(NSUInteger)anIndex;
