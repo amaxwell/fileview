@@ -1584,23 +1584,30 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
             // if we're creating a drag image, only draw selected icons
             if (NO == _fvFlags.isDrawingDragImage || [_selectedIndexes containsIndex:i]) {
             
-                NSRect fileRect = [self _rectOfIconInRow:r column:c];
+                NSRect iconRect = [self _rectOfIconInRow:r column:c];
                 NSURL *aURL = [_controller URLAtIndex:i];
-                NSRect textRect = [self _rectOfTextForIconRect:fileRect];
+                NSRect textRect = [self _rectOfTextForIconRect:iconRect];
                 
                 // always draw icon and text together, as they may overlap due to shadow and finder label, and redrawing a part may look odd
-                BOOL willDrawIcon = _fvFlags.isDrawingDragImage || [self needsToDrawRect:NSUnionRect(NSInsetRect(fileRect, -2.0 * [self iconScale], 0), textRect)];
+                BOOL willDrawIcon = _fvFlags.isDrawingDragImage || [self needsToDrawRect:NSUnionRect(NSInsetRect(iconRect, -2.0 * [self iconScale], 0), textRect)];
 
                 if (willDrawIcon) {
 
                     FVIcon *image = [_controller iconAtIndex:i];
                     
-                    // note that iconRect will be transformed for a flipped context
-                    NSRect iconRect = fileRect;
+                    /*
+                     Note that imageRect will be transformed for a flipped context.  The inset allows for highlight, 
+                     which otherwise extends outside the box and ends up getting drawn over when iconUpdate: or various
+                     other methods are called.  It would be possible to adjust _setNeedsDisplayForIconInRow:column: to
+                     compensate, but then we have consistency issues, since the "iconRect" meaning is less clear.
+                     */
+                    const CGFloat highlightOffset = 2;
+                    NSRect imageRect = NSInsetRect(iconRect, highlightOffset, highlightOffset);
+                    imageRect.origin.y += highlightOffset;
                     
                     // draw highlight, then draw icon over it, as Finder does
                     if ([_selectedIndexes containsIndex:i])
-                        [self _drawHighlightInRect:NSInsetRect(fileRect, -5, -5)];
+                        [self _drawHighlightInRect:NSInsetRect(imageRect, -2 * highlightOffset, -2 * highlightOffset)];
                     
                     CGContextSaveGState(cgContext);
                     
@@ -1608,20 +1615,20 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     CGContextSetShadowWithColor(cgContext, shadowOffset, shadowBlur, shadowColor);
                     
                     // possibly better performance by caching all bitmaps in a flipped state, but bookkeeping is a pain
-                    CGContextTranslateCTM(cgContext, 0, NSMaxY(iconRect));
+                    CGContextTranslateCTM(cgContext, 0, NSMaxY(imageRect));
                     CGContextScaleCTM(cgContext, 1, -1);
-                    iconRect.origin.y = 0;
+                    imageRect.origin.y = 0;
                     
                     // Note: don't use integral rects here to avoid res independence issues (on Tiger, centerScanRect: just makes an integral rect).  The icons may create an integral bitmap context, but it'll still be drawn into this rect with correct scaling.
-                    iconRect = [self centerScanRect:iconRect];
+                    imageRect = [self centerScanRect:imageRect];
                     
                     if (NO == isDrawingToScreen && [image needsRenderForSize:_iconSize])
                         [image renderOffscreen];
                                     
                     if (useFastDrawingPath)
-                        [image fastDrawInRect:iconRect ofContext:cgContext];
+                        [image fastDrawInRect:imageRect ofContext:cgContext];
                     else
-                        [image drawInRect:iconRect ofContext:cgContext];
+                        [image drawInRect:imageRect ofContext:cgContext];
                     
                     CGContextRestoreGState(cgContext);
                     CGContextSaveGState(cgContext);
@@ -1661,7 +1668,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     [[NSColor redColor] setFill];
                 else
                     [[NSColor greenColor] setFill];
-                NSFrameRect(NSUnionRect(NSInsetRect(fileRect, -2.0 * [self iconScale], 0), textRect));                
+                NSFrameRect(NSUnionRect(NSInsetRect(iconRect, -2.0 * [self iconScale], 0), textRect));                
                 [NSGraphicsContext restoreGraphicsState];
 #endif
             }
