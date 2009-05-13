@@ -538,9 +538,10 @@ static char _FVContentBindingToControllerObserverContext;
     CGFloat extraMargin = roundf(4.0 * scale);
 #endif
     size.width = MINIMUM_PADDING + extraMargin;
-    size.height = _titleHeight + 4.0 + extraMargin;
+    size.height = _titleHeight + extraMargin;
+    // add subtitle + additional amount to keep from clipping descenders on subtitles with selection layer
     if ([_dataSource respondsToSelector:@selector(fileView:subtitleAtIndex:)])
-        size.height += _subtitleHeight;
+        size.height += 1.3 * _subtitleHeight;
     return size;
 }
 
@@ -3048,12 +3049,10 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 - (CGFloat)_leftMargin { return DEFAULT_PADDING / 2; }
 - (CGFloat)_rightMargin { return DEFAULT_PADDING / 2; }
 
-- (NSSize)_defaultPaddingForScale:(CGFloat)unused
+- (NSSize)_defaultPaddingForScale:(CGFloat)scale
 {    
-    NSSize size = NSZeroSize;
-    size.height = _titleHeight + 4.0;
-    if ([[self dataSource] respondsToSelector:@selector(fileView:subtitleAtIndex:)])
-        size.height += _subtitleHeight;
+    NSSize size = [super _defaultPaddingForScale:scale];
+    size.width = 0;
     return size;
 }
 
@@ -3133,7 +3132,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
                                                    borderType:[sv borderType]];
     }
     
-    _padding = [self _defaultPaddingForScale:0];
+    _padding = [self _defaultPaddingForScale:[self iconScale]];
     CGFloat length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin];    
     _iconSize = NSMakeSize(length, length);
     
@@ -3204,11 +3203,6 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
 - (void)setIconScale:(double)scale;
 {
     // may be called by initWithCoder:
-}
-
-- (double)iconScale;
-{
-    return _iconSize.width / DEFAULT_ICON_SIZE.width;
 }
 
 - (NSBezierPath *)_insertionHighlightPathInRect:(NSRect)aRect
