@@ -1600,7 +1600,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     
                     // draw highlight, then draw icon over it, as Finder does
                     if ([_selectedIndexes containsIndex:i])
-                        [self _drawHighlightInRect:NSInsetRect(fileRect, -4, -4)];
+                        [self _drawHighlightInRect:NSInsetRect(fileRect, -5, -5)];
                     
                     CGContextSaveGState(cgContext);
                     
