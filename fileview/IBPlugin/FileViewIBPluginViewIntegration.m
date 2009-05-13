@@ -126,7 +126,7 @@
         if (nil != picturesURL && [[NSFileManager defaultManager] fileExistsAtPath:[[picturesURL path] stringByAppendingPathComponent:@"Plants"] isDirectory:NULL])
             base = [[picturesURL path] stringByAppendingPathComponent:@"Plants"];
         
-        NSMutableArray *files = [[[[NSFileManager defaultManager] directoryContentsAtPath:base] mutableCopy] autorelease];
+        NSMutableArray *files = [[[[NSFileManager defaultManager] contentsOfDirectoryAtPath:base error:NULL] mutableCopy] autorelease];
         NSUInteger iMax, i = [files count];
         while (i--) {
             if ([[files objectAtIndex:i] hasPrefix:@"."])
