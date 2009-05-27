@@ -79,14 +79,15 @@ enum {
     NSUInteger              _lastClickedIndex;
     NSRect                  _rubberBandRect;
     struct __fvFlags {
-        unsigned int isMouseDown : 1;
-        unsigned int isEditable : 1;
-        unsigned int isRescaling: 1;
-        unsigned int scheduledLiveResize : 1;
-        unsigned int isDrawingDragImage : 1;
-        unsigned int isObservingSelectionIndexes : 1;
-        unsigned int hasArrows : 1;
-        unsigned int isAnimatingArrowAlpha : 1;
+        unsigned int isMouseDown:1;
+        unsigned int isEditable:1;
+        unsigned int isRescaling:1;
+        unsigned int scheduledLiveResize:1;
+        unsigned int isDrawingDragImage:1;
+        unsigned int isObservingSelectionIndexes:1;
+        unsigned int hasArrows:1;
+        unsigned int isAnimatingArrowAlpha:1;
+        unsigned int reserved:24;
     } _fvFlags;
     NSRect                  _dropRectForHighlight;
     double                  _maxScale;
