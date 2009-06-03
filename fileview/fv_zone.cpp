@@ -55,7 +55,7 @@
 using namespace std;
 
 #if DEBUG
-#define ENABLE_STATS 0
+#define ENABLE_STATS 1
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define ENABLE_STATS 0
@@ -71,10 +71,19 @@ typedef struct _fv_zone_t {
     void              *_reserved[2];          /* for future expansion of malloc_zone_t */
     multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size  */
     set<ALLOC>        *_allocations;          /* all allocations, ordered by address   */
-    OSSpinLock         _spinLock;             /* lock before manipulating sets         */
+#if __LP64__
+    volatile uint64_t  _allocatedSize;        /* free + active allocations (allocSize) */
+    volatile uint64_t  _freeSize;             /* available allocations (allocSize)     */
+#else
+    volatile uint32_t  _allocatedSize;        
+    volatile uint32_t  _freeSize;             
+#endif
+    OSSpinLock         _spinLock;             /* lock before manipulating fields       */
+#if ENABLE_STATS
     volatile uint32_t  _cacheHits;
     volatile uint32_t  _cacheMisses;
     volatile uint32_t  _reallocCount;
+#endif
 } fv_zone_t;
 
 typedef struct _fv_allocation_t {
@@ -105,7 +114,7 @@ static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
 // clean up the pool at 100 MB of freed memory
-#define FV_REAP_THRESHOLD 104857600UL
+#define FV_COLLECT_THRESHOLD 104857600UL
 
 #if DEBUG
 #define FV_COLLECT_TIMEINTERVAL 60
@@ -142,7 +151,7 @@ static inline bool __fv_zone_use_vm(size_t size) { return size >= FV_VM_THRESHOL
 static inline void __fv_zone_destroy_allocation(fv_allocation_t *alloc)
 {
     if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
-        malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
+        malloc_printf("%s: invalid allocation pointer %p\n", __func__, alloc);
         malloc_printf("Break on malloc_printf to debug.\n");
         HALT;
     }
@@ -193,7 +202,7 @@ static inline size_t __fv_zone_round_size(const size_t requestedSize, bool *useV
         actualSize = 128;
     }
     if (__builtin_expect(requestedSize > actualSize, 0)) {
-        malloc_printf("%s: invalid size %y after rounding %y to page boundary\n", __PRETTY_FUNCTION__, actualSize, requestedSize);
+        malloc_printf("%s: invalid size %y after rounding %y to page boundary\n", __func__, actualSize, requestedSize);
         malloc_printf("Break on malloc_printf to debug.\n");
         HALT;
     }
@@ -206,6 +215,7 @@ static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t
     OSSpinLockLock(&zone->_spinLock);
     fv_zone_assert(zone->_allocations->find(alloc) == zone->_allocations->end());
     zone->_allocations->insert(alloc);
+    zone->_allocatedSize += alloc->allocSize;
     OSSpinLockUnlock(&zone->_spinLock);
 }
 
@@ -319,15 +329,21 @@ static void *fv_zone_malloc(malloc_zone_t *fvzone, size_t size)
     fv_allocation_t *alloc = *next;
     
     if (zone->_availableAllocations->end() == next || ((float)(alloc->ptrSize - size) / size) > 1) {
+#if ENABLE_STATS
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheMisses);
+#endif
         // nothing found; unlock immediately and allocate a new chunk of memory
         OSSpinLockUnlock(&zone->_spinLock);
         alloc = useVM ? __fv_zone_vm_allocation(size, zone) : __fv_zone_malloc_allocation(size, zone);
     }
     else {
+#if ENABLE_STATS
         OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_cacheHits);
+#endif
         // pass iterator to erase this element, rather than an arbitrary element of this size
         zone->_availableAllocations->erase(next);
+        fv_zone_assert(zone->_freeSize >= alloc->allocSize);
+        zone->_freeSize -= alloc->allocSize;
         OSSpinLockUnlock(&zone->_spinLock);
         if (__builtin_expect(origSize > alloc->ptrSize, 0)) {
             malloc_printf("incorrect size %y (%y expected) in %s\n", alloc->ptrSize, origSize, malloc_get_zone_name(&zone->_basic_zone));
@@ -375,7 +391,7 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
         fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
-            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
+            malloc_printf("%s: pointer %p not malloced in zone %s\n", __func__, ptr, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
             return; /* not reached; keep clang happy */
@@ -386,14 +402,22 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
         // FIXME: assert availableAllocations does not contain alloc
         zone->_availableAllocations->insert(alloc);
         alloc->free = true;
+        zone->_freeSize += alloc->allocSize;
         OSSpinLockUnlock(&zone->_spinLock);    
+
+        // signal for collection if needed (lock not required, no effect if not blocking on the condition)
+        if (zone->_freeSize > FV_COLLECT_THRESHOLD)
+            pthread_cond_signal(&_collectorCond);
     }
 }
 
 static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
+
+#if ENABLE_STATS
     OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_reallocCount);
+#endif
     
     void *newPtr;
     
@@ -409,7 +433,7 @@ static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
         fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
-            malloc_printf("%s: pointer %p not malloced in zone %s\n", __PRETTY_FUNCTION__, ptr, malloc_get_zone_name(&zone->_basic_zone));
+            malloc_printf("%s: pointer %p not malloced in zone %s\n", __func__, ptr, malloc_get_zone_name(&zone->_basic_zone));
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
             return NULL; /* not reached; keep clang happy */
@@ -430,6 +454,10 @@ static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
             if (KERN_SUCCESS == ret) {
                 alloc->allocSize += round_page(size);
                 alloc->ptrSize += round_page(size);
+                // adjust allocation size in the zone
+                OSSpinLockLock(&zone->_spinLock);
+                zone->_allocatedSize += round_page(size);
+                OSSpinLockUnlock(&zone->_spinLock);
                 newPtr = ptr;
             }
         }
@@ -474,24 +502,34 @@ static void fv_zone_destroy(malloc_zone_t *fvzone)
 }
 
 static void fv_zone_print(malloc_zone_t *zone, boolean_t verbose) {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
 }
 
 static void fv_zone_log(malloc_zone_t *zone, void *address) {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
 }
 
 static boolean_t fv_zone_check(malloc_zone_t *zone) {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     return 1;
 }
 
 static size_t fv_zone_good_size(malloc_zone_t *zone, size_t size)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     bool ignored;
     return __fv_zone_round_size(size, &ignored);
 }
+
+/*
+ 
+ Standard malloc_zone statistics functions use fv_zone.ptrSize to determine usage.
+ This size determination is not compatible with collection or __fv_zone_show_stats,
+ where I'm more interested in total allocation size.  Both are correct, but which
+ one is appropriate depends on whether you're more concerned about client code heap
+ usage or overhead of the fv_zone.
+ 
+ */
 
 static inline void __fv_zone_sum_allocations(fv_allocation_t *alloc, size_t *size)
 {
@@ -500,7 +538,7 @@ static inline void __fv_zone_sum_allocations(fv_allocation_t *alloc, size_t *siz
 
 static size_t __fv_zone_total_size(fv_zone_t *zone)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     size_t sizeTotal = 0;
     OSSpinLockLock(&zone->_spinLock);
     set<fv_allocation_t *>::iterator it;
@@ -513,7 +551,7 @@ static size_t __fv_zone_total_size(fv_zone_t *zone)
 
 static size_t __fv_zone_get_size_in_use(fv_zone_t *zone)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     size_t sizeTotal = 0, sizeFree = 0;
     OSSpinLockLock(&zone->_spinLock);
     set<fv_allocation_t *>::iterator it;
@@ -535,7 +573,7 @@ static size_t __fv_zone_get_size_in_use(fv_zone_t *zone)
 static void fv_zone_statistics(malloc_zone_t *fvzone, malloc_statistics_t *stats)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     stats->blocks_in_use = zone->_allocations->size() - zone->_availableAllocations->size();
     stats->size_in_use = __fv_zone_get_size_in_use(zone);
     stats->max_size_in_use = __fv_zone_total_size(zone);
@@ -556,7 +594,7 @@ static void fv_zone_force_unlock(malloc_zone_t *fvzone)
     OSSpinLockUnlock(&zone->_spinLock);
 }
 
-typedef struct _applier_context {
+typedef struct _fv_enumerator_context {
     task_t              task;
     void               *context;
     unsigned            type_mask;
@@ -564,9 +602,9 @@ typedef struct _applier_context {
     kern_return_t     (*reader)(task_t, vm_address_t, vm_size_t, void **);
     void              (*recorder)(task_t, void *, unsigned type, vm_range_t *, unsigned);
     kern_return_t      *ret;
-} applier_context;
+} fv_enumerator_context;
 
-static void __enumerator_applier(const void *value, applier_context *ctxt)
+static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_context *ctxt)
 {
     const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
     
@@ -599,14 +637,14 @@ static void __enumerator_applier(const void *value, applier_context *ctxt)
 static kern_return_t 
 fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
-    fprintf(stderr, "%s\n", __PRETTY_FUNCTION__);
+    fprintf(stderr, "%s\n", __func__);
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(zone_address);
     OSSpinLockLock(&zone->_spinLock);
     kern_return_t ret = 0;
-    applier_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
+    fv_enumerator_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
     set<fv_allocation_t *>::iterator it;
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
-        __enumerator_applier(*it, &ctxt);
+        __fv_zone_enumerate_allocation(*it, &ctxt);
     }
     OSSpinLockUnlock(&zone->_spinLock);
     return ret;
@@ -634,9 +672,10 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     // TODO: is using new okay?
     if (NULL == _allZones) _allZones = new set<fv_zone_t *>;
     pthread_mutex_unlock(&_allZonesLock);
+
+    // let calloc zero all fields
+    fv_zone_t *zone = (fv_zone_t *)malloc_zone_calloc(malloc_default_zone(), 1, sizeof(fv_zone_t));
     
-    fv_zone_t *zone = (fv_zone_t *)malloc_zone_malloc(malloc_default_zone(), sizeof(fv_zone_t));
-    memset(zone, 0, sizeof(fv_zone_t));
     zone->_basic_zone.size = fv_zone_size;
     zone->_basic_zone.malloc = fv_zone_malloc;
     zone->_basic_zone.calloc = fv_zone_calloc;
@@ -658,6 +697,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     bool (*compare_ptr)(ALLOC, ALLOC) = __fv_alloc_size_compare;
     zone->_availableAllocations = new multiset<MSALLOC>(compare_ptr);
     zone->_allocations = new set<ALLOC>;
+    zone->_spinLock = OS_SPINLOCK_INIT;
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
@@ -684,29 +724,30 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
 #if ENABLE_STATS
     __fv_zone_show_stats(zone);
 #endif
+    // read freeSize before locking, since collection isn't critical
     // if we can't lock immediately, wait for another opportunity
-    if (OSSpinLockTry(&zone->_spinLock)) {
-        
-        // iterate the free list to see how much memory is unused
-        size_t freeMemory = 0;
-        set<fv_allocation_t *>::iterator it;
-        for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
-            freeMemory += (*it)->allocSize;
-        }         
-        
-        if (freeMemory > FV_REAP_THRESHOLD) {
+    if (zone->_freeSize > FV_COLLECT_THRESHOLD && OSSpinLockTry(&zone->_spinLock)) {
             
-            // clear out all of the available allocations; this could be more intelligent
-            for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
-                // remove from the allocation list
-                fv_zone_assert(zone->_allocations->find(*it) != zone->_allocations->end());
-                zone->_allocations->erase(*it);
-                // deallocate underlying storage
-                __fv_zone_destroy_allocation(*it);
-            } 
-            // now remove all blocks from the free list
-            zone->_availableAllocations->clear();
-        }
+        set<fv_allocation_t *>::iterator it;
+        
+        // clear out all of the available allocations; this could be more intelligent
+        for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
+            // remove from the allocation list
+            fv_zone_assert(zone->_allocations->find(*it) != zone->_allocations->end());
+            zone->_allocations->erase(*it);
+            
+            // change the sizes in the zone's record
+            fv_zone_assert(zone->_allocatedSize >= (*it)->allocSize);
+            fv_zone_assert(zone->_freeSize >= (*it)->allocSize);
+            zone->_allocatedSize -= (*it)->allocSize;
+            zone->_freeSize -= (*it)->allocSize;
+            
+            // deallocate underlying storage
+            __fv_zone_destroy_allocation(*it);
+        } 
+        // now remove all blocks from the free list
+        zone->_availableAllocations->clear();
+        
         OSSpinLockUnlock(&zone->_spinLock);
     }
 }
@@ -721,6 +762,11 @@ static void *__fv_zone_collector_thread(void *unused)
     TIMEVAL_TO_TIMESPEC(&tv, &ts);
     ts.tv_sec += FV_COLLECT_TIMEINTERVAL;
     
+#if DEBUG
+    static double lastCollectSeconds = tv.tv_sec + double(tv.tv_usec) / 1000000;
+    static unsigned int collectionCount = 0;
+#endif
+    
     int ret = pthread_mutex_lock(&_allZonesLock);
     while (0 == ret || ETIMEDOUT == ret) {
         ret = pthread_cond_timedwait(&_collectorCond, &_allZonesLock, &ts);
@@ -729,6 +775,11 @@ static void *__fv_zone_collector_thread(void *unused)
         gettimeofday(&tv, NULL);
         TIMEVAL_TO_TIMESPEC(&tv, &ts);
         ts.tv_sec += FV_COLLECT_TIMEINTERVAL;
+#if DEBUG
+        collectionCount++;
+        fprintf(stderr, "%s collection %u, %.2f seconds since previous\n", ETIMEDOUT == ret ? "TIMED" : "FORCED", collectionCount, tv.tv_sec - lastCollectSeconds);
+        lastCollectSeconds = tv.tv_sec + double(tv.tv_usec) / 1000000;
+#endif
     }
     pthread_mutex_unlock(&_allZonesLock);
     
@@ -738,7 +789,6 @@ static void *__fv_zone_collector_thread(void *unused)
 __attribute__ ((constructor))
 static void __initialize_collector_thread()
 {    
-    
     // create a thread to do periodic cleanup so memory usage doesn't get out of hand
     pthread_attr_t attr;
     pthread_attr_init(&attr);
@@ -762,7 +812,7 @@ static multiset<size_t> __fv_zone_free_sizes_locked(fv_zone_t *fvzone, size_t *f
     for (it = fvzone->_availableAllocations->begin(); it != fvzone->_availableAllocations->end(); it++) {
         fv_allocation_t *alloc = *it;
         if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
-            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
+            malloc_printf("%s: invalid allocation pointer %p\n", __func__, alloc);
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
@@ -771,6 +821,7 @@ static multiset<size_t> __fv_zone_free_sizes_locked(fv_zone_t *fvzone, size_t *f
         allocationSet.insert(alloc->ptrSize);
     } 
     if (freeMemPtr) *freeMemPtr = freeMemory;
+    fv_zone_assert(freeMemory == fvzone->_freeSize);
     return allocationSet;
 }
 
@@ -782,7 +833,7 @@ static multiset<size_t> __fv_zone_all_sizes_locked(fv_zone_t *fvzone, size_t *to
     for (it = fvzone->_allocations->begin(); it != fvzone->_allocations->end(); it++) {
         fv_allocation_t *alloc = *it;
         if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
-            malloc_printf("%s: invalid allocation pointer %p\n", __PRETTY_FUNCTION__, alloc);
+            malloc_printf("%s: invalid allocation pointer %p\n", __func__, alloc);
             malloc_printf("Break on malloc_printf to debug.\n");
             HALT;
         }
@@ -790,6 +841,7 @@ static multiset<size_t> __fv_zone_all_sizes_locked(fv_zone_t *fvzone, size_t *to
         totalMemory += alloc->allocSize;
         allocationSet.insert(alloc->ptrSize);
     } 
+    fv_zone_assert(totalMemory == fvzone->_allocatedSize);
     if (totalMemPtr) *totalMemPtr = totalMemory;
     return allocationSet;
 }
