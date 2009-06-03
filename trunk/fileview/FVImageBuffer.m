@@ -126,6 +126,21 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
     return _allocatedBytes;
 }
 
++ (void)increaseAllocatedSizeBy:(size_t)externalByteCount;
+{
+    OSSpinLockLock(&_monitorLock);
+    _allocatedBytes += externalByteCount;
+    OSSpinLockUnlock(&_monitorLock);
+}
+
++ (void)decreaseAllocatedSizeBy:(size_t)externalByteCount;
+{
+    OSSpinLockLock(&_monitorLock);
+    NSParameterAssert(_allocatedBytes >= externalByteCount);
+    _allocatedBytes -= externalByteCount;
+    OSSpinLockUnlock(&_monitorLock);    
+}
+
 - (id)init
 {
     [self doesNotRecognizeSelector:_cmd];

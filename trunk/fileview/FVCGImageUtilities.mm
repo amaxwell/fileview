@@ -76,8 +76,8 @@
 // monitor cached tile memory consumption by blocking render threads
 #define FV_LIMIT_TILEMEMORY_USAGE 1
 
-// this is an advisory limit: actual usage will grow as needed
-#define FV_TILEMEMORY_MEGABYTES 15
+// this is an advisory limit: actual usage will grow as needed, but this prevents scaling images simultaneously
+#define FV_TILEMEMORY_MEGABYTES 100
 
 #if FV_LIMIT_TILEMEMORY_USAGE
 // Sadly, NSCondition is apparently buggy pre-10.5: http://www.cocoabuilder.com/archive/message/cocoa/2008/4/4/203257
@@ -97,6 +97,7 @@ NSSize FVCGImageSize(CGImageRef image)
 
 static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize size)
 {
+#warning unify memory checking
     [_copyLock lock];
     FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
     CGContextClearRect(ctxt, CGRectMake(0, 0, size.width, size.height));
@@ -694,23 +695,33 @@ static vImage_Error __FVCheckAndTrimRow(NSArray *regionRow, vImage_Buffer *desti
     return kvImageNoError;
 }
 
+// cheap and consistent way to compute the number of bytes in an image without hitting the data provider
+static size_t __FVCGImageGetDataSize(CGImageRef image)
+{
+    return (CGImageGetBytesPerRow(image) * CGImageGetHeight(image));
+}
+
 static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSSize desiredSize)
 {
     NSCParameterAssert(image);
     NSCParameterAssert(desiredSize.width >= 1 && desiredSize.height >= 1);
     
-    // make this call early so we avoid other allocations on this thread in case we have to wait on _copyLock
+    // make this call early to increase the allocation size record if needed
     CFDataRef originalImageData = NULL;
     const uint8_t *srcBytes = __FVCGImageGetBytePtr(image, NULL);   
     if (NULL == srcBytes) {
-        // block other threads from copying at the same time; this tends to be a large memory hit
-        [_copyLock lock];
+        
         originalImageData = CGDataProviderCopyData(CGImageGetDataProvider(image));
         srcBytes = CFDataGetBytePtr(originalImageData);
         
         // !!! early return
         if (NULL == srcBytes) {
-            [_copyLock unlock];
+#if FV_LIMIT_TILEMEMORY_USAGE
+            pthread_mutex_lock(&_memoryMutex);
+            [FVImageBuffer decreaseAllocatedSizeBy:__FVCGImageGetDataSize(image)];
+            pthread_cond_broadcast(&_memoryCond);
+            pthread_mutex_unlock(&_memoryMutex);            
+#endif
             return NULL;
         }
     }
@@ -920,7 +931,12 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     
     if (originalImageData) {
         CFRelease(originalImageData);
-        [_copyLock unlock];
+#if FV_LIMIT_TILEMEMORY_USAGE
+        pthread_mutex_lock(&_memoryMutex);
+        [FVImageBuffer decreaseAllocatedSizeBy:__FVCGImageGetDataSize(image)];
+        pthread_cond_broadcast(&_memoryCond);
+        pthread_mutex_unlock(&_memoryMutex);
+#endif
     }
     
     // tell this buffer not to call free() when it deallocs, so we avoid copying the data
@@ -1038,18 +1054,29 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
         if (CGImageGetAlphaInfo(image) != kCGImageAlphaNone || false == __FVCanUseIndexedColorSpaces())
             return __FVCopyImageUsingCacheColorspace(image, desiredSize);
     }
-    
+        
 #if FV_LIMIT_TILEMEMORY_USAGE
     // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait
     struct timeval tv;
-    gettimeofday(&tv, NULL);
     struct timespec ts;
+
+    gettimeofday(&tv, NULL);
     TIMEVAL_TO_TIMESPEC(&tv, &ts);
     ts.tv_nsec += 50000000;
-    pthread_mutex_lock(&_memoryMutex);
-    int ret = 0;
-    while ([FVImageBuffer allocatedBytes] > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && 0 == ret)
+    
+    int ret = pthread_mutex_lock(&_memoryMutex);
+    while ([FVImageBuffer allocatedBytes] > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
+        fprintf(stderr, "waiting; allocated %.2f\n", double([FVImageBuffer allocatedBytes])/1024/1024);
         ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
+        
+        gettimeofday(&tv, NULL);
+        TIMEVAL_TO_TIMESPEC(&tv, &ts);
+        ts.tv_nsec += 50000000;
+    }
+    // increase before calling __FVTileAndScale_8888_or_888_Image; will be decreased after releasing copied data
+    // if we increase before checking the condition, it may never be true
+    if (__FVCGImageGetBytePtr(image, NULL) == NULL)
+        [FVImageBuffer increaseAllocatedSizeBy:__FVCGImageGetDataSize(image)];    
     pthread_mutex_unlock(&_memoryMutex);
 #endif
     return __FVTileAndScale_8888_or_888_Image(image, desiredSize);
