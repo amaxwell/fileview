@@ -2795,7 +2795,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
         return [aURL isFileURL] && [_selectedIndexes count] == 1 && NO == isMissing;
     else if (action == @selector(openSelectedURLs:))
         return selectionCount > 0;
-    else if (action == @selector(delete:) || action == @selector(copy:) || action == @selector(cut:))
+    else if (action == @selector(delete:) || action == @selector(cut:))
         return [self isEditable] && selectionCount > 0;
     else if (action == @selector(selectAll:))
         return ([_controller numberOfIcons] > 0);
@@ -2803,6 +2803,8 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
         return selectionCount > 0;
     else if (action == @selector(paste:))
         return [self isEditable];
+    else if (action == @selector(copy:))
+        return selectionCount > 0;
     else if (action == @selector(submenuAction:))
         return selectionCount > 1 || ([_selectedIndexes count] == 1 && [aURL isFileURL]);
     else if (action == @selector(changeFinderLabel:) || [anItem tag] == FVChangeLabelMenuItemTag) {
