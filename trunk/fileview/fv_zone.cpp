@@ -46,6 +46,7 @@
 #import <pthread.h>
 #import <sys/time.h>
 #import <math.h>
+#import <errno.h>
 
 #import <set>
 #import <map>
@@ -98,15 +99,18 @@ static char _vm_guard;      /* indicates vm_allocate was used for this block    
 static set<fv_zone_t *> *_allZones = NULL;
 static pthread_mutex_t   _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
 
+// used to explicitly signal collection
+static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
+
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
 // clean up the pool at 100 MB of freed memory
 #define FV_REAP_THRESHOLD 104857600UL
 
 #if DEBUG
-#define FV_REAP_TIMEINTERVAL 60
+#define FV_COLLECT_TIMEINTERVAL 60
 #else
-#define FV_REAP_TIMEINTERVAL 300
+#define FV_COLLECT_TIMEINTERVAL 300
 #endif
 
 // fv_allocation_t struct always immediately precedes the data pointer
@@ -675,7 +679,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
 static void __fv_zone_show_stats(fv_zone_t *fvzone);
 #endif
 
-static void __fv_zone_reap_zone(fv_zone_t *zone)
+static void __fv_zone_collect_zone(fv_zone_t *zone)
 {
 #if ENABLE_STATS
     __fv_zone_show_stats(zone);
@@ -708,20 +712,31 @@ static void __fv_zone_reap_zone(fv_zone_t *zone)
 }
 
 // periodically check all zones against the per-zone high water mark for unused memory
-static void *__fv_zone_reap_thread(void *unused)
+static void *__fv_zone_collector_thread(void *unused)
 {
-    do {
-        sleep(FV_REAP_TIMEINTERVAL);
-        pthread_mutex_lock(&_allZonesLock);
-        for_each(_allZones->begin(), _allZones->end(), __fv_zone_reap_zone);
-        pthread_mutex_unlock(&_allZonesLock);
-    } while (1);
+    struct timeval tv;
+    struct timespec ts;
+
+    gettimeofday(&tv, NULL);
+    TIMEVAL_TO_TIMESPEC(&tv, &ts);
+    ts.tv_sec += FV_COLLECT_TIMEINTERVAL;
+    
+    int ret = pthread_mutex_lock(&_allZonesLock);
+    while (0 == ret || ETIMEDOUT == ret) {
+        ret = pthread_cond_timedwait(&_collectorCond, &_allZonesLock, &ts);
+        for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
+        
+        gettimeofday(&tv, NULL);
+        TIMEVAL_TO_TIMESPEC(&tv, &ts);
+        ts.tv_sec += FV_COLLECT_TIMEINTERVAL;
+    }
+    pthread_mutex_unlock(&_allZonesLock);
     
     return NULL;
 }
 
 __attribute__ ((constructor))
-static void __initialize_reaper_thread()
+static void __initialize_collector_thread()
 {    
     
     // create a thread to do periodic cleanup so memory usage doesn't get out of hand
@@ -731,7 +746,7 @@ static void __initialize_reaper_thread()
     
     // not required as an ivar at present
     pthread_t thread;
-    (void)pthread_create(&thread, &attr, __fv_zone_reap_thread, NULL);
+    (void)pthread_create(&thread, &attr, __fv_zone_collector_thread, NULL);
     pthread_attr_destroy(&attr);    
 }
 
