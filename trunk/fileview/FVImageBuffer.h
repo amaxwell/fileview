@@ -63,10 +63,6 @@
  @return The number of bytes in use by FVImageBuffer instances. */
 + (uint64_t)allocatedBytes;
 
-#warning move this
-+ (void)increaseAllocatedSizeBy:(size_t)externalByteCount;
-+ (void)decreaseAllocatedSizeBy:(size_t)externalByteCount;
-
 /** @internal @brief Raises an exception.
  
  Callers must pass an explicit size.
