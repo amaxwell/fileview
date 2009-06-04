@@ -46,6 +46,9 @@
 /** @internal @brief Determine if too much data is mapped */
 + (BOOL)maxSizeExceeded;
 
+/** @internal @brief Maximum number of memory-mapped data providers */
++ (unsigned char)maxProviderCount;
+
 /** @internal @brief Get a mapped data provider. 
  
  Retaining this object is not required, since the internal cache keeps a valid reference to it until you call removeProviderReferenceForURL: to dispose of it. */

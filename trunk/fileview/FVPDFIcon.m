@@ -52,7 +52,8 @@ static CGLayerRef   _pageLayer = NULL;
 + (void)initialize
 {
     FVINITIALIZE(FVPDFIcon);
-    _releaseableIcons = [_FVSplitSet new];
+    unsigned char split = [_FVMappedDataProvider maxProviderCount] / 2 - 1;
+    _releaseableIcons = [[_FVSplitSet allocWithZone:[self zone]] initWithSplit:split];
     
     const CGSize layerSize = { 1, 1 };
     CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
@@ -76,11 +77,19 @@ static CGLayerRef   _pageLayer = NULL;
     CGContextFillRect(context, pageRect);
 }
 
+/*
+ Problem: what happens if we have 130 mapped providers (so +maxSizeExceeded is true),
+ yet only 80 have been marked as releaseable?  If the split is 100, -oldObjects always
+ returns an empty set, but it keeps getting called repeatedly.  The split value, then,
+ should always be less than (MAX_MAPPED_PROVIDER_COUNT / 2) to avoid wasted calls to
+ -copyOldObjects and -removeOldObjects.
+*/
 + (void)_addIconForMappedRelease:(FVPDFIcon *)anIcon;
 {
     OSSpinLockLock(&_releaseLock);
     [_releaseableIcons addObject:anIcon];
     NSSet *oldObjects = nil;
+    // ??? is the second condition really required?
     if ([_FVMappedDataProvider maxSizeExceeded] || [_releaseableIcons count] >= [_releaseableIcons split] * 2) {
         // copy inside the lock, then perform the slower makeObjectsPerformSelector: operation outside of it
         oldObjects = [_releaseableIcons copyOldObjects];
@@ -89,7 +98,7 @@ static CGLayerRef   _pageLayer = NULL;
     }
     OSSpinLockUnlock(&_releaseLock);
     
-    if (oldObjects) {
+    if ([oldObjects count]) {
         [oldObjects makeObjectsPerformSelector:@selector(_releaseMappedResources)];
         [oldObjects release];
     }
