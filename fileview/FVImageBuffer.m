@@ -43,102 +43,17 @@
 #import "FVBitmapContext.h"
 #import "FVAllocator.h"
 
-
-static CFAllocatorRef _allocator = NULL;
-
-static OSSpinLock _monitorLock = OS_SPINLOCK_INIT;
-static CFMutableDictionaryRef _monitoredPointers = NULL;
-
-static int64_t _allocatedBytes = 0;
-
-static CFStringRef FVImageAllocatorCopyDescription(const void *info)
-{
-    return (CFStringRef)[[NSString alloc] initWithFormat:@"FVImageBufferAllocator <%p>", _allocator];
-}
-
-static void * FVImageBufferAllocate(CFIndex allocSize, CFOptionFlags hint, void *info)
-{
-    void *ptr = CFAllocatorAllocate(FVAllocatorGetDefault(), allocSize, hint);
-    OSSpinLockLock(&_monitorLock);
-    _allocatedBytes += allocSize;
-    CFDictionaryAddValue(_monitoredPointers, ptr, (void *)allocSize);
-    OSSpinLockUnlock(&_monitorLock);
-    return ptr;
-}
-
-static void * FVImageBufferReallocate(void *ptr, CFIndex newSize, CFOptionFlags hint, void *info)
-{
-    OSSpinLockLock(&_monitorLock);
-    NSInteger oldSize;
-    if (FVCFDictionaryGetIntegerIfPresent(_monitoredPointers, ptr, &oldSize))
-        CFDictionaryRemoveValue(_monitoredPointers, ptr);
-    else
-        oldSize = 0;
-    ptr = CFAllocatorReallocate(FVAllocatorGetDefault(), ptr, newSize, hint);
-    _allocatedBytes += (newSize - oldSize);
-    CFDictionaryAddValue(_monitoredPointers, ptr, (void *)newSize);
-    OSSpinLockUnlock(&_monitorLock);
-    return ptr;
-}
-
-static void FVImageBufferDeallocate(void *ptr, void *info)
-{
-    OSSpinLockLock(&_monitorLock);
-    NSInteger oldSize;
-    if (FVCFDictionaryGetIntegerIfPresent(_monitoredPointers, ptr, &oldSize)) {
-        CFDictionaryRemoveValue(_monitoredPointers, ptr);
-        _allocatedBytes -= oldSize;
-    }
-    OSSpinLockUnlock(&_monitorLock);
-    CFAllocatorDeallocate(FVAllocatorGetDefault(), ptr);
-}
-
-static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
-{
-    return FVPaddedRowBytesForWidth(1, size);
-}
+#if __LP64__
+static volatile uint64_t _allocatedBytes = 0;
+#else
+static volatile uint32_t _allocatedBytes = 0;
+#endif
 
 @implementation FVImageBuffer
-
-+ (void)initialize
-{
-    FVINITIALIZE(FVImageBuffer);
-
-    // create before _allocator
-    _monitoredPointers = CFDictionaryCreateMutable(NULL, 0, NULL, &FVIntegerValueDictionaryCallBacks);
-
-    CFAllocatorContext context = { 
-        0, 
-        NULL, 
-        NULL, 
-        NULL, 
-        FVImageAllocatorCopyDescription, 
-        FVImageBufferAllocate, 
-        FVImageBufferReallocate, 
-        FVImageBufferDeallocate, 
-        FVImageBufferPreferredSize 
-    };
-    _allocator = CFAllocatorCreate(kCFAllocatorUseContext, &context);
-}
 
 + (uint64_t)allocatedBytes
 {
     return _allocatedBytes;
-}
-
-+ (void)increaseAllocatedSizeBy:(size_t)externalByteCount;
-{
-    OSSpinLockLock(&_monitorLock);
-    _allocatedBytes += externalByteCount;
-    OSSpinLockUnlock(&_monitorLock);
-}
-
-+ (void)decreaseAllocatedSizeBy:(size_t)externalByteCount;
-{
-    OSSpinLockLock(&_monitorLock);
-    NSParameterAssert(_allocatedBytes >= externalByteCount);
-    _allocatedBytes -= externalByteCount;
-    OSSpinLockUnlock(&_monitorLock);    
 }
 
 - (id)init
@@ -163,6 +78,16 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
             buffer->rowBytes = bufferSize;
             _bufferSize = bufferSize;
             buffer->data = CFAllocatorAllocate([self allocator], bufferSize, 0);
+            bool swap;
+#if __LP64__
+            do {
+                swap = OSAtomicCompareAndSwap64Barrier(_allocatedBytes, _allocatedBytes + _bufferSize, (int64_t *)&_allocatedBytes);
+            } while (false == swap);
+#else
+            do {
+                swap = OSAtomicCompareAndSwap32Barrier(_allocatedBytes, _allocatedBytes + _bufferSize, (int32_t *)&_allocatedBytes);
+            } while (false == swap);    
+#endif
             _freeBufferOnDealloc = YES;
             if (NULL == buffer->data) {
                 NSZoneFree([self zone], buffer);
@@ -204,25 +129,26 @@ static CFIndex FVImageBufferPreferredSize(CFIndex size, CFOptionFlags hint, void
 - (void)dealloc
 {
     if (_freeBufferOnDealloc) CFAllocatorDeallocate([self allocator], buffer->data);
+    bool swap;
+#if __LP64__
+    do {
+        swap = OSAtomicCompareAndSwap64Barrier(_allocatedBytes, _allocatedBytes - _bufferSize, (int64_t *)&_allocatedBytes);
+    } while (false == swap);
+#else
+    do {
+        swap = OSAtomicCompareAndSwap32Barrier(_allocatedBytes, _allocatedBytes - _bufferSize, (int32_t *)&_allocatedBytes);
+    } while (false == swap);    
+#endif
     NSZoneFree([self zone], buffer);
     [super dealloc];
 }
 
 - (void)setFreeBufferOnDealloc:(BOOL)flag;
 {
-    if (NO == flag) {
-        OSSpinLockLock(&_monitorLock);
-        NSInteger oldSize;
-        if (FVCFDictionaryGetIntegerIfPresent(_monitoredPointers, self->buffer->data, &oldSize)) {
-            CFDictionaryRemoveValue(_monitoredPointers, self->buffer->data);
-            _allocatedBytes -= oldSize;
-        }
-        OSSpinLockUnlock(&_monitorLock);
-    }
     _freeBufferOnDealloc = flag;
 }
 
-- (CFAllocatorRef)allocator { return _allocator; }
+- (CFAllocatorRef)allocator { return FVAllocatorGetDefault(); }
 
 - (size_t)bufferSize { return _bufferSize; }
 

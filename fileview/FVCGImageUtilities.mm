@@ -36,13 +36,15 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import <vector>
 #import "FVCGImageUtilities.h"
 #import "FVBitmapContext.h"
 #import "FVUtilities.h" /* for FVLog */
-#import <Accelerate/Accelerate.h>
 #import "FVImageBuffer.h"
+
+#import <Accelerate/Accelerate.h>
+#import <libkern/OSAtomic.h>
 #import <sys/time.h>
+#import <vector>
 
 // http://lists.apple.com/archives/perfoptimization-dev/2005/Mar/msg00041.html
 
@@ -83,7 +85,14 @@
 // Sadly, NSCondition is apparently buggy pre-10.5: http://www.cocoabuilder.com/archive/message/cocoa/2008/4/4/203257
 static pthread_mutex_t _memoryMutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t _memoryCond = PTHREAD_COND_INITIALIZER;
-#endif
+static uint64_t       _allocatedBytes = 0;
+
+static inline size_t __FVCGImageCurrentBytesUsed(void)
+{
+    return (_allocatedBytes + [FVImageBuffer allocatedBytes]);
+}
+
+#endif /* FV_LIMIT_TILEMEMORY_USAGE */
 
 static NSLock *_copyLock = [NSLock new];
 
@@ -718,7 +727,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         if (NULL == srcBytes) {
 #if FV_LIMIT_TILEMEMORY_USAGE
             pthread_mutex_lock(&_memoryMutex);
-            [FVImageBuffer decreaseAllocatedSizeBy:__FVCGImageGetDataSize(image)];
+            _allocatedBytes -= __FVCGImageGetDataSize(image);
             pthread_cond_broadcast(&_memoryCond);
             pthread_mutex_unlock(&_memoryMutex);            
 #endif
@@ -933,7 +942,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         CFRelease(originalImageData);
 #if FV_LIMIT_TILEMEMORY_USAGE
         pthread_mutex_lock(&_memoryMutex);
-        [FVImageBuffer decreaseAllocatedSizeBy:__FVCGImageGetDataSize(image)];
+        _allocatedBytes -= __FVCGImageGetDataSize(image);
         pthread_cond_broadcast(&_memoryCond);
         pthread_mutex_unlock(&_memoryMutex);
 #endif
@@ -1056,27 +1065,24 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
     }
         
 #if FV_LIMIT_TILEMEMORY_USAGE
-    // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait
-    struct timeval tv;
-    struct timespec ts;
-
-    gettimeofday(&tv, NULL);
-    TIMEVAL_TO_TIMESPEC(&tv, &ts);
-    ts.tv_nsec += 50000000;
-    
+    // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
     int ret = pthread_mutex_lock(&_memoryMutex);
-    while ([FVImageBuffer allocatedBytes] > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
-        fprintf(stderr, "waiting; allocated %.2f\n", double([FVImageBuffer allocatedBytes])/1024/1024);
-        ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
+    while (__FVCGImageCurrentBytesUsed() > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
+        fprintf(stderr, "waiting; allocated %.2f\n", double(__FVCGImageCurrentBytesUsed())/1024/1024);
         
+        struct timeval tv;
+        struct timespec ts;
+
         gettimeofday(&tv, NULL);
         TIMEVAL_TO_TIMESPEC(&tv, &ts);
-        ts.tv_nsec += 50000000;
+        // wait for 1 second (or wakeup)
+        ts.tv_sec += 1;
+        ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
     }
     // increase before calling __FVTileAndScale_8888_or_888_Image; will be decreased after releasing copied data
     // if we increase before checking the condition, it may never be true
     if (__FVCGImageGetBytePtr(image, NULL) == NULL)
-        [FVImageBuffer increaseAllocatedSizeBy:__FVCGImageGetDataSize(image)];    
+        _allocatedBytes += __FVCGImageGetDataSize(image);
     pthread_mutex_unlock(&_memoryMutex);
 #endif
     return __FVTileAndScale_8888_or_888_Image(image, desiredSize);
