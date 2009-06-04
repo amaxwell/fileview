@@ -56,7 +56,7 @@ static volatile int32_t _mappedDataSizeKB = 0;
 #define MAX_MAPPED_SIZE_KB 400000
 
 // This is intentionally low, since I don't know what the limit is, and sysctl doesn't say.  The max number of file descriptors is ~255 per process, but I can actually mmap ~28,000 files on 10.5.4.  We should never see even this many in practice, though.
-#define MAX_MAPPED_PROVIDER_COUNT 128
+#define MAX_MAPPED_PROVIDER_COUNT 254
 
 static const void *__FVGetMappedRegion(void *info);
 static void __FVReleaseMappedRegion(void *info);
@@ -86,6 +86,11 @@ static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
 + (BOOL)maxSizeExceeded
 {
     return _mappedDataSizeKB > MAX_MAPPED_SIZE_KB || CFDictionaryGetCount(_dataProviders) >= MAX_MAPPED_PROVIDER_COUNT;
+}
+
++ (unsigned char)maxProviderCount;
+{
+    return MAX_MAPPED_PROVIDER_COUNT;
 }
 
 + (CGDataProviderRef)newDataProviderForURL:(NSURL *)aURL
