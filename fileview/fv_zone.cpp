@@ -55,7 +55,7 @@
 using namespace std;
 
 #if DEBUG
-#define ENABLE_STATS 1
+#define ENABLE_STATS 0
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define ENABLE_STATS 0
@@ -754,27 +754,25 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
 
 // periodically check all zones against the per-zone high water mark for unused memory
 static void *__fv_zone_collector_thread(void *unused)
-{
-    struct timeval tv;
-    struct timespec ts;
-
-    gettimeofday(&tv, NULL);
-    TIMEVAL_TO_TIMESPEC(&tv, &ts);
-    ts.tv_sec += FV_COLLECT_TIMEINTERVAL;
-    
-#if DEBUG
-    static double lastCollectSeconds = tv.tv_sec + double(tv.tv_usec) / 1000000;
-    static unsigned int collectionCount = 0;
-#endif
-    
+{        
     int ret = pthread_mutex_lock(&_allZonesLock);
     while (0 == ret || ETIMEDOUT == ret) {
-        ret = pthread_cond_timedwait(&_collectorCond, &_allZonesLock, &ts);
-        for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
+        
+        struct timeval tv;
+        struct timespec ts;
         
         gettimeofday(&tv, NULL);
         TIMEVAL_TO_TIMESPEC(&tv, &ts);
         ts.tv_sec += FV_COLLECT_TIMEINTERVAL;
+        
+#if DEBUG
+        static double lastCollectSeconds = tv.tv_sec + double(tv.tv_usec) / 1000000;
+        static unsigned int collectionCount = 0;
+#endif        
+        // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
+        ret = pthread_cond_timedwait(&_collectorCond, &_allZonesLock, &ts);
+        for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
+
 #if DEBUG
         collectionCount++;
         fprintf(stderr, "%s collection %u, %.2f seconds since previous\n", ETIMEDOUT == ret ? "TIMED" : "FORCED", collectionCount, tv.tv_sec - lastCollectSeconds);
