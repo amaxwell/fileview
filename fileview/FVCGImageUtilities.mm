@@ -112,18 +112,9 @@ static size_t __FVCGImageGetDataSize(CGImageRef image)
 
 static void __FVCGImageRequestAllocationSize(const size_t allocSize)
 {
-    // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
     int ret = pthread_mutex_lock(&_memoryMutex);
-    while (__FVCGImageCurrentBytesUsed() > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
-        
-        struct timeval tv;
-        struct timespec ts;
-        
-        gettimeofday(&tv, NULL);
-        TIMEVAL_TO_TIMESPEC(&tv, &ts);
-        // wait for 1 second (or wakeup)
-        ts.tv_sec += 1;
-        ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
+    while (__FVCGImageCurrentBytesUsed() > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && 0 == ret) {
+        ret = pthread_cond_wait(&_memoryCond, &_memoryMutex);
     }
 
     // if we increase before checking the condition, it may never be true
