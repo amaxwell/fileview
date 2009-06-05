@@ -108,11 +108,10 @@ static size_t __FVCGImageGetDataSize(CGImageRef image)
     return (CGImageGetBytesPerRow(image) * CGImageGetHeight(image));
 }
 
-static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize size)
-{
 #if FV_LIMIT_TILEMEMORY_USAGE
-    // worst case: load entire source image, and allocate memory for new image
-    const size_t allocSize = __FVCGImageGetDataSize(image) + FVPaddedRowBytesForWidth(4, size.width) * size.height;
+
+static void __FVCGImageRequestAllocationSize(const size_t allocSize)
+{
     // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
     int ret = pthread_mutex_lock(&_memoryMutex);
     while (__FVCGImageCurrentBytesUsed() > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
@@ -126,10 +125,29 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
         ts.tv_sec += 1;
         ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
     }
-    // increase before calling __FVTileAndScale_8888_or_888_Image; will be decreased after releasing copied data
+
     // if we increase before checking the condition, it may never be true
     _allocatedBytes += allocSize;
-    pthread_mutex_unlock(&_memoryMutex);
+    pthread_mutex_unlock(&_memoryMutex);    
+}
+
+static void __FVCGImageDiscardAllocationSize(const size_t allocSize)
+{
+    pthread_mutex_lock(&_memoryMutex);
+    _allocatedBytes -= allocSize;
+    pthread_cond_broadcast(&_memoryCond);
+    pthread_mutex_unlock(&_memoryMutex);    
+}
+
+#endif
+
+static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize size)
+{
+    
+#if FV_LIMIT_TILEMEMORY_USAGE
+    // worst case: load entire source image, and allocate memory for new image
+    const size_t allocSize = __FVCGImageGetDataSize(image) + FVPaddedRowBytesForWidth(4, size.width) * size.height;
+    __FVCGImageRequestAllocationSize(allocSize);
 #endif
     
     FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
@@ -144,10 +162,7 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
     FVIconBitmapContextRelease(ctxt);
     
 #if FV_LIMIT_TILEMEMORY_USAGE
-    pthread_mutex_unlock(&_memoryMutex);
-    _allocatedBytes -= allocSize;
-    pthread_cond_broadcast(&_memoryCond);
-    pthread_mutex_unlock(&_memoryMutex);
+    __FVCGImageDiscardAllocationSize(allocSize);
 #endif
     
     return toReturn;
@@ -751,10 +766,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         // !!! early return
         if (NULL == srcBytes) {
 #if FV_LIMIT_TILEMEMORY_USAGE
-            pthread_mutex_lock(&_memoryMutex);
-            _allocatedBytes -= __FVCGImageGetDataSize(image);
-            pthread_cond_broadcast(&_memoryCond);
-            pthread_mutex_unlock(&_memoryMutex);            
+            __FVCGImageDiscardAllocationSize(__FVCGImageGetDataSize(image));           
 #endif
             return NULL;
         }
@@ -966,10 +978,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     if (originalImageData) {
         CFRelease(originalImageData);
 #if FV_LIMIT_TILEMEMORY_USAGE
-        pthread_mutex_lock(&_memoryMutex);
-        _allocatedBytes -= __FVCGImageGetDataSize(image);
-        pthread_cond_broadcast(&_memoryCond);
-        pthread_mutex_unlock(&_memoryMutex);
+        __FVCGImageDiscardAllocationSize(__FVCGImageGetDataSize(image));
 #endif
     }
     
@@ -992,9 +1001,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     [regionBuffer release];
     
 #if FV_LIMIT_TILEMEMORY_USAGE
-    pthread_mutex_lock(&_memoryMutex);
-    pthread_cond_broadcast(&_memoryCond);
-    pthread_mutex_unlock(&_memoryMutex);
+    __FVCGImageDiscardAllocationSize(0);
 #endif
     
     CGDataProviderRef provider = NULL;
@@ -1090,25 +1097,9 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
     }
         
 #if FV_LIMIT_TILEMEMORY_USAGE
-    // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
-    int ret = pthread_mutex_lock(&_memoryMutex);
-    while (__FVCGImageCurrentBytesUsed() > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
-        fprintf(stderr, "waiting; allocated %.2f\n", double(__FVCGImageCurrentBytesUsed())/1024/1024);
-        
-        struct timeval tv;
-        struct timespec ts;
-
-        gettimeofday(&tv, NULL);
-        TIMEVAL_TO_TIMESPEC(&tv, &ts);
-        // wait for 1 second (or wakeup)
-        ts.tv_sec += 1;
-        ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
-    }
+    const size_t allocSize =  __FVCGImageGetBytePtr(image, NULL) == NULL ? __FVCGImageGetDataSize(image) : 0;
     // increase before calling __FVTileAndScale_8888_or_888_Image; will be decreased after releasing copied data
-    // if we increase before checking the condition, it may never be true
-    if (__FVCGImageGetBytePtr(image, NULL) == NULL)
-        _allocatedBytes += __FVCGImageGetDataSize(image);
-    pthread_mutex_unlock(&_memoryMutex);
+    __FVCGImageRequestAllocationSize(allocSize);
 #endif
     return __FVTileAndScale_8888_or_888_Image(image, desiredSize);
 }
