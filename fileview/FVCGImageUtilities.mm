@@ -84,8 +84,8 @@
 #if FV_LIMIT_TILEMEMORY_USAGE
 // Sadly, NSCondition is apparently buggy pre-10.5: http://www.cocoabuilder.com/archive/message/cocoa/2008/4/4/203257
 static pthread_mutex_t _memoryMutex = PTHREAD_MUTEX_INITIALIZER;
-static pthread_cond_t _memoryCond = PTHREAD_COND_INITIALIZER;
-static uint64_t       _allocatedBytes = 0;
+static pthread_cond_t  _memoryCond = PTHREAD_COND_INITIALIZER;
+static uint64_t        _allocatedBytes = 0;
 
 static inline size_t __FVCGImageCurrentBytesUsed(void)
 {
@@ -93,8 +93,6 @@ static inline size_t __FVCGImageCurrentBytesUsed(void)
 }
 
 #endif /* FV_LIMIT_TILEMEMORY_USAGE */
-
-static NSLock *_copyLock = [NSLock new];
 
 NSSize FVCGImageSize(CGImageRef image)
 {
@@ -104,10 +102,36 @@ NSSize FVCGImageSize(CGImageRef image)
     return s;
 }
 
+// cheap and consistent way to compute the number of bytes in an image without hitting the data provider
+static size_t __FVCGImageGetDataSize(CGImageRef image)
+{
+    return (CGImageGetBytesPerRow(image) * CGImageGetHeight(image));
+}
+
 static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize size)
 {
-#warning unify memory checking
-    [_copyLock lock];
+#if FV_LIMIT_TILEMEMORY_USAGE
+    // worst case: load entire source image, and allocate memory for new image
+    const size_t allocSize = __FVCGImageGetDataSize(image) + FVPaddedRowBytesForWidth(4, size.width) * size.height;
+    // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
+    int ret = pthread_mutex_lock(&_memoryMutex);
+    while (__FVCGImageCurrentBytesUsed() > FV_TILEMEMORY_MEGABYTES * 1024 * 1024 && (0 == ret || ETIMEDOUT == ret)) {
+        
+        struct timeval tv;
+        struct timespec ts;
+        
+        gettimeofday(&tv, NULL);
+        TIMEVAL_TO_TIMESPEC(&tv, &ts);
+        // wait for 1 second (or wakeup)
+        ts.tv_sec += 1;
+        ret = pthread_cond_timedwait(&_memoryCond, &_memoryMutex, &ts);
+    }
+    // increase before calling __FVTileAndScale_8888_or_888_Image; will be decreased after releasing copied data
+    // if we increase before checking the condition, it may never be true
+    _allocatedBytes += allocSize;
+    pthread_mutex_unlock(&_memoryMutex);
+#endif
+    
     FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
     CGContextClearRect(ctxt, CGRectMake(0, 0, size.width, size.height));
 
@@ -118,7 +142,14 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
     
     CGImageRef toReturn = CGBitmapContextCreateImage(ctxt);
     FVIconBitmapContextRelease(ctxt);
-    [_copyLock unlock];
+    
+#if FV_LIMIT_TILEMEMORY_USAGE
+    pthread_mutex_unlock(&_memoryMutex);
+    _allocatedBytes -= allocSize;
+    pthread_cond_broadcast(&_memoryCond);
+    pthread_mutex_unlock(&_memoryMutex);
+#endif
+    
     return toReturn;
 }
 
@@ -702,12 +733,6 @@ static vImage_Error __FVCheckAndTrimRow(NSArray *regionRow, vImage_Buffer *desti
     }
     
     return kvImageNoError;
-}
-
-// cheap and consistent way to compute the number of bytes in an image without hitting the data provider
-static size_t __FVCGImageGetDataSize(CGImageRef image)
-{
-    return (CGImageGetBytesPerRow(image) * CGImageGetHeight(image));
 }
 
 static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSSize desiredSize)
