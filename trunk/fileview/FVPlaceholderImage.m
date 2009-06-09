@@ -76,7 +76,7 @@ static const NSUInteger _sizes[] = { 32, 64, 128, 256, 512 };
         dstRect = NSInsetRect(dstRect, lineWidth / 2, lineWidth / 2);
         
         NSBezierPath *path = [NSBezierPath fv_bezierPathWithRoundRect:dstRect xRadius:radius yRadius:radius];
-        CGFloat pattern[2] = { 12.0, 6.0 };
+        CGFloat pattern[2] = { 6.0, 3.0 };
         
         [path setLineWidth:lineWidth];
         [path setLineDash:pattern count:2 phase:0.0];
