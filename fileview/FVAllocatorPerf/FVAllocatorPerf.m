@@ -144,7 +144,7 @@ static volatile int32_t _threadCount = 0;
 @end
 
 #define USE_THREADS 1
-#define THREADCOUNT 3
+#define THREADCOUNT 4
 #define USE_FVALLOCATOR 1
 #define USE_CFALLOCATOR 1
 
