@@ -53,6 +53,8 @@ enum {
 };
 
 @class FVSliderWindow;
+typedef NSUInteger FVDropOperation;
+
 
 /**
  FileView is the primary class in the framework.  
@@ -90,6 +92,7 @@ enum {
         unsigned int reserved:24;
     } _fvFlags;
     NSRect                  _dropRectForHighlight;
+    FVDropOperation         _dropOperation;
     double                  _maxScale;
     double                  _minScale;
     NSPoint                 _lastMouseDownLocInView;
