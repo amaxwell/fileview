@@ -119,7 +119,7 @@ CFAllocatorRef FVAllocatorGetDefault()
 NSZone * FVDefaultZone()
 {
 #if USE_SYSTEM_ZONE
-    return malloc_default_zone();
+    return (void *)malloc_default_zone();
 #else
     // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
     return (void *)_allocatorZone;
