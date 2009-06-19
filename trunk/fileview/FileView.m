@@ -67,11 +67,11 @@
 @end
 
 enum {
-    FVDropOnIcon,
-    FVDropOnView,
-    FVDropInsert
+    FVDropNone   = 0,
+    FVDropOnIcon = 1,
+    FVDropOnView = 2,
+    FVDropInsert = 3
 };
-typedef NSUInteger FVDropOperation;
 
 #define DEFAULT_ICON_SIZE ((NSSize) { 64, 64 })
 #define DEFAULT_PADDING   ((CGFloat) 32)         // 16 per side
@@ -80,6 +80,8 @@ typedef NSUInteger FVDropOperation;
 
 #define DROP_MESSAGE_MIN_FONTSIZE ((CGFloat) 8.0)
 #define DROP_MESSAGE_MAX_INSET    ((CGFloat) 20.0)
+
+#define INSERTION_HIGHLIGHT_WIDTH ((CGFloat) 6.0)
 
 // draws grid and margin frames
 #define DEBUG_GRID 0
@@ -179,6 +181,7 @@ static char _FVContentBindingToControllerObserverContext;
     _padding = [self _defaultPaddingForScale:1.0];
     _lastMouseDownLocInView = NSZeroPoint;
     _dropRectForHighlight = NSZeroRect;
+    _dropOperation = FVDropNone;
     _fvFlags.isRescaling = NO;
     _fvFlags.scheduledLiveResize = NO;
     _selectedIndexes = [[NSMutableIndexSet alloc] init];
@@ -1196,15 +1199,14 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     
     CGFloat lineWidth = 2.0;
     NSBezierPath *p;
-    NSUInteger r, c;
     
-    if (NSEqualRects(aRect, [self visibleRect]) || [self _getGridRow:&r column:&c atPoint:NSMakePoint(NSMidX(aRect), NSMidY(aRect))]) {
-        // it's either a drop on the whole table or on top of a cell
-        p = [NSBezierPath fv_bezierPathWithRoundRect:NSInsetRect(aRect, 0.5 * lineWidth, 0.5 * lineWidth) xRadius:7 yRadius:7];
+    if (FVDropInsert == _dropOperation) {
+        // insert between icons
+        p = [self _insertionHighlightPathInRect:aRect];
     }
     else {
-        
-        p = [self _insertionHighlightPathInRect:aRect];
+        // it's either a drop on the whole view or on top of a particular icon
+        p = [NSBezierPath fv_bezierPathWithRoundRect:NSInsetRect(aRect, 0.5 * lineWidth, 0.5 * lineWidth) xRadius:7 yRadius:7];
     }
     [p setLineWidth:lineWidth];
     [p stroke];
@@ -1760,7 +1762,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         }
         
         // drop highlight and rubber band are mutually exclusive
-        if (NSIsEmptyRect(_dropRectForHighlight) == NO) {
+        if (FVDropNone != _dropOperation) {
             [self _drawDropHighlightInRect:[self centerScanRect:_dropRectForHighlight]];
         }
         else if (NSIsEmptyRect(_rubberBandRect) == NO) {
@@ -2330,7 +2332,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (FVDropOperation)_dropOperationAtPointInView:(NSPoint)point highlightRect:(NSRect *)dropRect insertionIndex:(NSUInteger *)anIndex
 {
     NSUInteger r, c;
-    FVDropOperation op;
+    FVDropOperation op = FVDropNone;
     NSRect aRect;
     NSUInteger insertIndex = NSNotFound;
 
@@ -2351,22 +2353,22 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
             
         NSPoint left = NSMakePoint(point.x - _iconSize.width, point.y), right = NSMakePoint(point.x + _iconSize.width, point.y);
         
-        // can't insert between nonexisting cells either, so check numberOfIcons first...
+        // can't insert between nonexistent icons either, so check numberOfIcons first...
 
         if ([self _getGridRow:&r column:&c atPoint:left] && ([self _indexForGridRow:r column:c] < [_controller numberOfIcons])) {
             
             aRect = [self _rectOfIconInRow:r column:c];
             // rect size is 6, and should be centered between icons horizontally
-            aRect.origin.x += _iconSize.width + _padding.width / 2 - 3.0;
-            aRect.size.width = 6.0;    
+            aRect.origin.x += _iconSize.width + _padding.width / 2 - INSERTION_HIGHLIGHT_WIDTH / 2;
+            aRect.size.width = INSERTION_HIGHLIGHT_WIDTH;    
             op = FVDropInsert;
             insertIndex = [self _indexForGridRow:r column:c] + 1;
         }
         else if ([self _getGridRow:&r column:&c atPoint:right] && ([self _indexForGridRow:r column:c] < [_controller numberOfIcons])) {
             
             aRect = [self _rectOfIconInRow:r column:c];
-            aRect.origin.x -= _padding.width / 2 + 3.0;
-            aRect.size.width = 6.0;
+            aRect.origin.x -= _padding.width / 2 + INSERTION_HIGHLIGHT_WIDTH / 2;
+            aRect.size.width = INSERTION_HIGHLIGHT_WIDTH;
             op = FVDropInsert;
             insertIndex = [self _indexForGridRow:r column:c];
         }
@@ -2390,38 +2392,41 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     
     NSUInteger insertIndex, firstIndex, endIndex;
     // this will set a default highlight based on geometry, but does no validation
-    FVDropOperation dropOp = [self _dropOperationAtPointInView:dragLoc highlightRect:&_dropRectForHighlight insertionIndex:&insertIndex];
+    _dropOperation = [self _dropOperationAtPointInView:dragLoc highlightRect:&_dropRectForHighlight insertionIndex:&insertIndex];
     
     // We have to make sure the pasteboard really has a URL here, since most NSStrings aren't valid URLs
     if (FVPasteboardHasURL([sender draggingPasteboard]) == NO) {
         
         dragOp = NSDragOperationNone;
         _dropRectForHighlight = NSZeroRect;
+        _dropOperation = FVDropNone;
     }
-    else if (FVDropOnIcon == dropOp) {
+    else if (FVDropOnIcon == _dropOperation) {
         
         if ([self _isLocalDraggingInfo:sender]) {
                 
             dragOp = NSDragOperationNone;
             _dropRectForHighlight = NSZeroRect;
+            _dropOperation = FVDropNone;
         } 
         else {
             dragOp = NSDragOperationLink;
         }
     } 
-    else if (FVDropOnView == dropOp) {
+    else if (FVDropOnView == _dropOperation) {
         
         // drop on the whole view (add operation) makes no sense for a local drag
         if ([self _isLocalDraggingInfo:sender]) {
             
             dragOp = NSDragOperationNone;
             _dropRectForHighlight = NSZeroRect;
+            _dropOperation = FVDropNone;
         } 
         else {
             dragOp = NSDragOperationLink;
         }
     } 
-    else if (FVDropInsert == dropOp) {
+    else if (FVDropInsert == _dropOperation) {
         
         // inserting inside the block we're dragging doesn't make sense; this does allow dropping a disjoint selection at some locations within the selection
         if ([self _isLocalDraggingInfo:sender]) {
@@ -2430,6 +2435,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
                 insertIndex >= firstIndex && insertIndex <= endIndex) {
                 dragOp = NSDragOperationNone;
                 _dropRectForHighlight = NSZeroRect;
+                _dropOperation = FVDropNone;
             } 
             else {
                 dragOp = NSDragOperationMove;
@@ -2456,6 +2462,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (void)draggingExited:(id <NSDraggingInfo>)sender
 {
     _dropRectForHighlight = NSZeroRect;
+    _dropOperation = FVDropNone;
     [self setNeedsDisplay:YES];
 }
 
@@ -2463,6 +2470,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (void)concludeDragOperation:(id <NSDraggingInfo>)sender;
 {
     _dropRectForHighlight = NSZeroRect;
+    _dropOperation = FVDropNone;
     [self reloadIcons];
 }
 
@@ -3265,16 +3273,16 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
 
             aRect = [self _rectOfIconInRow:r column:c];
             // rect size is 6, and should be centered between icons horizontally
-            aRect.origin.y += _iconSize.height + _padding.height - 3.0;
-            aRect.size.height = 6.0;    
+            aRect.origin.y += _iconSize.height + _padding.height - INSERTION_HIGHLIGHT_WIDTH / 2;
+            aRect.size.height = INSERTION_HIGHLIGHT_WIDTH;    
             op = FVDropInsert;
             insertIndex = [self _indexForGridRow:r column:c] + 1;
         }
         else if ([self _getGridRow:&r column:&c atPoint:upper] && ([self _indexForGridRow:r column:c] < [[self _controller] numberOfIcons])) {
             
             aRect = [self _rectOfIconInRow:r column:c];
-            aRect.origin.y -= 3.0;
-            aRect.size.height = 6.0;
+            aRect.origin.y -= INSERTION_HIGHLIGHT_WIDTH / 2;
+            aRect.size.height = INSERTION_HIGHLIGHT_WIDTH;
             op = FVDropInsert;
             insertIndex = [self _indexForGridRow:r column:c];
         }
