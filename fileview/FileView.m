@@ -66,12 +66,14 @@
 
 @end
 
+// note: extend the bitfield in _fvFlags when adding enumerates
 enum {
     FVDropNone   = 0,
     FVDropOnIcon = 1,
     FVDropOnView = 2,
     FVDropInsert = 3
 };
+typedef NSUInteger FVDropOperation;
 
 #define DEFAULT_ICON_SIZE ((NSSize) { 64, 64 })
 #define DEFAULT_PADDING   ((CGFloat) 32)         // 16 per side
@@ -181,7 +183,7 @@ static char _FVContentBindingToControllerObserverContext;
     _padding = [self _defaultPaddingForScale:1.0];
     _lastMouseDownLocInView = NSZeroPoint;
     _dropRectForHighlight = NSZeroRect;
-    _dropOperation = FVDropNone;
+    _fvFlags.dropOperation = FVDropNone;
     _fvFlags.isRescaling = NO;
     _fvFlags.scheduledLiveResize = NO;
     _selectedIndexes = [[NSMutableIndexSet alloc] init];
@@ -1200,7 +1202,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     CGFloat lineWidth = 2.0;
     NSBezierPath *p;
     
-    if (FVDropInsert == _dropOperation) {
+    if (FVDropInsert == _fvFlags.dropOperation) {
         // insert between icons
         p = [self _insertionHighlightPathInRect:aRect];
     }
@@ -1762,7 +1764,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         }
         
         // drop highlight and rubber band are mutually exclusive
-        if (FVDropNone != _dropOperation) {
+        if (FVDropNone != _fvFlags.dropOperation) {
             [self _drawDropHighlightInRect:[self centerScanRect:_dropRectForHighlight]];
         }
         else if (NSIsEmptyRect(_rubberBandRect) == NO) {
@@ -2392,41 +2394,41 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     
     NSUInteger insertIndex, firstIndex, endIndex;
     // this will set a default highlight based on geometry, but does no validation
-    _dropOperation = [self _dropOperationAtPointInView:dragLoc highlightRect:&_dropRectForHighlight insertionIndex:&insertIndex];
+    _fvFlags.dropOperation = [self _dropOperationAtPointInView:dragLoc highlightRect:&_dropRectForHighlight insertionIndex:&insertIndex];
     
     // We have to make sure the pasteboard really has a URL here, since most NSStrings aren't valid URLs
     if (FVPasteboardHasURL([sender draggingPasteboard]) == NO) {
         
         dragOp = NSDragOperationNone;
         _dropRectForHighlight = NSZeroRect;
-        _dropOperation = FVDropNone;
+        _fvFlags.dropOperation = FVDropNone;
     }
-    else if (FVDropOnIcon == _dropOperation) {
+    else if (FVDropOnIcon == _fvFlags.dropOperation) {
         
         if ([self _isLocalDraggingInfo:sender]) {
                 
             dragOp = NSDragOperationNone;
             _dropRectForHighlight = NSZeroRect;
-            _dropOperation = FVDropNone;
+            _fvFlags.dropOperation = FVDropNone;
         } 
         else {
             dragOp = NSDragOperationLink;
         }
     } 
-    else if (FVDropOnView == _dropOperation) {
+    else if (FVDropOnView == _fvFlags.dropOperation) {
         
         // drop on the whole view (add operation) makes no sense for a local drag
         if ([self _isLocalDraggingInfo:sender]) {
             
             dragOp = NSDragOperationNone;
             _dropRectForHighlight = NSZeroRect;
-            _dropOperation = FVDropNone;
+            _fvFlags.dropOperation = FVDropNone;
         } 
         else {
             dragOp = NSDragOperationLink;
         }
     } 
-    else if (FVDropInsert == _dropOperation) {
+    else if (FVDropInsert == _fvFlags.dropOperation) {
         
         // inserting inside the block we're dragging doesn't make sense; this does allow dropping a disjoint selection at some locations within the selection
         if ([self _isLocalDraggingInfo:sender]) {
@@ -2435,7 +2437,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
                 insertIndex >= firstIndex && insertIndex <= endIndex) {
                 dragOp = NSDragOperationNone;
                 _dropRectForHighlight = NSZeroRect;
-                _dropOperation = FVDropNone;
+                _fvFlags.dropOperation = FVDropNone;
             } 
             else {
                 dragOp = NSDragOperationMove;
@@ -2462,7 +2464,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (void)draggingExited:(id <NSDraggingInfo>)sender
 {
     _dropRectForHighlight = NSZeroRect;
-    _dropOperation = FVDropNone;
+    _fvFlags.dropOperation = FVDropNone;
     [self setNeedsDisplay:YES];
 }
 
@@ -2470,7 +2472,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (void)concludeDragOperation:(id <NSDraggingInfo>)sender;
 {
     _dropRectForHighlight = NSZeroRect;
-    _dropOperation = FVDropNone;
+    _fvFlags.dropOperation = FVDropNone;
     [self reloadIcons];
 }
 
@@ -2489,6 +2491,8 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     NSUInteger r, c, idx;
         
     NSUInteger insertIndex;
+    
+    // ??? use _fvFlags._dropOperation here?
     FVDropOperation dropOp = [self _dropOperationAtPointInView:dragLoc highlightRect:NULL insertionIndex:&insertIndex];
 
     // see if we're targeting a particular cell, then make sure that cell is a legal replace operation
