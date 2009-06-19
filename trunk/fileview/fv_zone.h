@@ -45,6 +45,19 @@
 
 __BEGIN_DECLS
 
+/** @file fv_zone.h @brief Allocator for moderate-to-large blocks.
+ 
+ This allocator is primarily intended for use when many blocks >16K are needed repeatedly.  Each block is retained in a cache for some time after being freed, so reuse of similarly sized blocks should be fast.  Blocks of memory returned are not zeroed; the caller is responsible for this as needed.  In fact, a primary advantage of this allocator is that it doesn't waste time zeroing memory before returning it.  Typical usage is to provide a block of memory for a CGBitmapContext, vImage_Buffer, or backing for a CGDataProvider.  In the latter case, you can use CFDataCreateWithBytesNoCopy()/CGDataProviderCreateWithCFData() to good advantage, particularly for repeated creation/destruction of short-lived/same-sized images.
+ 
+ This is <b>not</b> a general-purpose replacement for the system allocator(s), and the code doesn't draw from tcmalloc or Apple's malloc implementation.  For some background on the problem, see this thread:  http://lists.apple.com/archives/perfoptimization-dev/2008/Apr/msg00018.html which indicates that waiting for a solution from Apple is probably not going to be very gratifying. 
+ 
+ @warning If allocations are sized such that you can't reuse them, this allocator is not for you.
+ */
+
+/** @internal @brief Malloc zone.
+ 
+ The zone is thread safe.  All zones share a common garbage collection thread that runs periodically or when a high water mark is reached.  There is typically little benefit from creating multiple zones, and destruction has all the caveats of Apple's zone functions. 
+ @return A new malloc zone structure. */
 FV_PRIVATE_EXTERN malloc_zone_t * fv_create_zone_named(const char *name);
 
 __END_DECLS
