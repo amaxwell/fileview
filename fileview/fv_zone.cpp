@@ -220,16 +220,14 @@ static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t
 }
 
 /*
- Layout of memory allocated by __FVAllocateFromVMSystem().  The padding at the beginning is for page alignment.  Caller is responsible for passing the result of __fv_zone_round_size() to this function.
+ Layout of memory allocated by __fv_zone_vm_allocation().  The padding at the beginning is for page alignment.  
+ Caller is responsible for passing the result of __fv_zone_round_size() to this function.
  
- |<-- page boundary
- |<---------- ptrSize ---------->|
- |<--ptr
- | padding | fv_allocation_t | data data data data data data |
- |<-- pointer returned by __FVAllocateFromSystem()
- |<--base                   
- |<------------------------ allocSize ---------------------->|
- 
+ |<-- base (page boundary)                  
+ |<------------------------------ allocSize ---------------------------->|
+ |<- padding ->|<- fv_allocation_t ->|<- data data data data data data ->|
+ |                                   |<------------ ptrSize ------------>|
+ |                                   |<- ptr (writeable)
  */
 
 static fv_allocation_t *__fv_zone_vm_allocation(const size_t requestedSize, fv_zone_t *zone)
