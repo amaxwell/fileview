@@ -40,8 +40,6 @@
 #import "FVFinderIcon.h"
 #import <QuickLook/QLThumbnailImage.h>
 
-// see http://www.cocoabuilder.com/archive/message/cocoa/2005/6/15/138943 for linking; need to use bundle_loader flag to allow the linker to resolve our superclass
-
 @implementation FVQuickLookIcon
 
 static BOOL FVQLIconDisabled = NO;
@@ -61,7 +59,11 @@ static BOOL FVQLIconDisabled = NO;
         CFTypeRef theUTI = NULL;
         LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
         
-        // No background for movies (.wmv seems to hit this path).  Drawing a black background and highlighting it would make the icon look like Finder's Desktop icons, but that's inconsistent with movies that are drawn by FVMovieIcon.
+        /* 
+         No background for movies; the QL icon is always used for .wmv types (see comment in FVIcon for motiviation).  
+         Drawing a black background and highlighting it would make the icon look like Finder's Desktop icons, but that's 
+         inconsistent with movies that are drawn by FVMovieIcon.
+         */
         if (theUTI && (UTTypeConformsTo(theUTI, kUTTypeMovie) || UTTypeConformsTo(theUTI, kUTTypeAudiovisualContent))) {
             ret = NO;
         }
@@ -85,7 +87,11 @@ static BOOL FVQLIconDisabled = NO;
         self = nil;
     }
     else if ((self = [super initWithURL:theURL])) {
-        // QL seems to fail a large percentage of the time on my system, and it's also pretty slow.  Since FVFinderIcon is now fast and relatively low overhead, preallocate the fallback icon to avoid waiting for QL to return NULL.
+        /* 
+         QL seems to fail a large percentage of the time on my system, and it's also pretty slow.  
+         Since FVFinderIcon is now fast and relatively low overhead, preallocate the fallback icon to 
+         avoid waiting for QL to return NULL.
+         */
         _fallbackIcon = [[FVFinderIcon allocWithZone:[self zone]] initWithURL:originalURL];
         _fullImage = NULL;
         _thumbnailSize = NSZeroSize;
@@ -136,7 +142,12 @@ static inline bool __FVQLShouldDrawFullImageWithSize(NSSize desiredSize, NSSize 
     BOOL needsRender = NO;
     if ([self tryLock]) {
         if (NO == _quickLookFailed) {
-            // The _fullSize is zero or whatever quicklook returned last time, which may be something odd like 78x46.  Since we ask QL for a size but it constrains the size it actually returns based on the icon's aspect ratio, we have to check height and width.  Just checking height in this was causing an endless loop asking for a size it won't return.
+            /*
+             The _fullSize is zero or whatever quicklook returned last time, which may be something odd like 78x46.  
+             Since we ask QL for a size but it constrains the size it actually returns based on the icon's aspect 
+             ratio, we have to check height and width.  Just checking height in this was causing an endless loop 
+             asking for a size it won't return.
+             */
             if (FVShouldDrawFullImageWithThumbnailSize(size, _thumbnailSize))
                 needsRender = (NULL == _fullImage || __FVQLShouldDrawFullImageWithSize(size, FVCGImageSize(_fullImage)));
             else
@@ -202,7 +213,11 @@ static inline bool __FVQLShouldDrawFullImageWithSize(NSSize desiredSize, NSSize 
 - (void)_drawBackgroundAndImage:(CGImageRef)image inRect:(NSRect)dstRect ofContext:(CGContextRef)context
 {
     CGRect drawRect = [self _drawingRectWithRect:dstRect];
-    // Apple's QL plugins for multiple page types (.pages, .plist, .xls etc) draw text right up to the margin of the icon, so we'll add a small margin.  The decoration option will do this for us, but it also draws with a dog-ear, and I don't want that because it's inconsistent with our other thumbnail classes.
+    /*
+     Apple's QL plugins for multiple page types (.pages, .plist, .xls etc) draw text right up to the margin 
+     of the icon, so we'll add a small margin.  The decoration option will do this for us, but it also draws 
+     with a dog-ear, and I don't want that because it's inconsistent with our other thumbnail classes.
+     */
     if (_backgroundColor) {
         CGContextSaveGState(context);
         CGContextSetFillColorWithColor(context, _backgroundColor);
