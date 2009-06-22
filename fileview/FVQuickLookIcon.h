@@ -48,6 +48,6 @@
     NSSize          _desiredSize;
     FVIcon         *_fallbackIcon;
     BOOL            _quickLookFailed;
-    CGFloat         _backgroundColor[4]; // { r, g, b, a }
+    CGColorRef      _backgroundColor;
 }
 @end

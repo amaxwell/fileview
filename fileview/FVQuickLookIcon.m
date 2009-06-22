@@ -52,23 +52,29 @@ static BOOL FVQLIconDisabled = NO;
     FVQLIconDisabled = [[NSUserDefaults standardUserDefaults] boolForKey:@"FVQLIconDisabled"];
 }
 
-+ (void)_getBackgroundColor:(CGFloat [])color forURL:(NSURL *)aURL
++ (BOOL)_getBackgroundColor:(CGFloat [])color forURL:(NSURL *)aURL
 {
     FSRef fileRef;
+    BOOL ret = YES;
     if (CFURLGetFSRef((CFURLRef)aURL, &fileRef)) {
         
         CFTypeRef theUTI = NULL;
         LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
         
-        // just set pure alpha for now
+        // No background for movies (.wmv seems to hit this path).  Drawing a black background and highlighting it would make the icon look like Finder's Desktop icons, but that's inconsistent with movies that are drawn by FVMovieIcon.
         if (theUTI && (UTTypeConformsTo(theUTI, kUTTypeMovie) || UTTypeConformsTo(theUTI, kUTTypeAudiovisualContent))) {
-            color[0] = 0.1;
-            color[1] = 0.1;
-            color[2] = 0.1;
+            ret = NO;
+        }
+        else {
+            // default is a white page
+            color[0] = 1;
+            color[1] = 1;
+            color[2] = 1;
             color[3] = 1;
         }
         if (theUTI) CFRelease(theUTI);
     }
+    return ret;
 }
 
 - (id)initWithURL:(NSURL *)theURL;
@@ -85,11 +91,9 @@ static BOOL FVQLIconDisabled = NO;
         _thumbnailSize = NSZeroSize;
         _desiredSize = NSZeroSize;
         _quickLookFailed = NO;
-        _backgroundColor[0] = 1;
-        _backgroundColor[1] = 1;
-        _backgroundColor[2] = 1;
-        _backgroundColor[3] = 1;
-        [[self class] _getBackgroundColor:_backgroundColor forURL:_fileURL];
+        CGFloat color[4];
+        if ([[self class] _getBackgroundColor:color forURL:_fileURL])
+            _backgroundColor = CGColorCreateGenericRGB(color[0], color[1], color[2], color[3]);
     }
     [originalURL release];
     return self;
@@ -99,6 +103,7 @@ static BOOL FVQLIconDisabled = NO;
 {
     CGImageRelease(_fullImage);
     CGImageRelease(_thumbnail);
+    CGColorRelease(_backgroundColor);
     [_fallbackIcon release];
     [super dealloc];
 }
@@ -198,15 +203,21 @@ static inline bool __FVQLShouldDrawFullImageWithSize(NSSize desiredSize, NSSize 
 {
     CGRect drawRect = [self _drawingRectWithRect:dstRect];
     // Apple's QL plugins for multiple page types (.pages, .plist, .xls etc) draw text right up to the margin of the icon, so we'll add a small margin.  The decoration option will do this for us, but it also draws with a dog-ear, and I don't want that because it's inconsistent with our other thumbnail classes.
-    CGContextSaveGState(context);
-    CGContextSetRGBFillColor(context, _backgroundColor[0], _backgroundColor[1], _backgroundColor[2], _backgroundColor[3]);
-    CGContextFillRect(context, drawRect);
-    // clear any shadow before drawing the image; clipping won't eliminate it
-    CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
-    drawRect = CGRectInset(drawRect, CGRectGetWidth(drawRect) / 20, CGRectGetHeight(drawRect) / 20);
-    CGContextClipToRect(context, drawRect);
-    CGContextDrawImage(context, drawRect, image);
-    CGContextRestoreGState(context);
+    if (_backgroundColor) {
+        CGContextSaveGState(context);
+        CGContextSetFillColorWithColor(context, _backgroundColor);
+        CGContextFillRect(context, drawRect);
+        // clear any shadow before drawing the image; clipping won't eliminate it
+        CGContextSetShadowWithColor(context, CGSizeZero, 0, NULL);
+        drawRect = CGRectInset(drawRect, CGRectGetWidth(drawRect) / 20, CGRectGetHeight(drawRect) / 20);
+        CGContextClipToRect(context, drawRect);
+        CGContextDrawImage(context, drawRect, image);
+        CGContextRestoreGState(context);
+    }
+    else {
+        // special case for movies
+        CGContextDrawImage(context, drawRect, image);
+    }
 }
 
 - (void)drawInRect:(NSRect)dstRect ofContext:(CGContextRef)context;
