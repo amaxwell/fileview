@@ -187,9 +187,13 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 - (void)dealloc
 {
     // typically on the main thread here, but not guaranteed
-    OSMemoryBarrier();
-    if (nil != _webView)
+        if (pthread_main_np() != 0) {
         [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
+    }
+    else {
+        // make sure to deregister for notification
+        [self _releaseWebView];
+    }
     [_condLock release];
     CGImageRelease(_viewImage);
     CGImageRelease(_fullImage);
@@ -202,18 +206,22 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 
 - (BOOL)canReleaseResources;
 {
-    return (nil != _webView || NULL != _fullImage || NULL != _thumbnail || [_fallbackIcon canReleaseResources]);
+    return ([_condLock condition] == LOADING || NULL != _fullImage || NULL != _thumbnail || [_fallbackIcon canReleaseResources]);
 }
 
 - (void)releaseResources
 {     
-    // Cancel any pending loads
-    OSMemoryBarrier();
-    if (nil != _webView)
-        [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
-
     // allow current waiters on LOADING to exit
     if ([_condLock tryLockWhenCondition:LOADING]) {
+                
+        /*
+         Cancel any pending loads (only occur inside LOADING condition)
+         
+         If webview is non-nil, we need to cancel the load.
+         If webview is nil, we need to unregister for the notification.         
+         */
+        [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
+        
         // should never happen, but make sure we can't cache garbage...
         if (_viewImage) {
             FVLog(@"%s found a non-NULL _viewImage, and is disposing of it", __func__);
@@ -224,7 +232,8 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         _cancelledLoad = true;
         [_condLock unlockWithCondition:LOADED];
     }
-    
+    // could possibly fail to take the lock during a callout to _pageDidFinishLoading, and in that case we should just wait
+
     // block until IDLE is set, so current waiters don't get hosed by resetting the condition to IDLE
     [_condLock lockWhenCondition:IDLE];
     
@@ -315,7 +324,9 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
     FVAPIParameterAssert(NO == [_webView fv_isLoading]);
 
-    [self lock];
+    // release resources called after page finished loading; it calls main thread to cancel webview and we deadlock
+    if ([_condLock tryLockWhenCondition:LOADING] == NO)
+        return;
     
     // display the main frame's view directly to avoid showing the scrollers
     WebFrameView *view = [[_webView mainFrame] frameView];
