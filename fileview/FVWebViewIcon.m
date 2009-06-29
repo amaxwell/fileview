@@ -119,9 +119,14 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         [prefs setJavaScriptEnabled:NO];
         [prefs setAllowsAnimatedImages:NO];
         
-        // most memory-efficient setting; remote resources are still cached to disk
+        /*
+         WebCacheModelDocumentViewer is the most memory-efficient setting; remote resources are still cached to disk,
+         supposedly, but in practice this doesn't seem to happen (or else they're pruned too early).  Using 
+         WebCacheModelDocumentBrowser gives much better performance, and memory usage is the same or less, particularly
+         if you have multiple pages loading the same resources (e.g., many ScienceDirect thumbnails).
+         */
         if ([prefs respondsToSelector:@selector(setCacheModel:)])
-            [prefs setCacheModel:WebCacheModelDocumentViewer];
+            [prefs setCacheModel:WebCacheModelDocumentBrowser];
     }
     return view;
 }
