@@ -291,7 +291,7 @@ typedef struct _FVRegion {
     size_t column;
 } FVRegion;
 
-#ifdef IMAGE_SHEAR
+#if 0
 
 static CGImageRef __FVCreateCGImageFromARBG8888Buffer(vImage_Buffer *buffer)
 {
@@ -315,7 +315,7 @@ static CGImageRef __FVCreateCGImageFromARBG8888Buffer(vImage_Buffer *buffer)
 
 #endif
 
-static vImage_Error __FVConvertIndexedImageRegionToPlanar8_buffers(CGImageRef image, const uint8_t *srcBytes, const size_t rowBytes, const FVRegion region, NSArray *buffers)
+static vImage_Error __FVConvertIndexedImageRegionToPlanar8_buffers(CGImageRef image, const uint8_t *srcBytes, const size_t rowBytes, const FVRegion& region, NSArray *buffers)
 {
     CGColorSpaceRef cspace = CGImageGetColorSpace(image);
     const size_t tableElements = CGColorSpaceGetColorTableCount(cspace) * CGColorSpaceGetNumberOfComponents(CGColorSpaceGetBaseColorSpace(cspace));
@@ -364,7 +364,7 @@ static vImage_Error __FVConvertIndexedImageRegionToPlanar8_buffers(CGImageRef im
 }
 
 // the image's byte pointer is passed in as a parameter in case we're copying from the data provider (which can be really slow)
-static vImage_Error __FVConvertRGB888ImageRegionToPlanar8_buffers(CGImageRef image, const uint8_t *srcBytes, const size_t rowBytes, const FVRegion region, FVImageBuffer *destBuffer, NSArray *buffers)
+static vImage_Error __FVConvertRGB888ImageRegionToPlanar8_buffers(CGImageRef image, const uint8_t *srcBytes, const size_t rowBytes, const FVRegion& region, FVImageBuffer *destBuffer, NSArray *buffers)
 {
     const size_t bytesPerSample = 3;
     vImage_Buffer *dstBuffer = destBuffer->buffer;
@@ -375,9 +375,15 @@ static vImage_Error __FVConvertRGB888ImageRegionToPlanar8_buffers(CGImageRef ima
     dstBuffer->width = region.w;
     dstBuffer->height = region.h;
     dstBuffer->rowBytes = FVPaddedRowBytesForWidth(bytesPerSample, region.w);
-    
+        
     for (NSUInteger rowIndex = 0; rowIndex < region.h; rowIndex++) {
         const uint8_t *srcRow = srcBytes + rowBytes * (region.y + rowIndex) + region.x * bytesPerSample;
+#if DEBUG
+        if ((rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w) > __FVCGImageGetDataSize(image)) {
+            FVLog(@"image size = %d, tried to copy %d bytes", __FVCGImageGetDataSize(image), rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w);
+            HALT;
+        }
+#endif
         uint8_t *dstRow = (uint8_t *)dstBuffer->data + dstBuffer->rowBytes * rowIndex;
         memcpy(dstRow, srcRow, bytesPerSample * region.w);
     }
@@ -422,7 +428,7 @@ static vImage_Error __FVConvertRGB888ImageRegionToPlanar8_buffers(CGImageRef ima
 }
 
 // the image's byte pointer is passed in as a parameter in case we're copying from the data provider (which can be really slow)
-static vImage_Error __FVConvertARGB8888ImageRegionToPlanar8_buffers(CGImageRef image, const uint8_t *srcBytes, const size_t rowBytes, const FVRegion region, FVImageBuffer *destBuffer, NSArray *buffers)
+static vImage_Error __FVConvertARGB8888ImageRegionToPlanar8_buffers(CGImageRef image, const uint8_t *srcBytes, const size_t rowBytes, const FVRegion& region, FVImageBuffer *destBuffer, NSArray *buffers)
 {
     NSCParameterAssert(destBuffer);
     const size_t bytesPerSample = 4;
@@ -437,6 +443,12 @@ static vImage_Error __FVConvertARGB8888ImageRegionToPlanar8_buffers(CGImageRef i
     
     for (NSUInteger rowIndex = 0; rowIndex < region.h; rowIndex++) {
         const uint8_t *srcRow = srcBytes + rowBytes * (region.y + rowIndex) + region.x * bytesPerSample;
+#if DEBUG
+        if ((rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w) > __FVCGImageGetDataSize(image)) {
+            FVLog(@"image size = %d, tried to copy %d bytes", __FVCGImageGetDataSize(image), rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w);
+            HALT;
+        }
+#endif
         uint8_t *dstRow = (uint8_t *)dstBuffer->data + dstBuffer->rowBytes * rowIndex;
         memcpy(dstRow, srcRow, bytesPerSample * region.w);
     }
@@ -666,8 +678,8 @@ static NSUInteger __FVAddRowOfARGB8888BuffersToImage(NSArray *buffers, const NSU
     return lastRowIndex;
 }
 
-#ifdef IMAGE_SHEAR
-static size_t __FVScaledWidthOfRegions(std::vector <FVRegion> regions, const double scale)
+#if 0
+static size_t __FVScaledWidthOfRegions(const std::vector <FVRegion>& regions, const double scale)
 {
     size_t cumulativeWidth = 0;
     for (NSUInteger i = 0; i < regions.size(); i++) {
@@ -679,7 +691,7 @@ static size_t __FVScaledWidthOfRegions(std::vector <FVRegion> regions, const dou
     return cumulativeWidth;
 }
 
-static size_t __FVScaledHeightOfRegions(std::vector <FVRegion> regions, const double scale)
+static size_t __FVScaledHeightOfRegions(const std::vector <FVRegion>& regions, const double scale)
 {
     size_t cumulativeHeight = 0;
     for (NSUInteger i = 0; i < regions.size(); i++) {
@@ -751,7 +763,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     const uint8_t *srcBytes = __FVCGImageGetBytePtr(image, NULL);   
     if (NULL == srcBytes) {
         
-        originalImageData = CGDataProviderCopyData(CGImageGetDataProvider(image));
+        originalImageData = CGDataProviderCopyData(CGImageGetDataProvider(image));        
         srcBytes = CFDataGetBytePtr(originalImageData);
         
         // !!! early return
@@ -760,7 +772,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
             __FVCGImageDiscardAllocationSize(__FVCGImageGetDataSize(image));           
 #endif
             return NULL;
-        }
+        }        
     }
         
     const bool isIndexedImage = (kCGColorSpaceModelIndexed == __FVGetColorSpaceModelOfColorSpace(CGImageGetColorSpace(image)));
@@ -1085,6 +1097,14 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
         // indexed spaces with alpha are tricky, and 10.4 doesn't support the necessary calls
         if (CGImageGetAlphaInfo(image) != kCGImageAlphaNone || false == __FVCanUseIndexedColorSpaces())
             return __FVCopyImageUsingCacheColorspace(image, desiredSize);
+    }
+    
+    // !!! re-add support for monochrome
+    if (kCGColorSpaceModelRGB != colorModel && kCGColorSpaceModelIndexed != colorModel) {
+#if DEBUG
+        FVLog(@"%s: no vImage support for CGColorSpaceModel %d.  Using Quartz2D.", __func__, colorModel);
+#endif
+        return __FVCopyImageUsingCacheColorspace(image, desiredSize);
     }
         
 #if FV_LIMIT_TILEMEMORY_USAGE
