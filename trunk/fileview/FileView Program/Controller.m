@@ -101,6 +101,9 @@
     [arrayController insertObject:[NSURL URLWithString:@"http://searchenginewatch.com/_static/example1.html"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://dx.doi.org/10.1016/j.scitotenv.2008.12.012"] atArrangedObjectIndex:insertIndex++];
     
+    // server redirect; shows up as blank white page without workaround in FVWebViewIcon.m
+    [arrayController insertObject:[NSURL URLWithString:@"http://dx.doi.org/10.1175/1520-0426(2003)20%3C730:AACEAF%3E2.0.CO;2"] atArrangedObjectIndex:insertIndex++];
+    
     // this scheme is seldom (if ever) defined by any app; the delegate implementation demonstrates opening them
     [arrayController insertObject:[NSURL URLWithString:@"doi:10.2112/06-0677.1"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"mailto:amaxwell@users.sourceforge.net"] atArrangedObjectIndex:insertIndex++];
