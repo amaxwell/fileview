@@ -327,7 +327,10 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 - (void)_pageDidFinishLoading
 {
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
-    FVAPIParameterAssert(NO == [_webView fv_isLoading]);
+
+    // !!! part of a hack for redirect problems
+    if ([_webView fv_isLoading])
+        return;
 
     // release resources called after page finished loading; it calls main thread to cancel webview and we deadlock
     if ([_condLock tryLockWhenCondition:LOADING] == NO)
@@ -374,14 +377,45 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     // return to -renderOffscreen for scaling and caching
 }
 
+/*
+ 
+ Server redirect and -isLoading seem to be really screwed up.  As an example, this page
+ 
+ http://dx.doi.org/10.1175/1520-0426(2003)20%3C730:AACEAF%3E2.0.CO;2
+ 
+ redirects to
+ 
+ http://ams.allenpress.com/perlserv/?request=get-abstract&doi=10.1175%2F1520-0426(2003)20%3C730:AACEAF%3E2.0.CO%3B2
+ 
+ Logging frame delegates messages, we see the following message sequence:
+ 
+ -[FVWebViewIcon webView:didStartProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
+ -[FVWebViewIcon webView:didReceiveServerRedirectForProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
+ -[FVWebViewIcon webView:didCommitLoadForFrame:] <WebFrame: 0x37d4e40>
+ -[FVWebViewIcon webView:didFinishLoadForFrame:] <WebFrame: 0x37d4e40>
+ 
+ Now -[WebView isLoading] returns NO, but calling _pageDidFinishLoading results in drawing a white page.
+ Calling _pageDidFinishLoading after a zero delay results in an assertion failure, since by that time 
+ -[WebView isLoading] returns YES once again.  Calling _pageDidFinishLoading after a 10 second delay, 
+ we find that all messages are sent a second time for the /same/ WebFrame object:
+ 
+ -[FVWebViewIcon webView:didStartProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
+ -[FVWebViewIcon webView:didReceiveServerRedirectForProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
+ -[FVWebViewIcon webView:didCommitLoadForFrame:] <WebFrame: 0x37d4e40>
+ -[FVWebViewIcon webView:didFinishLoadForFrame:] <WebFrame: 0x37d4e40>
+ 
+ After this last batch of messages, the page content appears to be loaded and will display.
+ 
+ */
+
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
     FVAPIParameterAssert([sender isEqual:_webView]);
-    
-    // wait until all frames are loaded
+
+    // wait until all frames are loaded; perform after a delay because of redirect problems
     if (NO == [_webView fv_isLoading])
-        [self _pageDidFinishLoading];
+        [self performSelector:@selector(_pageDidFinishLoading) withObject:nil afterDelay:0.0];
 }
 
 - (void)webView:(WebView *)sender decidePolicyForMIMEType:(NSString *)type request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id < WebPolicyDecisionListener >)listener
