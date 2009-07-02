@@ -5,6 +5,9 @@
 #ifdef __OBJC__
 #import <Cocoa/Cocoa.h>
 
+// C99 math; handles types transparently
+#import <tgmath.h>
+
 // docs say not to send [super initialize]
 #if !defined(FVINITIALIZE)
 #define FVINITIALIZE(aClass) \
