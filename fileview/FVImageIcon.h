@@ -49,4 +49,7 @@
     BOOL            _loadFailed;
     FVIcon         *_fallbackIcon;
 }
+
++ (BOOL)canInitWithUTI:(CFStringRef)type;
+
 @end

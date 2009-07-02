@@ -222,7 +222,8 @@ static inline id _placeholderForZone(NSZone *aZone)
     else if (UTTypeConformsTo(theUTI, FVSTR("net.sourceforge.skim-app.pdfd"))) {
         anIcon = [[FVPDFDIcon allocWithZone:zone] initWithURL:representedURL];
     }
-    else if (UTTypeConformsTo(theUTI, kUTTypeImage) && dataPhysicalSize < maximumImageDataSize) {
+    else if (UTTypeConformsTo(theUTI, kUTTypeImage) && dataPhysicalSize < maximumImageDataSize && [FVImageIcon canInitWithUTI:theUTI]) {
+        // Acorn's type conforms to public.image but can't be opened by ImageIO, so have to make an additional check for cases like this.
         anIcon = [[FVImageIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeEqual(theUTI, FVSTR("com.microsoft.windows-media-wmv")) && Nil != FVQLIconClass) {
