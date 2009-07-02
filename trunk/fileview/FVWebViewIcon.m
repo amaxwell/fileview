@@ -379,6 +379,8 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 
 /*
  
+ Notes on workarounds for rdar://problem/7025679
+ 
  Server redirect and -isLoading seem to be really screwed up.  As an example, this page
  
  http://dx.doi.org/10.1175/1520-0426(2003)20%3C730:AACEAF%3E2.0.CO;2
