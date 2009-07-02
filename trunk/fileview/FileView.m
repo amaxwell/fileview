@@ -350,11 +350,7 @@ static char _FVContentBindingToControllerObserverContext;
     if (NSHeight(desiredRect) < NSHeight(bounds)) {
         scrollPosition.y = MAX(scrollPosition.y, 0.0);
         scrollPosition.y = MIN(scrollPosition.y, 1.0);
-#if __LP64__
         desiredRect.origin.y = rint(NSMinY(bounds) + scrollPosition.y * (NSHeight(bounds) - NSHeight(desiredRect)));
-#else
-        desiredRect.origin.y = rintf(NSMinY(bounds) + scrollPosition.y * (NSHeight(bounds) - NSHeight(desiredRect)));
-#endif
         if (NSMinY(desiredRect) < NSMinY(bounds))
             desiredRect.origin.y = NSMinY(bounds);
         else if (NSMaxY(desiredRect) > NSMaxY(bounds))
@@ -365,11 +361,7 @@ static char _FVContentBindingToControllerObserverContext;
     if (NSWidth(desiredRect) < NSWidth(bounds)) {
         scrollPosition.x = MAX(scrollPosition.x, 0.0);
         scrollPosition.x = MIN(scrollPosition.x, 1.0);
-#if __LP64__
         desiredRect.origin.x = rint(NSMinX(bounds) + scrollPosition.x * (NSWidth(bounds) - NSWidth(desiredRect)));
-#else
-        desiredRect.origin.x = rintf(NSMinX(bounds) + scrollPosition.x * (NSWidth(bounds) - NSWidth(desiredRect)));
-#endif
         if (NSMinX(desiredRect) < NSMinX(bounds))
             desiredRect.origin.x = NSMinX(bounds);
         else if (NSMaxX(desiredRect) > NSMaxX(bounds))
@@ -537,11 +529,7 @@ static char _FVContentBindingToControllerObserverContext;
 {
     // ??? magic number here... using a fixed padding looked funny at some sizes, so this is now adjustable
     NSSize size = NSZeroSize;
-#if __LP64__
     CGFloat extraMargin = round(4.0 * scale);
-#else
-    CGFloat extraMargin = roundf(4.0 * scale);
-#endif
     size.width = MINIMUM_PADDING + extraMargin;
     size.height = _titleHeight + extraMargin;
     // add subtitle + additional amount to keep from clipping descenders on subtitles with selection layer
@@ -600,11 +588,7 @@ static char _FVContentBindingToControllerObserverContext;
     // extend horizontally to account for shadow in case text is narrower than the icon
     // extend upward by 1 unit to account for slight mismatch between icon/placeholder drawing
     // extend downward to account for the text area
-#if __LP64__
     CGFloat horizontalExpansion = floor(_padding.width / 2.0);
-#else
-    CGFloat horizontalExpansion = floorf(_padding.width / 2.0);
-#endif
     NSRect dirtyRect = NSUnionRect(NSInsetRect(iconRect, -horizontalExpansion, -1.0), [self _rectOfTextForIconRect:iconRect]);
     [self setNeedsDisplayInRect:dirtyRect];
 }
@@ -1009,11 +993,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
     NSParameterAssert(horizontalPadding > 0);    
     // truncate to avoid tolerance buildup (avoids horizontal scroller display)
-#if __LP64__
-    _padding.width = floor(horizontalPadding);
-#else
-    _padding.width = floorf(horizontalPadding);
-#endif    
+    _padding.width = floor(horizontalPadding);   
     
     frame.size.width = MAX([self _columnWidth] * ncolumns + 2 * MARGIN_BASE, NSWidth(minFrame));
     frame.size.height = MAX([self _rowHeight] * nrows + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
@@ -1329,11 +1309,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         [[message mutableString] setString:word];
         width = MAX(width, NSWidth([message boundingRectWithSize:NSMakeSize(CGFLOAT_MAX, CGFLOAT_MAX) options:NSStringDrawingUsesLineFragmentOrigin]));
     }
-#if __LP64__
     return ceil(width);
-#else
-    return ceilf(width);
-#endif
 }
 
 - (void)_drawDropMessage;
@@ -1937,12 +1913,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
             NSRect iconRect = [self _rectOfIconInRow:r column:c];
             
             // determine a min/max size for the arrow buttons
-            CGFloat side;
-#if __LP64__
-            side = round(NSHeight(iconRect) / 5);
-#else
-            side = roundf(NSHeight(iconRect) / 5);
-#endif
+            CGFloat side = round(NSHeight(iconRect) / 5);
             side = MIN(side, 32);
             side = MAX(side, 10);
             // 2 pixels between arrows horizontally, and 4 pixels between bottom of arrow and bottom of iconRect
@@ -2200,13 +2171,8 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     NSRect rect;
     rect.origin.x = MIN(aPoint.x, bPoint.x);
     rect.origin.y = MIN(aPoint.y, bPoint.y);
-#if __LP64__
     rect.size.width = fmax(3.0, fmax(aPoint.x, bPoint.x) - NSMinX(rect));
-    rect.size.height = fmax(3.0, fmax(aPoint.y, bPoint.y) - NSMinY(rect));
-#else
-    rect.size.width = fmaxf(3.0, fmaxf(aPoint.x, bPoint.x) - NSMinX(rect));
-    rect.size.height = fmaxf(3.0, fmaxf(aPoint.y, bPoint.y) - NSMinY(rect));
-#endif    
+    rect.size.height = fmax(3.0, fmax(aPoint.y, bPoint.y) - NSMinY(rect));    
     return rect;
 }
 
@@ -3083,11 +3049,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     // extend horizontally to account for shadow in case text is narrower than the icon
     // extend upward by 1 unit to account for slight mismatch between icon/placeholder drawing
     // extend downward to account for the text area
-#if __LP64__
     CGFloat horizontalExpansion = floor(MAX([self _leftMargin], [self _rightMargin]));
-#else
-    CGFloat horizontalExpansion = floorf(MAX([self _leftMargin], [self _rightMargin]));
-#endif
     NSRect dirtyRect = NSUnionRect(NSInsetRect(iconRect, -horizontalExpansion, -1.0), [self _rectOfTextForIconRect:iconRect]);
     [self setNeedsDisplayInRect:dirtyRect];
 }
