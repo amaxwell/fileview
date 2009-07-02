@@ -53,6 +53,21 @@ static CFDictionaryRef _imsrcOptions = NULL;
     CFRelease(dict);    
 }
 
++ (BOOL)canInitWithUTI:(CFStringRef)type
+{
+    NSParameterAssert(type);
+    
+    // should never be called in this case, but ImageIO lies about support for PDF rdar://problem/5447874
+    if (UTTypeEqual(type, kUTTypePDF)) return NO;
+    
+    BOOL canInit = NO;
+    CFArrayRef types = CGImageSourceCopyTypeIdentifiers();
+    if (types && CFArrayContainsValue(types, CFRangeMake(0, CFArrayGetCount(types)), type))
+        canInit = YES;
+    if (types) CFRelease(types);
+    return canInit;
+}
+
 - (id)initWithURL:(NSURL *)aURL
 {
     self = [super initWithURL:aURL];
