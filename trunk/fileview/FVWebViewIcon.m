@@ -154,14 +154,16 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         _thumbnail = NULL;
         _viewImage = NULL;
         _fallbackIcon = nil;
-        
+        _webView = nil;
+        _redirectedFrames = [NSCountedSet new];
+
         // we can predict these sizes ahead of time since we have a fixed aspect ratio
         _thumbnailSize = [[self class] _webViewSize];
         FVIconLimitThumbnailSize(&_thumbnailSize);
         _fullImageSize = _thumbnailSize;
         FVIconLimitFullImageSize(&_fullImageSize);
         _desiredSize = NSZeroSize;
-        
+                
         _cacheKey = [FVIconCache newKeyForURL:_httpURL];
         _condLock = [[NSConditionLock allocWithZone:[self zone]] initWithCondition:IDLE];
         _cancelledLoad = false;
@@ -172,6 +174,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 - (void)_releaseWebView
 {
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
+
     // in case we get -releaseResources or -dealloc while waiting for another webview
     [[NSNotificationCenter defaultCenter] removeObserver:self name:FVWebIconWebViewAvailableNotificationName object:[self class]];
     if (nil != _webView) {
@@ -182,6 +185,8 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         FVAPIAssert([_webView downloadDelegate] == nil, @"downloadDelegate non-nil");
         FVAPIAssert([_webView UIDelegate] == nil, @"UIDelegate non-nil");
         [_webView release];
+        // may have frames if the load was cancelled?
+        [_redirectedFrames removeAllObjects];
         _numberOfWebViews--;
         _webView = nil;
         // notify observers that _numberOfWebViews has been decremented
@@ -191,14 +196,15 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 
 - (void)dealloc
 {
-    // typically on the main thread here, but not guaranteed
-        if (pthread_main_np() != 0) {
+    // typically on the main thread here, but not guaranteed; can never be called during a load anyway
+    if (pthread_main_np() != 0) {
         [self performSelectorOnMainThread:@selector(_releaseWebView) withObject:nil waitUntilDone:YES modes:[NSArray arrayWithObject:(id)kCFRunLoopCommonModes]];
     }
     else {
         // make sure to deregister for notification
         [self _releaseWebView];
     }
+    [_redirectedFrames release];
     [_condLock release];
     CGImageRelease(_viewImage);
     CGImageRelease(_fullImage);
@@ -327,10 +333,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 - (void)_pageDidFinishLoading
 {
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
-
-    // !!! part of a hack for redirect problems
-    if ([_webView fv_isLoading])
-        return;
+    FVAPIAssert1([_webView fv_isLoading] == NO, @"%s called while webview was loading", __func__);
 
     // release resources called after page finished loading; it calls main thread to cancel webview and we deadlock
     if ([_condLock tryLockWhenCondition:LOADING] == NO)
@@ -381,34 +384,44 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
  
  Notes on workarounds for rdar://problem/7025679
  
- Server redirect and -isLoading seem to be really screwed up.  As an example, this page
+ Redirect and -isLoading don't work as I expected.  As an example, this page
  
  http://dx.doi.org/10.1175/1520-0426(2003)20%3C730:AACEAF%3E2.0.CO;2
  
- redirects to
+ does a server side redirect to
+ 
+ http://journals.allenpress.com/jrnlserv/?request=get-abstract&doi=10.1175/1520-0426(2003)20%3C730:AACEAF%3E2.0.CO;2
+ 
+ which then does a client side redirect to
  
  http://ams.allenpress.com/perlserv/?request=get-abstract&doi=10.1175%2F1520-0426(2003)20%3C730:AACEAF%3E2.0.CO%3B2
  
- Logging frame delegates messages, we see the following message sequence:
+ -[WebView isLoading] returns NO after the journals.allenpress.com URL has loaded, but that's before the ams.allenpress.com
+ URL has started loading.  Hence, we track client side redirected frames between the redirect and their provisional load,
+ and use that in conjunction with -[WebView isLoading].  This is essentially Apple's suggested workaround, and they say
+ WebKit works as designed here so 7025679 was marked "Behaves Correctly."
  
- -[FVWebViewIcon webView:didStartProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
- -[FVWebViewIcon webView:didReceiveServerRedirectForProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
- -[FVWebViewIcon webView:didCommitLoadForFrame:] <WebFrame: 0x37d4e40>
- -[FVWebViewIcon webView:didFinishLoadForFrame:] <WebFrame: 0x37d4e40>
- 
- Now -[WebView isLoading] returns NO, but calling _pageDidFinishLoading results in drawing a white page.
- Calling _pageDidFinishLoading after a zero delay results in an assertion failure, since by that time 
- -[WebView isLoading] returns YES once again.  Calling _pageDidFinishLoading after a 10 second delay, 
- we find that all messages are sent a second time for the /same/ WebFrame object:
- 
- -[FVWebViewIcon webView:didStartProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
- -[FVWebViewIcon webView:didReceiveServerRedirectForProvisionalLoadForFrame:] <WebFrame: 0x37d4e40>
- -[FVWebViewIcon webView:didCommitLoadForFrame:] <WebFrame: 0x37d4e40>
- -[FVWebViewIcon webView:didFinishLoadForFrame:] <WebFrame: 0x37d4e40>
- 
- After this last batch of messages, the page content appears to be loaded and will display.
+ Related: rdar://problem/7046376 (add API or callback for complete loading)
+          rdar://problem/7046354 (improve documentation for willPerformClientRedirectToURL:)
  
  */
+
+- (void)webView:(WebView *)sender willPerformClientRedirectToURL:(NSURL *)URL delay:(NSTimeInterval)seconds fireDate:(NSDate *)date forFrame:(WebFrame *)frame
+{
+    // client redirect is delayed, and -[WebView isLoading] returns NO until the provisional load starts
+    [_redirectedFrames addObject:frame];
+}
+
+- (void)webView:(WebView *)sender didCancelClientRedirectForFrame:(WebFrame *)frame;
+{
+    [_redirectedFrames removeObject:frame];
+}
+
+- (void)webView:(WebView *)sender didStartProvisionalLoadForFrame:(WebFrame *)frame;
+{
+    // once a provisional load has started, -[WebView isLoading] will return correct status
+    [_redirectedFrames removeObject:frame];
+}
 
 - (void)webView:(WebView *)sender didFinishLoadForFrame:(WebFrame *)frame
 {
@@ -416,8 +429,8 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     FVAPIParameterAssert([sender isEqual:_webView]);
 
     // wait until all frames are loaded; perform after a delay because of redirect problems
-    if (NO == [_webView fv_isLoading])
-        [self performSelector:@selector(_pageDidFinishLoading) withObject:nil afterDelay:0.0];
+    if (NO == [_webView fv_isLoading] && [_redirectedFrames count] == 0)
+        [self _pageDidFinishLoading];
 }
 
 - (void)webView:(WebView *)sender decidePolicyForMIMEType:(NSString *)type request:(NSURLRequest *)request frame:(WebFrame *)frame decisionListener:(id < WebPolicyDecisionListener >)listener
