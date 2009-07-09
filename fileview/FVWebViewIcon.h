@@ -54,6 +54,7 @@
     NSURL           *_httpURL;
     NSSize           _desiredSize;
     WebView         *_webView;
+    NSCountedSet    *_redirectedFrames;
     id               _cacheKey;
     bool             _cancelledLoad;
     NSConditionLock *_condLock;
