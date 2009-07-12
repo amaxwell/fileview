@@ -94,13 +94,13 @@
  
  Subclasses must override this.  The drawing has the following semantic requirements and guarantees at present:
  
- \li \c the image will be scaled proportionally and centered in the destination rect
- \li \c the view is responsible for using -[NSView centerScanRect:] as appropriate, but images may not end up on pixel boundaries
- \li \c any changes to the CGContextRef are wrapped by CGContextSaveGState/CGContextRestoreGState
- \li \c specific compositing operations should be set in the context before calling this method
- \li \c shadow will be respected (the clip path is only changed when rendering text)
- \li \c needsRenderForSize: and renderOffscreen must be called first, to check/set size
- \li \c a placeholder icon will be drawn if renderOffscreen has not been called or finished working
+ \li the image will be scaled proportionally and centered in the destination rect
+ \li the view is responsible for using -[NSView centerScanRect:] as appropriate, but images may not end up on pixel boundaries
+ \li any changes to the CGContextRef are wrapped by CGContextSaveGState/CGContextRestoreGState
+ \li specific compositing operations should be set in the context before calling this method
+ \li shadow will be respected (the clip path is only changed when rendering text)
+ \li needsRenderForSize: and renderOffscreen must be called first, to check/set size
+ \li a placeholder icon will be drawn if renderOffscreen has not been called or finished working
  
  @param dstRect Destination rect for drawing in the passed-in context's coordinate space.
  @param context CGContext for drawing content. */
