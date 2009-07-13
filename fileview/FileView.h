@@ -180,6 +180,9 @@ enum {
 /** Selects the previous icon in row-major order.*/
 - (IBAction)selectNextIcon:(id)sender;
 
+/** Deselect all currently selected icons.*/
+- (IBAction)deselectAll:(id)sender;
+
 /** Deletes the selected icon(s).
  
  Requires implementation of the @link NSObject(FileViewDragDataSource) @endlink informal protocol.  If the view is editable, it sends  NSObject(FileViewDragDataSource)::fileView:deleteURLsAtIndexes: to the datasource object, which can then handle the action as needed.
