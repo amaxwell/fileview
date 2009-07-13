@@ -2558,12 +2558,24 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 - (void)insertTab:(id)sender;
 {
-    [self selectNextIcon:self];
+    if ([_selectedIndexes firstIndex] == ([_controller numberOfIcons] - 1) && [_selectedIndexes count] == 1) {
+        [self deselectAll:sender];
+        [[self window] selectNextKeyView:sender];
+    }
+    else {
+        [self selectNextIcon:self];
+    }
 }
 
 - (void)insertBacktab:(id)sender;
 {
-    [self selectPreviousIcon:self];
+    if ([_selectedIndexes firstIndex] == 0 && [_selectedIndexes count] == 1) {
+        [self deselectAll:sender];
+        [[self window] selectPreviousKeyView:sender];
+    }
+    else {
+        [self selectPreviousIcon:self];
+    }
 }
 
 - (void)moveToBeginningOfLine:(id)sender;
