@@ -116,7 +116,7 @@ static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
 // clean up the pool at 100 MB of freed memory
 #define FV_COLLECT_THRESHOLD 104857600UL
 
-#if DEBUG
+#if ENABLE_STATS
 #define FV_COLLECT_TIMEINTERVAL 60
 #else
 #define FV_COLLECT_TIMEINTERVAL 300
@@ -500,21 +500,21 @@ static void fv_zone_destroy(malloc_zone_t *fvzone)
 }
 
 static void fv_zone_print(malloc_zone_t *zone, boolean_t verbose) {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
 }
 
 static void fv_zone_log(malloc_zone_t *zone, void *address) {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
 }
 
 static boolean_t fv_zone_check(malloc_zone_t *zone) {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
     return 1;
 }
 
 static size_t fv_zone_good_size(malloc_zone_t *zone, size_t size)
 {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
     bool ignored;
     return __fv_zone_round_size(size, &ignored);
 }
@@ -536,7 +536,7 @@ static inline void __fv_zone_sum_allocations(fv_allocation_t *alloc, size_t *siz
 
 static size_t __fv_zone_total_size(fv_zone_t *zone)
 {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
     size_t sizeTotal = 0;
     OSSpinLockLock(&zone->_spinLock);
     set<fv_allocation_t *>::iterator it;
@@ -549,7 +549,7 @@ static size_t __fv_zone_total_size(fv_zone_t *zone)
 
 static size_t __fv_zone_get_size_in_use(fv_zone_t *zone)
 {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
     size_t sizeTotal = 0, sizeFree = 0;
     OSSpinLockLock(&zone->_spinLock);
     set<fv_allocation_t *>::iterator it;
@@ -571,7 +571,7 @@ static size_t __fv_zone_get_size_in_use(fv_zone_t *zone)
 static void fv_zone_statistics(malloc_zone_t *fvzone, malloc_statistics_t *stats)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
     stats->blocks_in_use = zone->_allocations->size() - zone->_availableAllocations->size();
     stats->size_in_use = __fv_zone_get_size_in_use(zone);
     stats->max_size_in_use = __fv_zone_total_size(zone);
@@ -635,7 +635,7 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
 static kern_return_t 
 fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
-    fprintf(stderr, "%s\n", __func__);
+    malloc_printf("%s\n", __func__);
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(zone_address);
     OSSpinLockLock(&zone->_spinLock);
     kern_return_t ret = 0;
@@ -767,7 +767,7 @@ static void *__fv_zone_collector_thread(void *unused)
         ret = pthread_cond_timedwait(&_collectorCond, &_allZonesLock, &ts);
         for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
 
-#if DEBUG
+#if ENABLE_STATS
         (void)gettimeofday(&tv, NULL);
         TIMEVAL_TO_TIMESPEC(&tv, &ts);
 
