@@ -606,45 +606,72 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
 {
     const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
     
-    // Is this needed?  Should I use local_memory instead of the alloc pointer?
-    void *local_memory;
-    kern_return_t err = ctxt->reader(ctxt->task, (vm_address_t)alloc, alloc->allocSize, (void **)&local_memory);
+    // call once to get a local copy of the header
+    fv_allocation_t *local_alloc;
+    kern_return_t err = ctxt->reader(ctxt->task, (vm_address_t)alloc, sizeof(fv_allocation_t), (void **)&local_alloc);
     if (err) {
         *ctxt->ret = err;
         return;
     }
     
+    // now that we know the size of the allocation, read the entire block into local memory
+    err = ctxt->reader(ctxt->task, (vm_address_t)alloc, local_alloc->allocSize, (void **)&local_alloc);
+    if (err) {
+        *ctxt->ret = err;
+        return;
+    }
+        
+    // now run the recorder on the local copy
     vm_range_t range;
     if (ctxt->type_mask & MALLOC_ADMIN_REGION_RANGE_TYPE) {
-        range.address = (vm_address_t)alloc->base;
-        range.size = alloc->allocSize - alloc->ptrSize;
+        range.address = (vm_address_t)local_alloc->base;
+        range.size = local_alloc->allocSize - local_alloc->ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_ADMIN_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & (MALLOC_PTR_REGION_RANGE_TYPE | MALLOC_ADMIN_REGION_RANGE_TYPE)) {
-        range.address = (vm_address_t)alloc->base;
-        range.size = alloc->allocSize;
+        range.address = (vm_address_t)local_alloc->base;
+        range.size = local_alloc->allocSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE && false == alloc->free) {
-        range.address = (vm_address_t)alloc->ptr;
-        range.size = alloc->ptrSize;
+        range.address = (vm_address_t)local_alloc->ptr;
+        range.size = local_alloc->ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_IN_USE_RANGE_TYPE, &range, 1);
     }
+    
+    *ctxt->ret = 0;
+}
+
+// taken directly from scalable_malloc.c
+static kern_return_t
+__fv_zone_default_reader(task_t task, vm_address_t address, vm_size_t size, void **ptr)
+{
+    *ptr = (void *)address;
+    return 0;
 }
 
 static kern_return_t 
 fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
     malloc_printf("%s\n", __func__);
+    
+    // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(zone_address);
-    OSSpinLockLock(&zone->_spinLock);
     kern_return_t ret = 0;
+    
+    if (NULL == reader) reader = __fv_zone_default_reader;
+    
+    // read the zone itself first before messing with it
+    ret = reader(task, zone_address, sizeof(fv_zone_t), (void **)&zone);
+    if (ret) return ret;
+    
     fv_enumerator_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
     set<fv_allocation_t *>::iterator it;
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
         __fv_zone_enumerate_allocation(*it, &ctxt);
+        // bail out immediately if any region fails
+        if (ret) return ret;
     }
-    OSSpinLockUnlock(&zone->_spinLock);
     return ret;
 }
 
