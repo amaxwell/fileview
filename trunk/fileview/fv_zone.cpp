@@ -604,6 +604,8 @@ typedef struct _fv_enumerator_context {
 
 static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_context *ctxt)
 {
+    malloc_printf("%s\n", __func__);
+
     const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
     
     // call once to get a local copy of the header
@@ -662,11 +664,14 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     if (NULL == reader) reader = __fv_zone_default_reader;
     
     // read the zone itself first before messing with it
+    // !!! will this be valid after __fv_zone_enumerate_allocation?
     ret = reader(task, zone_address, sizeof(fv_zone_t), (void **)&zone);
     if (ret) return ret;
     
     fv_enumerator_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
     set<fv_allocation_t *>::iterator it;
+
+    // !!! we read the zone, but can we access the _allocations member?  likely not...so this needs to be a C array or std::vector
     for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
         __fv_zone_enumerate_allocation(*it, &ctxt);
         // bail out immediately if any region fails
