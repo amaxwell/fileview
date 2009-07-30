@@ -648,6 +648,7 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
 static kern_return_t
 __fv_zone_default_reader(task_t task, vm_address_t address, vm_size_t size, void **ptr)
 {
+    malloc_printf("%s\n", __func__);
     *ptr = (void *)address;
     return 0;
 }
@@ -655,18 +656,29 @@ __fv_zone_default_reader(task_t task, vm_address_t address, vm_size_t size, void
 static kern_return_t 
 fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
+    fv_zone_assert(0 != zone_address);
     malloc_printf("%s\n", __func__);
     
     // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(zone_address);
-    kern_return_t ret = 0;
     
     if (NULL == reader) reader = __fv_zone_default_reader;
     
+    kern_return_t ret = 0;
+
     // read the zone itself first before messing with it
     // !!! will this be valid after __fv_zone_enumerate_allocation?
     ret = reader(task, zone_address, sizeof(fv_zone_t), (void **)&zone);
     if (ret) return ret;
+    fv_zone_assert(NULL != zone);
+    
+    /*
+    const char *namep = zone->_basic_zone.zone_name;
+    char *name = NULL;
+    ret = reader(task, (vm_address_t)namep, strlen("FVAllocatorZone") + 1, (void **)&name);
+    malloc_printf("ret = %d, name = \"%s\"\n", ret, name);
+     */
+    return 1;
     
     fv_enumerator_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
     set<fv_allocation_t *>::iterator it;
@@ -716,7 +728,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.batch_malloc = NULL;
     zone->_basic_zone.batch_free = NULL;
     zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
-    zone->_basic_zone.version = 3;  /* from scalable_malloc.c in Libc-498.1.1 */
+    zone->_basic_zone.version = 0;  /* from scalable_malloc.c in Libc-498.1.1 */
     
     // explicitly initialize padding to NULL
     zone->_reserved[0] = NULL;
