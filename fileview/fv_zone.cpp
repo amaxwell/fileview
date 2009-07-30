@@ -603,9 +603,7 @@ typedef struct _fv_enumerator_context {
 } fv_enumerator_context;
 
 static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_context *ctxt)
-{
-    malloc_printf("%s\n", __func__);
-    
+{    
     // call once to get a local copy of the header
     fv_allocation_t *alloc;
     kern_return_t err = ctxt->reader(ctxt->task, (vm_address_t)value, sizeof(fv_allocation_t), (void **)&alloc);
