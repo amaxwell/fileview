@@ -55,7 +55,7 @@
 using namespace std;
 
 #if DEBUG
-#define ENABLE_STATS 0
+#define ENABLE_STATS 1
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define ENABLE_STATS 0
@@ -871,7 +871,7 @@ static multiset<size_t> __fv_zone_all_sizes_locked(fv_zone_t *fvzone, size_t *to
 {
     size_t totalMemory = 0;
     multiset<size_t> allocationSet;
-    set<fv_allocation_t *>::iterator it;
+    vector<fv_allocation_t *>::iterator it;
     for (it = fvzone->_allocations->begin(); it != fvzone->_allocations->end(); it++) {
         fv_allocation_t *alloc = *it;
         if (__builtin_expect((alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard), 0)) {
