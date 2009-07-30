@@ -71,13 +71,8 @@ typedef struct _fv_zone_t {
     void              *_reserved[2];          /* for future expansion of malloc_zone_t */
     multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size  */
     set<ALLOC>        *_allocations;          /* all allocations, ordered by address   */
-#if __LP64__
-    volatile uint64_t  _allocatedSize;        /* free + active allocations (allocSize) */
-    volatile uint64_t  _freeSize;             /* available allocations (allocSize)     */
-#else
-    volatile uint32_t  _allocatedSize;        
-    volatile uint32_t  _freeSize;             
-#endif
+    size_t             _allocatedSize;        /* free + active allocations (allocSize) */
+    size_t             _freeSize;             /* available allocations (allocSize)     */
     OSSpinLock         _spinLock;             /* lock before manipulating fields       */
 #if ENABLE_STATS
     volatile uint32_t  _cacheHits;
