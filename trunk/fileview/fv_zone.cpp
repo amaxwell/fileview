@@ -71,7 +71,7 @@ typedef struct _fv_zone_t {
     void              *_reserved[2];          /* for future expansion of malloc_zone_t */
     multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size  */
     vector<ALLOC>     *_allocations;          /* all allocations, ordered by address   */
-    void              *_allocPtr;
+    ALLOC             *_allocPtr;
     size_t             _allocPtrLen;
     size_t             _allocatedSize;        /* free + active allocations (allocSize) */
     size_t             _freeSize;             /* available allocations (allocSize)     */
@@ -213,7 +213,7 @@ static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t
     fv_zone_assert(find(zone->_allocations->begin(), zone->_allocations->end(), alloc) == zone->_allocations->end());
     zone->_allocations->push_back(alloc);
     zone->_allocatedSize += alloc->allocSize;
-    zone->_allocPtr = zone->_allocations->front();
+    zone->_allocPtr = &zone->_allocations->front();
     zone->_allocPtrLen = zone->_allocations->size();
     OSSpinLockUnlock(&zone->_spinLock);
 }
@@ -606,12 +606,10 @@ typedef struct _fv_enumerator_context {
 static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_context *ctxt)
 {
     malloc_printf("%s\n", __func__);
-
-    const fv_allocation_t *alloc = reinterpret_cast<const fv_allocation_t *>(value);
     
     // call once to get a local copy of the header
-    fv_allocation_t *local_alloc;
-    kern_return_t err = ctxt->reader(ctxt->task, (vm_address_t)alloc, sizeof(fv_allocation_t), (void **)&local_alloc);
+    fv_allocation_t *alloc;
+    kern_return_t err = ctxt->reader(ctxt->task, (vm_address_t)value, sizeof(fv_allocation_t), (void **)&alloc);
     if (err) {
         malloc_printf("%s: failed to read header\n", __func__);
         *ctxt->ret = err;
@@ -619,7 +617,7 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
     }
     
     // now that we know the size of the allocation, read the entire block into local memory
-    err = ctxt->reader(ctxt->task, (vm_address_t)alloc, local_alloc->allocSize, (void **)&local_alloc);
+    err = ctxt->reader(ctxt->task, (vm_address_t)value, alloc->allocSize, (void **)&alloc);
     if (err) {
         malloc_printf("%s: failed to read alloc\n", __func__);
         *ctxt->ret = err;
@@ -629,18 +627,18 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
     // now run the recorder on the local copy
     vm_range_t range;
     if (ctxt->type_mask & MALLOC_ADMIN_REGION_RANGE_TYPE) {
-        range.address = (vm_address_t)local_alloc->base;
-        range.size = local_alloc->allocSize - local_alloc->ptrSize;
+        range.address = (vm_address_t)alloc->base;
+        range.size = alloc->allocSize - alloc->ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_ADMIN_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & (MALLOC_PTR_REGION_RANGE_TYPE | MALLOC_ADMIN_REGION_RANGE_TYPE)) {
-        range.address = (vm_address_t)local_alloc->base;
-        range.size = local_alloc->allocSize;
+        range.address = (vm_address_t)alloc->base;
+        range.size = alloc->allocSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE && false == alloc->free) {
-        range.address = (vm_address_t)local_alloc->ptr;
-        range.size = local_alloc->ptrSize;
+        range.address = (vm_address_t)alloc->ptr;
+        range.size = alloc->ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_IN_USE_RANGE_TYPE, &range, 1);
     }
     
@@ -805,7 +803,7 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
         } 
         
         // reset heap pointer and length
-        zone->_allocPtr = zone->_allocations->front();
+        zone->_allocPtr = &zone->_allocations->front();
         zone->_allocPtrLen = zone->_allocations->size();
 
         // now remove all blocks from the free list
