@@ -672,12 +672,20 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     
     fv_enumerator_context ctxt = { task, context, type_mask, reader, recorder, &ret };    
     fv_allocation_t **allocations;
-    size_t allocLen = zone->_allocPtrLen;
-    ret = reader(task, (vm_address_t)zone->_allocPtr, allocLen, (void **)&allocations);
     
-    if (ret) return ret;
+    const size_t allocLen = zone->_allocPtrLen;
     
     for (size_t i = 0; i < allocLen; i++) {
+        /*
+         This is the number of fv_allocation_t pointers that we have in _allocPtr, and we want to read all of them
+         from the contiguous block in the vector.  So this will try to read allocLen * sizeof(void *).
+         Since __fv_zone_enumerate_allocation also calls reader, we call it each time through the loop in case it
+         becomes invalid between calls.
+         */        
+        ret = reader(task, (vm_address_t)zone->_allocPtr, allocLen * sizeof(fv_allocation_t *), (void **)&allocations);
+        if (ret) return ret;    
+        
+        // now read and record each allocation
         __fv_zone_enumerate_allocation(allocations[i], &ctxt);
         if (ret) return ret;
     }
