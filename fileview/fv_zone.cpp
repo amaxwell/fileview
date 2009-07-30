@@ -55,7 +55,7 @@
 using namespace std;
 
 #if DEBUG
-#define ENABLE_STATS 1
+#define ENABLE_STATS 0
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
 #else
 #define ENABLE_STATS 0
@@ -643,7 +643,7 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
     *ctxt->ret = 0;
 }
 
-// taken directly from scalable_malloc.c
+// taken directly from scalable_malloc.c; maybe used when task == mach_task_self?
 static kern_return_t
 __fv_zone_default_reader(task_t task, vm_address_t address, vm_size_t size, void **ptr)
 {
@@ -658,14 +658,14 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     fv_zone_assert(0 != zone_address);
     malloc_printf("%s\n", __func__);
     
-    // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator
-    fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(zone_address);
+    // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator, and locking it here causes a deadlock
     
     if (NULL == reader) reader = __fv_zone_default_reader;
     
     kern_return_t ret = 0;
 
     // read the zone itself first before dereferencing it
+    fv_zone_t *zone;
     ret = reader(task, zone_address, sizeof(fv_zone_t), (void **)&zone);
     if (ret) return ret;
     fv_zone_assert(NULL != zone);
