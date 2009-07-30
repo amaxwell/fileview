@@ -597,7 +597,6 @@ typedef struct _fv_enumerator_context {
     task_t              task;
     void               *context;
     unsigned            type_mask;
-    fv_zone_t          *zone;
     kern_return_t     (*reader)(task_t, vm_address_t, vm_size_t, void **);
     void              (*recorder)(task_t, void *, unsigned type, vm_range_t *, unsigned);
     kern_return_t      *ret;
@@ -617,9 +616,10 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
     }
     
     // now that we know the size of the allocation, read the entire block into local memory
-    err = ctxt->reader(ctxt->task, (vm_address_t)value, alloc->allocSize, (void **)&alloc);
+    const size_t allocSize = alloc->allocSize;
+    err = ctxt->reader(ctxt->task, (vm_address_t)value, allocSize, (void **)&alloc);
     if (err) {
-        malloc_printf("%s: failed to read alloc\n", __func__);
+        malloc_printf("%s: failed to read alloc of size %y\n", __func__, allocSize);
         *ctxt->ret = err;
         return;
     }
@@ -628,12 +628,12 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
     vm_range_t range;
     if (ctxt->type_mask & MALLOC_ADMIN_REGION_RANGE_TYPE) {
         range.address = (vm_address_t)alloc->base;
-        range.size = alloc->allocSize - alloc->ptrSize;
+        range.size = allocSize - alloc->ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_ADMIN_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & (MALLOC_PTR_REGION_RANGE_TYPE | MALLOC_ADMIN_REGION_RANGE_TYPE)) {
         range.address = (vm_address_t)alloc->base;
-        range.size = alloc->allocSize;
+        range.size = allocSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE && false == alloc->free) {
@@ -667,22 +667,12 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     
     kern_return_t ret = 0;
 
-    // read the zone itself first before messing with it
-    // !!! will this be valid after __fv_zone_enumerate_allocation?
+    // read the zone itself first before dereferencing it
     ret = reader(task, zone_address, sizeof(fv_zone_t), (void **)&zone);
     if (ret) return ret;
     fv_zone_assert(NULL != zone);
     
-    /*
-    const char *namep = zone->_basic_zone.zone_name;
-    char *name = NULL;
-    ret = reader(task, (vm_address_t)namep, strlen("FVAllocatorZone") + 1, (void **)&name);
-    malloc_printf("ret = %d, name = \"%s\"\n", ret, name);
-     */
-    
-    fv_enumerator_context ctxt = { task, context, type_mask, zone, reader, recorder, &ret };
-    //vector<fv_allocation_t *>::iterator it;
-    
+    fv_enumerator_context ctxt = { task, context, type_mask, reader, recorder, &ret };    
     fv_allocation_t **allocations;
     size_t allocLen = zone->_allocPtrLen;
     ret = reader(task, (vm_address_t)zone->_allocPtr, allocLen, (void **)&allocations);
@@ -693,15 +683,7 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
         __fv_zone_enumerate_allocation(allocations[i], &ctxt);
         if (ret) return ret;
     }
-    /*
 
-    // !!! we read the zone, but can we access the _allocations member?  likely not...so this needs to be a C array or std::vector
-    for (it = zone->_allocations->begin(); it != zone->_allocations->end(); it++) {
-        __fv_zone_enumerate_allocation(*it, &ctxt);
-        // bail out immediately if any region fails
-        if (ret) return ret;
-    }
-     */
     return ret;
 }
 
