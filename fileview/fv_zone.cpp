@@ -673,20 +673,28 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     fv_enumerator_context ctxt = { task, context, type_mask, reader, recorder, &ret };    
     fv_allocation_t **allocations;
     
-    const size_t allocLen = zone->_allocPtrLen;
+    /*
+     _allocPtrLen is the number of fv_allocation_t pointers that we have in _allocPtr, and we want to read all of them
+     from the contiguous block in the vector.  So this will try to read allocLen * sizeof(void *).
+     Since __fv_zone_enumerate_allocation also calls reader, we call it each time through the loop in case it
+     becomes invalid between calls.
+     */     
     
-    for (size_t i = 0; i < allocLen; i++) {
-        /*
-         This is the number of fv_allocation_t pointers that we have in _allocPtr, and we want to read all of them
-         from the contiguous block in the vector.  So this will try to read allocLen * sizeof(void *).
-         Since __fv_zone_enumerate_allocation also calls reader, we call it each time through the loop in case it
-         becomes invalid between calls.
-         */        
-        ret = reader(task, (vm_address_t)zone->_allocPtr, allocLen * sizeof(fv_allocation_t *), (void **)&allocations);
+    // assume this doesn't change during enumeration (caller has locked the zone)
+    const size_t allocationCount = zone->_allocPtrLen;
+    
+    for (size_t i = 0; i < allocationCount; i++) {
+        
+        // read all the allocation pointers into local memory
+        ret = reader(task, (vm_address_t)zone->_allocPtr, allocationCount * sizeof(fv_allocation_t *), (void **)&allocations);
         if (ret) return ret;    
         
-        // now read and record each allocation
+        // now read and record the next allocation
         __fv_zone_enumerate_allocation(allocations[i], &ctxt);
+        if (ret) return ret;
+        
+        // need the zone again for _allocPtr
+        ret = reader(task, zone_address, sizeof(fv_zone_t), (void **)&zone);
         if (ret) return ret;
     }
 
