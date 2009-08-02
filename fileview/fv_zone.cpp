@@ -71,8 +71,8 @@ typedef struct _fv_zone_t {
     void              *_reserved[2];          /* for future expansion of malloc_zone_t */
     multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size  */
     vector<ALLOC>     *_allocations;          /* all allocations, ordered by address   */
-    ALLOC             *_allocPtr;
-    size_t             _allocPtrLen;
+    ALLOC             *_allocPtr;             /* pointer to _allocations storage       */
+    size_t             _allocPtrCount;        /* number of ALLOC pointers in _allocPtr */
     size_t             _allocatedSize;        /* free + active allocations (allocSize) */
     size_t             _freeSize;             /* available allocations (allocSize)     */
     OSSpinLock         _spinLock;             /* lock before manipulating fields       */
@@ -214,7 +214,7 @@ static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t
     zone->_allocations->push_back(alloc);
     zone->_allocatedSize += alloc->allocSize;
     zone->_allocPtr = &zone->_allocations->front();
-    zone->_allocPtrLen = zone->_allocations->size();
+    zone->_allocPtrCount = zone->_allocations->size();
     OSSpinLockUnlock(&zone->_spinLock);
 }
 
@@ -493,7 +493,7 @@ static void fv_zone_destroy(malloc_zone_t *fvzone)
     for_each(zone->_allocations->begin(), zone->_allocations->end(), __fv_zone_destroy_allocation);
     zone->_allocations->clear();
     zone->_allocPtr = NULL;
-    zone->_allocPtrLen = 0;
+    zone->_allocPtrCount = 0;
     OSSpinLockUnlock(&zone->_spinLock);
     
     // free the zone itself (must have been allocated with malloc!)
@@ -658,7 +658,7 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     fv_zone_assert(0 != zone_address);
     malloc_printf("%s\n", __func__);
     
-    // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator, and locking it here causes a deadlock
+    // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator
     
     if (NULL == reader) reader = __fv_zone_default_reader;
     
@@ -674,14 +674,14 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
     fv_allocation_t **allocations;
     
     /*
-     _allocPtrLen is the number of fv_allocation_t pointers that we have in _allocPtr, and we want to read all of them
+     _allocPtrCount is the number of fv_allocation_t pointers that we have in _allocPtr, and we want to read all of them
      from the contiguous block in the vector.  So this will try to read allocLen * sizeof(void *).
      Since __fv_zone_enumerate_allocation also calls reader, we call it each time through the loop in case it
      becomes invalid between calls.
      */     
     
-    // assume this doesn't change during enumeration (caller has locked the zone)
-    const size_t allocationCount = zone->_allocPtrLen;
+    // assume this doesn't change during enumeration (caller has locked the zone or paused the process)
+    const size_t allocationCount = zone->_allocPtrCount;
     
     for (size_t i = 0; i < allocationCount; i++) {
         
@@ -800,7 +800,7 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
         
         // reset heap pointer and length
         zone->_allocPtr = &zone->_allocations->front();
-        zone->_allocPtrLen = zone->_allocations->size();
+        zone->_allocPtrCount = zone->_allocations->size();
 
         // now remove all blocks from the free list
         zone->_availableAllocations->clear();
