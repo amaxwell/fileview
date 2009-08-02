@@ -613,11 +613,24 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
         return;
     }
     
-    // now that we know the size of the allocation, read the entire block into local memory
+    /*
+     Now that we know the size of the allocation, read the entire block into local memory, recalling that
+     base != alloc in some cases.  Store all the alloc parameters we use in local memory, then set alloc
+     to NULL since calling reader() again will likely stomp on it, and it's better to crash immediately
+     due to a NULL dereference.  See the layout comment at __fv_zone_vm_allocation for details.
+     */
     const size_t allocSize = alloc->allocSize;
-    err = ctxt->reader(ctxt->task, (vm_address_t)value, allocSize, (void **)&alloc);
+    const size_t ptrSize = alloc->ptrSize;
+    const vm_address_t baseAddress = (vm_address_t)alloc->base;
+    const vm_address_t ptrAddress = (vm_address_t)alloc->ptr;
+    const bool isFree = alloc->free;
+    alloc = NULL;
+    
+    void *base;
+    err = ctxt->reader(ctxt->task, baseAddress, allocSize, (void **)&base);
+        
     if (err) {
-        malloc_printf("%s: failed to read alloc of size %y\n", __func__, allocSize);
+        malloc_printf("%s: failed to read base ptr of size %y\n", __func__, allocSize);
         *ctxt->ret = err;
         return;
     }
@@ -625,18 +638,18 @@ static void __fv_zone_enumerate_allocation(const void *value, fv_enumerator_cont
     // now run the recorder on the local copy
     vm_range_t range;
     if (ctxt->type_mask & MALLOC_ADMIN_REGION_RANGE_TYPE) {
-        range.address = (vm_address_t)alloc->base;
-        range.size = allocSize - alloc->ptrSize;
+        range.address = baseAddress;
+        range.size = allocSize - ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_ADMIN_REGION_RANGE_TYPE, &range, 1);
     }
     if (ctxt->type_mask & (MALLOC_PTR_REGION_RANGE_TYPE | MALLOC_ADMIN_REGION_RANGE_TYPE)) {
-        range.address = (vm_address_t)alloc->base;
+        range.address = baseAddress;
         range.size = allocSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_REGION_RANGE_TYPE, &range, 1);
     }
-    if (ctxt->type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE && false == alloc->free) {
-        range.address = (vm_address_t)alloc->ptr;
-        range.size = alloc->ptrSize;
+    if (ctxt->type_mask & MALLOC_PTR_IN_USE_RANGE_TYPE && false == isFree) {
+        range.address = ptrAddress;
+        range.size = ptrSize;
         ctxt->recorder(ctxt->task, ctxt->context, MALLOC_PTR_IN_USE_RANGE_TYPE, &range, 1);
     }
     
@@ -656,9 +669,6 @@ static kern_return_t
 fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t zone_address, memory_reader_t reader, vm_range_recorder_t recorder)
 {
     fv_zone_assert(0 != zone_address);
-    malloc_printf("%s\n", __func__);
-    
-    // NB: scalable_malloc doesn't lock in szone_ptr_in_use_enumerator
     
     if (NULL == reader) reader = __fv_zone_default_reader;
     
@@ -680,7 +690,10 @@ fv_zone_enumerator(task_t task, void *context, unsigned type_mask, vm_address_t 
      becomes invalid between calls.
      */     
     
-    // assume this doesn't change during enumeration (caller has locked the zone or paused the process)
+    /*
+     scalable_malloc doesn't lock in szone_ptr_in_use_enumerator, so we assume this doesn't change during 
+     enumeration (caller has locked the zone or paused the process)
+     */
     const size_t allocationCount = zone->_allocPtrCount;
     
     for (size_t i = 0; i < allocationCount; i++) {
