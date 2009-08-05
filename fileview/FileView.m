@@ -1365,23 +1365,31 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         [message drawWithRect:containerRect options:NSStringDrawingUsesLineFragmentOrigin];
 }
 
-- (void)handleMainNotification:(NSNotification *)aNote
+- (void)handleKeyOrMainNotification:(NSNotification *)aNote
 {
     [self setNeedsDisplay:YES];
 }
 
 - (void)viewDidMoveToWindow;
 {
-    // for redrawing background color
     NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
     NSWindow *window = [self window];
     if (window) {
-        [nc addObserver:self selector:@selector(handleMainNotification:) name:NSWindowDidBecomeMainNotification object:window];
-        [nc addObserver:self selector:@selector(handleMainNotification:) name:NSWindowDidResignMainNotification object:window];
+        /*
+         For redrawing the "magic" sourcelist background color.  The 10.5 AppKit color evidently changes based on main 
+         status, but key status must also be observed for a utility window. A spurious redraw from observing both 
+         notifications is not a problem, in any event.
+         */
+        [nc addObserver:self selector:@selector(handleKeyOrMainNotification:) name:NSWindowDidBecomeMainNotification object:window];
+        [nc addObserver:self selector:@selector(handleKeyOrMainNotification:) name:NSWindowDidResignMainNotification object:window];
+        [nc addObserver:self selector:@selector(handleKeyOrMainNotification:) name:NSWindowDidBecomeKeyNotification object:window];
+        [nc addObserver:self selector:@selector(handleKeyOrMainNotification:) name:NSWindowDidResignKeyNotification object:window];
     }
     else {
         [nc removeObserver:self name:NSWindowDidBecomeMainNotification object:nil];
         [nc removeObserver:self name:NSWindowDidResignMainNotification object:nil];
+        [nc removeObserver:self name:NSWindowDidBecomeKeyNotification object:nil];
+        [nc removeObserver:self name:NSWindowDidResignKeyNotification object:nil];
     }
 }
 
