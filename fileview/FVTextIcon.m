@@ -318,7 +318,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 - (CGImageRef)_newImageWithAttributedString:(NSMutableAttributedString *)attrString documentAttributes:(NSDictionary *)documentAttributes
 {
     NSParameterAssert(attrString);
-    FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(FVDefaultPaperSize.width, FVDefaultPaperSize.height);    
+    CGContextRef ctxt = [[FVBitmapContext bitmapContextWithSize:FVDefaultPaperSize] graphicsPort];
 
     // set up default page layout parameters
     CGAffineTransform t1 = CGAffineTransformMakeTranslation(FVSideMargin, FVDefaultPaperSize.height - FVTopMargin);
@@ -404,7 +404,6 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     CGContextRestoreGState(ctxt);
     
     CGImageRef image = CGBitmapContextCreateImage(ctxt);
-    FVIconBitmapContextRelease(ctxt);
     
     return image;
     

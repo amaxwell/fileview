@@ -345,9 +345,11 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     
     // actual size of the view
     NSSize size = [[self class] _webViewSize];
-    FVBitmapContextRef context = FVIconBitmapContextCreateWithSize(size.width, size.height);
+    
+    FVBitmapContext *bitmapContext = [FVBitmapContext bitmapContextWithSize:size];
+    CGContextRef context = [bitmapContext graphicsPort];
     CGContextClearRect(context, CGRectMake(0, 0, size.width, size.height));
-    NSGraphicsContext *nsContext = [NSGraphicsContext graphicsContextWithGraphicsPort:context flipped:[view isFlipped]];
+    NSGraphicsContext *nsContext = [view isFlipped] ? [bitmapContext flippedGraphicsContext] : [bitmapContext graphicsContext];
     
     [NSGraphicsContext saveGraphicsState];
     
@@ -370,9 +372,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     // temporary CGImage from the full webview
     CGImageRelease(_viewImage);
     _viewImage = CGBitmapContextCreateImage(context);
-    
-    FVIconBitmapContextRelease(context);
-    
+        
     // clear out the webview, since we won't need it again
     [self _releaseWebView];
     [_condLock unlockWithCondition:LOADED];
