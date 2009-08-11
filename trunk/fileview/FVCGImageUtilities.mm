@@ -141,7 +141,7 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
     __FVCGImageRequestAllocationSize(allocSize);
 #endif
     
-    FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(size.width, size.height);
+    CGContextRef ctxt = [[FVBitmapContext bitmapContextWithSize:size] graphicsPort];
     CGContextClearRect(ctxt, CGRectMake(0, 0, size.width, size.height));
 
     CGContextSaveGState(ctxt);
@@ -150,7 +150,6 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
     CGContextRestoreGState(ctxt);
     
     CGImageRef toReturn = CGBitmapContextCreateImage(ctxt);
-    FVIconBitmapContextRelease(ctxt);
     
 #if FV_LIMIT_TILEMEMORY_USAGE
     __FVCGImageDiscardAllocationSize(allocSize);

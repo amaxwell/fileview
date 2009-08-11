@@ -369,8 +369,8 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
     
     if (NULL == _thumbnail) {
         
-        FVBitmapContextRef ctxt = FVIconBitmapContextCreateWithSize(_thumbnailSize.width, _thumbnailSize.height);
-        
+        CGContextRef ctxt = [[FVBitmapContext bitmapContextWithSize:_thumbnailSize] graphicsPort];
+
         // set a white page background
         CGRect pageRect = CGRectMake(0, 0, _thumbnailSize.width, _thumbnailSize.height);
         CGContextDrawLayerInRect(ctxt, pageRect, _pageLayer);
@@ -398,7 +398,6 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         if (1 == _currentPage && NULL != _thumbnail)
             thumbnail = CGImageRetain(_thumbnail);
         
-        FVIconBitmapContextRelease(ctxt);
     }
     [self unlock];
     

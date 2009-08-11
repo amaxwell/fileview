@@ -40,14 +40,28 @@
 #define _FVBITMAPCONTEXT_H_
 
 #import <Cocoa/Cocoa.h>
+#import <FVObject.h>
 
 __BEGIN_DECLS
 
-/** @file FVBitmapContext.h  Bitmap context creation and disposal. */
+@interface FVBitmapContext : FVObject
+{
+@private
+    CGContextRef       _port;
+    NSGraphicsContext *_flipped;
+    NSGraphicsContext *_context;
+}
 
-/** @typedef CGContextRef FVBitmapContextRef
- This typedef mainly exists to silence clang's retain/release heuristic warnings, which unfortunately look for CF/CG as the release function prefix.  Should file a bug with llvm, but this is easier than dealing with bugzilla. */
-typedef CGContextRef FVBitmapContextRef;
++ (FVBitmapContext *)bitmapContextWithSize:(NSSize)pixelSize;
+- (id)initPixelsWide:(size_t)pixelsWide pixelsHigh:(size_t)pixelsHigh;
+
+- (CGContextRef)graphicsPort;
+- (NSGraphicsContext *)graphicsContext;
+- (NSGraphicsContext *)flippedGraphicsContext;
+
+@end
+
+/** @file FVBitmapContext.h  Bitmap context creation and disposal. */
 
 /** @internal @brief Row bytes for pixel width.
  
@@ -63,13 +77,13 @@ FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, c
  @param width Width in pixels.
  @param height Height in pixels. 
  @return A new CGBitmapContext or NULL if it could not be created. */
-FV_PRIVATE_EXTERN FVBitmapContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height);
+FV_PRIVATE_EXTERN CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height);
 
 /** @internal @brief Bitmap context disposal.
  
  Destroys a CGBitmapContext created using FVIconBitmapContextCreateWithSize.  @warning This deallocates the bitmap data associated with the context, rather than decrementing a reference count.
  @arg ctxt The context to release. */
-FV_PRIVATE_EXTERN void FVIconBitmapContextRelease(FVBitmapContextRef ctxt);
+FV_PRIVATE_EXTERN void FVIconBitmapContextRelease(CGContextRef ctxt);
 
 /** @internal @brief See if an image is compatible with caching assumptions.
  

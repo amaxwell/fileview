@@ -40,6 +40,56 @@
 #import "FVCGImageUtilities.h"
 #import "FVAllocator.h"
 
+@implementation FVBitmapContext
+
++ (FVBitmapContext *)bitmapContextWithSize:(NSSize)pixelSize;
+{
+    return [[[self allocWithZone:[self zone]] initPixelsWide:pixelSize.width pixelsHigh:pixelSize.height] autorelease];
+}
+
+- (id)initPixelsWide:(size_t)pixelsWide pixelsHigh:(size_t)pixelsHigh;
+{
+    self = [super init];
+    if (self) {
+        _port = FVIconBitmapContextCreateWithSize(pixelsWide, pixelsHigh);
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [_flipped release];
+    [_context release];
+    void *bitmapData = CGBitmapContextGetData(_port);
+    if (bitmapData) CFAllocatorDeallocate(FVAllocatorGetDefault(), bitmapData);
+    CGContextRelease(_port);
+    [super dealloc];
+}
+
+- (CGContextRef)graphicsPort;
+{
+    FVAPIParameterAssert(NULL != _port);
+    return _port;
+}
+
+- (NSGraphicsContext *)graphicsContext;
+{
+    if (nil == _context)
+        _context = [[NSGraphicsContext graphicsContextWithGraphicsPort:[self graphicsPort] flipped:NO] retain];    
+    FVAPIParameterAssert(nil != _context);
+    return _context;
+}
+
+- (NSGraphicsContext *)flippedGraphicsContext;
+{
+    if (nil == _flipped)
+        _flipped = [[NSGraphicsContext graphicsContextWithGraphicsPort:[self graphicsPort] flipped:YES] retain];
+    FVAPIParameterAssert(nil != _flipped);
+    return _flipped;
+}
+
+@end
+
 // discard indexed color images (e.g. GIF) and convert to RGBA for FVCGImageDescription compatibility
 static inline bool __FVColorSpaceIsIncompatible(CGImageRef image)
 {
@@ -66,7 +116,7 @@ size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixels
     return destRowBytes;
 }
 
-FVBitmapContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
+CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
 {
     size_t bitsPerComponent = 8;
     size_t nComponents = 4;
@@ -101,7 +151,7 @@ FVBitmapContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height
     return ctxt;
 }
 
-void FVIconBitmapContextRelease(FVBitmapContextRef ctxt)
+void FVIconBitmapContextRelease(CGContextRef ctxt)
 {
     void *bitmapData = CGBitmapContextGetData(ctxt);
     if (bitmapData) CFAllocatorDeallocate(FVAllocatorGetDefault(), bitmapData);
