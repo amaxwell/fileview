@@ -46,7 +46,7 @@ __BEGIN_DECLS
 
 /** @internal @brief Wrapper around a CGBitmapContext.
  
- FVBitmapContext is a simple wrapper around a bitmap-based graphics context, and provides Core Graphics and Cocoa graphics contexts.    Memory for the bitmap data may not be allocated in the default zone or the object's zone, and is considered to be owned by the FVBitmapContext.  Consequently, do not attempt to access the CGContext's bitmap data after the FVBitmapContext is deallocated.
+ FVBitmapContext is a simple wrapper around a bitmap-based graphics context, and provides Core Graphics and Cocoa graphics contexts.  Memory for the bitmap data may not be allocated in the default zone or the object's zone, and is considered to be owned by the FVBitmapContext.  Consequently, do not attempt to access the CGContext's bitmap data after the FVBitmapContext is deallocated.  Likewise, retaining any of the graphics contexts returned from an instance and using them after it has been deallocated is a programmer error.
  
  The underlying CGContext is guaranteed to be compatible with caching and scaling methods used elsewhere in the framework (correct colorspace, pixel format, and size).
  
