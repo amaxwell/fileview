@@ -70,18 +70,18 @@ __BEGIN_DECLS
  @return An autoreleased instance of a new FVBitmapContext. */
 + (FVBitmapContext *)bitmapContextWithSize:(NSSize)pixelSize;
 
-/** @internal @brief Underlying CGContext.
+/** @internal @brief Core Graphics context.
  
  @return CGContext owned by FVBitmapContext. */
 - (CGContextRef)graphicsPort;
 
-/** @internal
+/** @internal @brief Unflipped Cocoa graphics context.
  
  Lazily instantiates a new NSGraphicsContext from FVBitmapContext::graphicsPort. 
  @return Unflipped NSGraphicsContext owned by FVBitmapContext. */
 - (NSGraphicsContext *)graphicsContext;
 
-/** @internal
+/** @internal @brief Flipped Cocoa graphics context.
  
  Lazily instantiates a new NSGraphicsContext from FVBitmapContext::graphicsPort. 
  @return Flipped NSGraphicsContext owned by FVBitmapContext. */
