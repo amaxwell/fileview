@@ -246,6 +246,23 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
     return [(id)pdfData autorelease];
 }
 
+- (void)_loadAttributedString:(NSAttributedString *)string documentAttributes:(NSDictionary *)attrs inView:(NSTextView *)theView
+{
+    NSTextStorage *textStorage = [theView textStorage];
+    [textStorage setAttributedString:string];
+    NSColor *backgroundColor = nil;
+    if (nil == attrs || [[attrs objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
+        NSFont *plainFont = [NSFont userFixedPitchFontOfSize:10.0f];
+        [textStorage addAttribute:NSFontAttributeName value:plainFont range:NSMakeRange(0, [textStorage length])];
+    }
+    else {
+        backgroundColor = [attrs objectForKey:NSBackgroundColorDocumentAttribute];
+    }
+    if (nil == backgroundColor)
+        backgroundColor = [NSColor whiteColor];
+    [theView setBackgroundColor:backgroundColor];    
+}
+
 - (NSView *)contentViewForURL:(NSURL *)representedURL shouldUseQuickLook:(BOOL *)shouldUseQuickLook;
 {
     // general case
@@ -294,14 +311,8 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         theView = textView;
         NSDictionary *attrs;
         NSAttributedString *string = [[NSAttributedString alloc] initWithURL:representedURL documentAttributes:&attrs];
-        if (string) {
-            NSTextStorage *textStorage = [[textView documentView] textStorage];
-            [textStorage setAttributedString:string];
-            if (nil == attrs || [[attrs objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
-                NSFont *plainFont = [NSFont userFixedPitchFontOfSize:10.0f];
-                [textStorage addAttribute:NSFontAttributeName value:plainFont range:NSMakeRange(0, [textStorage length])];
-            }
-        }
+        if (string)
+            [self _loadAttributedString:string documentAttributes:attrs inView:[textView documentView]];
         else
             theView = nil;
         [string release]; 
@@ -335,14 +346,8 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         theView = textView;
         NSDictionary *attrs;
         NSAttributedString *string = [[NSAttributedString alloc] initWithURL:representedURL documentAttributes:&attrs];
-        if (string) {
-            NSTextStorage *textStorage = [[textView documentView] textStorage];
-            [textStorage setAttributedString:string];
-            if (nil == attrs || [[attrs objectForKey:NSDocumentTypeDocumentAttribute] isEqualToString:NSPlainTextDocumentType]) {
-                NSFont *plainFont = [NSFont userFixedPitchFontOfSize:10.0f];
-                [textStorage addAttribute:NSFontAttributeName value:plainFont range:NSMakeRange(0, [textStorage length])];
-            }
-        }
+        if (string)
+            [self _loadAttributedString:string documentAttributes:attrs inView:[textView documentView]];
         else
             theView = nil;
         [string release]; 
