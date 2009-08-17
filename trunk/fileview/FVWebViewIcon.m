@@ -364,6 +364,9 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     
     CGContextSaveGState(context);
     CGContextTranslateCTM(context, 10, 10);
+    
+    // workaround for bug introduced with Safari 2.0.3, where setAllowsScrolling:NO caused a white page to be drawn
+    [[view documentView] layout];
     [view displayRectIgnoringOpacity:[view bounds] inContext:nsContext];
     CGContextRestoreGState(context);
     
