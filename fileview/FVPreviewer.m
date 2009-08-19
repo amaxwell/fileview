@@ -307,7 +307,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         theView = imageView;
         [(FVScaledImageView *)theView displayImageAtURL:representedURL];
     }
-    else if (nil == theUTI) {
+    else if (nil == theUTI || UTTypeEqual(theUTI, kUTTypeData)) {
         theView = textView;
         NSDictionary *attrs;
         NSAttributedString *string = [[NSAttributedString alloc] initWithURL:representedURL documentAttributes:&attrs];

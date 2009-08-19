@@ -179,7 +179,11 @@ static inline id _placeholderForZone(NSZone *aZone)
     if (noErr == err)
         LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
     
-    // For a link/alias, get the target's UTI in order to determine which concrete subclass to create.  Subclasses that are file-based need to check the URL to see if it should be badged using _shouldDrawBadgeForURL, and then call _resolvedURLWithURL in order to actually load the file's content.
+    /*
+     For a link/alias, get the target's UTI in order to determine which concrete subclass to create.  
+     Subclasses that are file-based need to check the URL to see if it should be badged using 
+     _shouldDrawBadgeForURL, and then call _resolvedURLWithURL in order to actually load the file's content.
+     */
     
     // aliases and symlinks are kUTTypeResolvable, so the alias manager should handle either of them
     if (NULL != theUTI && UTTypeConformsTo(theUTI, kUTTypeResolvable)) {
@@ -198,7 +202,10 @@ static inline id _placeholderForZone(NSZone *aZone)
     // limit FVTextIcon to < 20 MB files; layout is really slow with large files
     const UInt64 maximumTextDataSize = 20 * 1024 * 1024;
     
-    // Limit FVImageIcon to < 250 MB files; resampling is expensive (using CG to resample requires a limit of ~50 MB, but we can get away with larger sizes using vImage and tiling).
+    /*
+     Limit FVImageIcon to < 250 MB files; resampling is expensive (using CG to resample requires a 
+     limit of ~50 MB, but we can get away with larger sizes using vImage and tiling).
+     */
     const UInt64 maximumImageDataSize = 250 * 1024 * 1024;
     
     FSCatalogInfo catInfo;
@@ -209,8 +216,14 @@ static inline id _placeholderForZone(NSZone *aZone)
     
     FVIcon *anIcon = nil;
     
-    // Problems here.  TextMate claims a lot of plain text types but doesn't declare a UTI for any of them, so I end up with a dynamic UTI, and Spotlight ignores the files.  That's broken behavior on TextMate's part, and it sucks for my purposes.
-    if ((NULL == theUTI) && dataPhysicalSize < maximumTextDataSize && [FVTextIcon canInitWithURL:representedURL]) {
+    /*
+     Problems here.  TextMate claims a lot of plain text types but doesn't declare a UTI for any of them, 
+     so I end up with a dynamic UTI, and Spotlight/Quick Look ignore the files since they have no idea of
+     conformance to plain text.  That's broken behavior on TextMate's part, and it sucks for my purposes. 
+     Additionally, files that are named "README" are public.data, but actually plain text files.  Since 
+     LS doesn't sniff types, we'll just try to open anything that's equal (not conforming) to public.data.
+     */
+    if ((NULL == theUTI || UTTypeEqual(theUTI, kUTTypeData)) && dataPhysicalSize < maximumTextDataSize && [FVTextIcon canInitWithURL:representedURL]) {
         anIcon = [[FVTextIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypePDF)) {
@@ -227,7 +240,11 @@ static inline id _placeholderForZone(NSZone *aZone)
         anIcon = [[FVImageIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeEqual(theUTI, FVSTR("com.microsoft.windows-media-wmv")) && Nil != FVQLIconClass) {
-        // Flip4Mac WMV plugin puts up a stupid progress bar and calls into WebCore, and it gives nothing if you uncheck "Open local files immediately" in its pref pane.  Bypass it entirely if we have Quick Look.  No idea if this is a QT bug or Flip4Mac bug, so I suppose I should file something...
+        /* 
+         Flip4Mac WMV plugin puts up a stupid progress bar and calls into WebCore, and it gives nothing 
+         if you uncheck "Open local files immediately" in its pref pane.  Bypass it entirely if we have 
+         Quick Look.  No idea if this is a QT bug or Flip4Mac bug, so I suppose I should file something...
+         */
         anIcon = [[FVQLIconClass allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeMovie) && [FVMovieIcon canInitWithURL:representedURL]) {
