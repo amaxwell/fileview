@@ -365,7 +365,14 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     CGContextSaveGState(context);
     CGContextTranslateCTM(context, 10, 10);
     
-    // workaround for bug introduced with Safari 2.0.3, where setAllowsScrolling:NO caused a white page to be drawn
+    /*
+     Force document layout.  This was added as a workaround for a bug introduced with Safari 4.0.3 on 10.5.8, 
+     where setAllowsScrolling:NO caused a white page to be drawn.  Interestingly, it also fixes some prior
+     display problems with sciencedirect.com thumbnails, so it's likely that setAllowsScrolling: has never
+     worked correctly.  Note that [[view documentView] setNeedsLayout:] is not sufficient, so I conclude that
+     displayRectIgnoringOpacity:inContext: doesn't go through drawRect: (impossible), or the WebDocumentView
+     protocol is not correctly implemented.
+     */
     [[view documentView] layout];
     [view displayRectIgnoringOpacity:[view bounds] inContext:nsContext];
     CGContextRestoreGState(context);
