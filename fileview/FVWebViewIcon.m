@@ -349,7 +349,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     FVBitmapContext *bitmapContext = [FVBitmapContext bitmapContextWithSize:size];
     CGContextRef context = [bitmapContext graphicsPort];
     CGContextClearRect(context, CGRectMake(0, 0, size.width, size.height));
-    NSGraphicsContext *nsContext = [view isFlipped] ? [bitmapContext flippedGraphicsContext] : [bitmapContext graphicsContext];
+    NSGraphicsContext *nsContext = [_webView isFlipped] ? [bitmapContext flippedGraphicsContext] : [bitmapContext graphicsContext];
     
     [NSGraphicsContext saveGraphicsState];
     
@@ -374,7 +374,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
      protocol is not correctly implemented.
      */
     [[view documentView] layout];
-    [view displayRectIgnoringOpacity:[view bounds] inContext:nsContext];
+    [_webView displayRectIgnoringOpacity:[_webView bounds] inContext:nsContext];
     CGContextRestoreGState(context);
     
     [NSGraphicsContext restoreGraphicsState];
