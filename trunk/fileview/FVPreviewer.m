@@ -450,14 +450,18 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
     }
 }
 
-- (void)_previewURL:(NSURL *)absoluteURL animateFrame:(BOOL)shouldAnimate
+- (void)_previewURL:(NSURL *)absoluteURL
 {
     [self _killTask];
         
     BOOL shouldUseQuickLook;
     NSView *newView = [self contentViewForURL:absoluteURL shouldUseQuickLook:&shouldUseQuickLook];
     
-    // Quick Look (qlmanage) handles more types than our setup, but you can't copy any content from PDF/text sources, which sucks; hence, we only use it as a fallback (basically a replacement for FVScaledImageView).  There are some slight behavior mismatches, and we lose fullscreen (I think), but that's minor in comparison.
+    /*
+     Quick Look (qlmanage) handles more types than our setup, but you can't copy any content from PDF/text sources, 
+     which sucks; hence, we only use it as a fallback (basically a replacement for FVScaledImageView).  There are 
+     some slight behavior mismatches, but copying text is more important.
+     */
     if (shouldUseQuickLook && [absoluteURL isFileURL] && [[NSFileManager defaultManager] isExecutableFileAtPath:@"/usr/bin/qlmanage"]) {
         
         if ([[self window] isVisible])
@@ -483,10 +487,6 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4)
             [theWindow setAlphaValue:0.0];
         [[contentView tabViewItemAtIndex:0] setView:newView];
-
-        // it's annoying to recenter if this is just in response to a selection change or something
-        if (NO == [theWindow isVisible] && NO == shouldAnimate)
-            [theWindow center];
         
         if ([absoluteURL isFileURL]) {
             [theWindow setTitleWithRepresentedFilename:[absoluteURL path]];
@@ -502,7 +502,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
             
             [[self window] makeKeyAndOrderFront:nil];
 
-            if (shouldAnimate && NO == NSEqualRects(newWindowFrame, NSZeroRect)) {
+            if (NO == NSEqualRects(newWindowFrame, NSZeroRect)) {
                 // select the new view and set the window's frame in order to get the view's new frame
                 [contentView selectFirstTabViewItem:nil];
                 NSRect oldWindowFrame = [[self window] frame];
@@ -530,12 +530,12 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
                 [NSAnimationContext endGrouping];
             }
             else {
-                // no animation or frame was set to zero rect (if not previously in defaults database)
+                // saved frame was set to zero rect (not previously in defaults database) and user will adjust
                 [[self windowAnimator] setAlphaValue:1.0];
             }
         }
         else {
-            [[self window] setFrame:newWindowFrame display:YES animate:shouldAnimate];
+            [[self window] setFrame:newWindowFrame display:YES animate:YES];
             [self showWindow:self];
         }
     }
@@ -544,23 +544,23 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 - (void)previewURL:(NSURL *)absoluteURL forIconInRect:(NSRect)screenRect
 {
     FVAPIParameterAssert(nil != absoluteURL);
-    BOOL animate = YES;
     
+    // set up a rect in the middle of the main screen for a default value from which to animate
     if (NSEqualRects(screenRect, NSZeroRect)) {
-        // set up a rect in the middle of the main screen for a default value
         previousIconFrame = NSZeroRect;
         screenRect.size = NSMakeSize(128, 128);
         NSRect visibleFrame = [[NSScreen mainScreen] visibleFrame];
         screenRect.origin = NSMakePoint(NSMidX(visibleFrame) - NSWidth(screenRect) / 2, NSMidY(visibleFrame) - NSHeight(screenRect) / 2);
-        animate = NO;
     }
+    // we have a valid rect, but enforce a minimum window size of 128 x 128
     else if (NSHeight(screenRect) < 128 || NSWidth(screenRect) < 128) {
         screenRect.size.height = 128;
         screenRect.size.width = 128;
     }
+    // closing the window will animate back to this frame
     previousIconFrame = screenRect;
     [[self window] setFrame:screenRect display:NO];
-    [self _previewURL:absoluteURL animateFrame:animate];
+    [self _previewURL:absoluteURL];
 }
 
 - (void)previewURL:(NSURL *)absoluteURL;
