@@ -64,7 +64,7 @@
 /** Shared instance.
  
  @warning FVPreviewer may only be used on the main thread, due to usage of various Cocoa views. */
-+ (id)sharedPreviewer;
++ (FVPreviewer *)sharedPreviewer;
 
 /** Display a preview for a single URL.
  @deprecated Clients should use FVPreviewer::previewURL:forIconInRect: instead, passing NSZeroRect for @a screenRect.

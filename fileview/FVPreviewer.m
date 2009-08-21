@@ -47,7 +47,7 @@
 
 @implementation FVPreviewer
 
-+ (id)sharedPreviewer;
++ (FVPreviewer *)sharedPreviewer;
 {
     FVAPIAssert(pthread_main_np() != 0, @"FVPreviewer must only be used on the main thread");
     static id sharedInstance = nil;
