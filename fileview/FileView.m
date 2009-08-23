@@ -48,7 +48,7 @@
 #import "FVDownload.h"
 #import "FVSlider.h"
 #import "FVColorMenuView.h"
-#import "FVViewController.h"
+#import "_FVController.h"
 
 @interface FileView (Private)
 
@@ -176,7 +176,7 @@ static char _FVContentBindingToControllerObserverContext;
 - (void)_commonInit 
 {
     _dataSource = nil;
-    _controller = [[FVViewController allocWithZone:[self zone]] initWithView:self];
+    _controller = [[_FVController allocWithZone:[self zone]] initWithView:self];
     // initialize to one; we always have one or more columns, but may have zero rows
     _numberOfColumns = 1;
     _iconSize = DEFAULT_ICON_SIZE;
@@ -454,7 +454,7 @@ static char _FVContentBindingToControllerObserverContext;
 
 - (void)setDataSource:(id)obj;
 {
-    // I was asserting these conditions, but that crashes the IB simulator if you set a datasource in IB.  Setting datasource to nil in case of failure avoids other exceptions later (notably in FVViewController).
+    // I was asserting these conditions, but that crashes the IB simulator if you set a datasource in IB.  Setting datasource to nil in case of failure avoids other exceptions later (notably in _FVController).
     BOOL failed = NO;
     if (obj && [obj respondsToSelector:@selector(numberOfIconsInFileView:)] == NO) {
         FVLog(@"*** ERROR *** datasource %@ must implement %@", obj, NSStringFromSelector(@selector(numberOfIconsInFileView:)));
@@ -2917,7 +2917,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
         [FVFinderLabel setFinderLabel:label forURL:[selectedURLs objectAtIndex:i]];
     }
     
-    // FVViewController label cache needs to be rebuilt
+    // _FVController label cache needs to be rebuilt
     [self reloadIcons];
     
     // we have to close the menu manually; FVColorMenuCell returns its control view's menu item
@@ -3033,7 +3033,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
         [_controller downloadURLAtIndex:selIndex];
 }
 
-- (FVViewController *)_controller { return _controller; }
+- (_FVController *)_controller { return _controller; }
 
 @end
 

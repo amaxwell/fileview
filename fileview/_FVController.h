@@ -1,5 +1,5 @@
 //
-//  FVViewController.h
+//  _FVController.h
 //  FileView
 //
 //  Created by Adam Maxwell on 3/26/08.
@@ -40,7 +40,7 @@
 
 @class FileView, FVIcon, FVOperationQueue;
 
-@interface FVViewController : NSObject
+@interface _FVController : NSObject
 {
     id                      _dataSource;
     FileView               *_view;
