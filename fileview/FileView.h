@@ -209,6 +209,11 @@ enum {
  Wraps -[NSWorkspace openURL:].*/
 - (IBAction)openSelectedURLs:(id)sender;
 
+/** Show a Quick Look (or similar) panel.
+ 
+ Operates on the current selection.  In case of multiple selection, only file: URLs are used. */
+- (IBAction)previewAction:(id)sender;
+
 /** Whether the view can be edited.
  
  Can be bound.*/
