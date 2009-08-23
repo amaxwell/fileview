@@ -38,7 +38,6 @@
 
 #import <FileView/FVPreviewer.h>
 #import "FVScaledImageView.h"
-#import <Quartz/Quartz.h>
 #import <QTKit/QTKit.h>
 #import <WebKit/WebKit.h>
 #import <pthread.h>
@@ -47,13 +46,57 @@
 
 @implementation FVPreviewer
 
-+ (FVPreviewer *)sharedPreviewer;
++ (id)sharedPreviewer;
 {
     FVAPIAssert(pthread_main_np() != 0, @"FVPreviewer must only be used on the main thread");
     static id sharedInstance = nil;
     if (nil == sharedInstance)
         sharedInstance = [[self alloc] init];
     return sharedInstance;
+}
+
++ (BOOL)useQuickLookForURL:(NSURL *)aURL;
+{
+    
+    // early return
+    NSSet *webviewSchemes = [NSSet setWithObjects:@"http", @"https", @"ftp", nil];
+    if ([aURL scheme] && [webviewSchemes containsObject:[aURL scheme]])
+        return NO;
+    
+    // everything from here on safely assumes a file URL
+    
+    OSStatus err = noErr;
+    
+    FSRef fileRef;
+    
+    // return nil if we can't resolve the path
+    if (FALSE == CFURLGetFSRef((CFURLRef)aURL, &fileRef))
+        err = fnfErr;
+    
+    // kLSItemContentType returns a CFStringRef, according to the header
+    CFTypeRef theUTI = NULL;
+    if (noErr == err)
+        err = LSCopyItemAttribute(&fileRef, kLSRolesAll, kLSItemContentType, &theUTI);
+    [(id)theUTI autorelease];
+        
+    // we get this for e.g. doi or unrecognized schemes; let FVPreviewer handle those
+    if (fnfErr == err)
+        return NO;
+
+    if (nil == theUTI || UTTypeEqual(theUTI, kUTTypeData)) {
+        NSAttributedString *string = [[[NSAttributedString alloc] initWithURL:aURL documentAttributes:NULL] autorelease];
+        return (string == nil);
+    }
+    else if (UTTypeConformsTo(theUTI, kUTTypePDF) || UTTypeConformsTo(theUTI, FVSTR("com.adobe.postscript"))) {
+        return NO;
+    }
+    else if (UTTypeConformsTo(theUTI, FVSTR("public.composite-content")) || UTTypeConformsTo(theUTI, kUTTypeText)) {
+        NSAttributedString *string = [[[NSAttributedString alloc] initWithURL:aURL documentAttributes:NULL] autorelease];
+        return (string == nil);
+    }
+    
+    // not NSTextView, WebView, or PDFView content, so use Quick Look
+    return YES;
 }
 
 - (id)init
@@ -414,8 +457,6 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 
 - (void)previewFileURLs:(NSArray *)absoluteURLs;
 {
-    previousIconFrame = NSZeroRect;
-    
     [self _killTask];
     
     NSMutableArray *paths = [NSMutableArray array];
@@ -451,16 +492,17 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 }
 
 - (void)_previewURL:(NSURL *)absoluteURL
-{
+{    
     [self _killTask];
-        
+
     BOOL shouldUseQuickLook;
     NSView *newView = [self contentViewForURL:absoluteURL shouldUseQuickLook:&shouldUseQuickLook];
     
     /*
-     Quick Look (qlmanage) handles more types than our setup, but you can't copy any content from PDF/text sources, 
-     which sucks; hence, we only use it as a fallback (basically a replacement for FVScaledImageView).  There are 
-     some slight behavior mismatches, but copying text is more important.
+     Quick Look (qlmanage) handles more types than our setup, but you can't copy any content from 
+     PDF/text sources, which sucks; hence, we only use it as a fallback (basically a replacement 
+     for FVScaledImageView).  There are some slight behavior mismatches, but they're minor in 
+     comparison.  Quick Look also can't handle network resources, so we use a custom view for those.
      */
     if (shouldUseQuickLook && [absoluteURL isFileURL] && [[NSFileManager defaultManager] isExecutableFileAtPath:@"/usr/bin/qlmanage"]) {
         

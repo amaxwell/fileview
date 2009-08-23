@@ -37,6 +37,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
+#import <Quartz/Quartz.h>
 
 @class FVScaledImageView, QTMovieView, PDFView, WebView;
 /** FVPreviewer displays and manages a single-window preview.
@@ -65,6 +66,8 @@
  
  @warning FVPreviewer may only be used on the main thread, due to usage of various Cocoa views. */
 + (FVPreviewer *)sharedPreviewer;
+
++ (BOOL)useQuickLookForURL:(NSURL *)aURL;
 
 /** Display a preview for a single URL.
  @deprecated Clients should use FVPreviewer::previewURL:forIconInRect: instead, passing NSZeroRect for @a screenRect.
