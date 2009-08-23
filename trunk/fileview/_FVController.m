@@ -1,5 +1,5 @@
 //
-//  FVViewController.m
+//  _FVController.m
 //  FileView
 //
 //  Created by Adam Maxwell on 3/26/08.
@@ -36,7 +36,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "FVViewController.h"
+#import "_FVController.h"
 #import "FVIcon.h"
 #import "FVOperationQueue.h"
 #import "FVIconOperation.h"
@@ -62,7 +62,7 @@
 @end
 
 
-@implementation FVViewController
+@implementation _FVController
 
 - (id)initWithView:(FileView *)view
 {
@@ -244,11 +244,11 @@
     
     CFDictionaryRemoveAllValues(_infoTable);
     
-    // -[FVViewController _cachedIconForURL:]
+    // -[_FVController _cachedIconForURL:]
     id (*cachedIcon)(id, SEL, id);
     cachedIcon = (id (*)(id, SEL, id))[self methodForSelector:@selector(_cachedIconForURL:)];
     
-    // -[FVViewController URLAtIndex:] guaranteed non-nil/non-NSNULL
+    // -[_FVController URLAtIndex:] guaranteed non-nil/non-NSNULL
     id (*_URLAtIndex)(id, SEL, NSUInteger);
     _URLAtIndex = (id (*)(id, SEL, NSUInteger))[self methodForSelector:@selector(_URLAtIndex:)];
     

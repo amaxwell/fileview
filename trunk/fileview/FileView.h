@@ -52,7 +52,7 @@ enum {
     FVReloadMenuItemTag      = 1009 
 };
 
-@class FVSliderWindow;
+@class FVSliderWindow, _FVController;
 
 /**
  FileView is the primary class in the framework.  
@@ -71,7 +71,7 @@ enum {
 @private
     id                      _delegate;
     id                      _dataSource;
-    id                      _controller;
+    _FVController          *_controller;
     NSUInteger              _numberOfColumns;
     NSColor                *_backgroundColor;
     NSMutableIndexSet      *_selectedIndexes;
