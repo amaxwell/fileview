@@ -39,19 +39,24 @@
 #import <Cocoa/Cocoa.h>
 
 /*
- Custom progress indicator is drawn for multiple reasons:
- 1) it allows a determinate progress indicator in a small area
- 2) we can modify it slightly to draw an indeterminate indicator
- 3) performance of spinning NSProgressIndicator sucks (they flicker when scrolling)
- 4) spinning NSProgressIndicator has some undocumented maximum size (32x32?)
  */
 
+/** @file FVProgressIndicatorCell.h Circular determinate progress indicator. */
 enum {
     FVProgressIndicatorIndeterminate = -1,
     FVProgressIndicatorDeterminate   = 0
 };
 typedef NSInteger FVProgressIndicatorStyle;
 
+/** @brief Filled arc progress indicator
+ 
+ FVProgressIndicatorCell is a custom progress indicator that draws a filled arc in a circle.  It exists to work around a number of deficiencies in NSProgressIndicator:
+ 
+ @li FVProgressIndicatorCell allows a determinate progress indicator in a small area
+ @li we can modify FVProgressIndicatorCell slightly to draw an indeterminate indicator
+ @li performance of spinning NSProgressIndicator sucks (they flicker when scrolling)
+ @li spinning NSProgressIndicator has some undocumented maximum size (32x32?) 
+ */
 @interface FVProgressIndicatorCell : NSCell
 {
 @private
@@ -62,10 +67,34 @@ typedef NSInteger FVProgressIndicatorStyle;
     FVProgressIndicatorStyle _style;
 }
 
+/** @brief Initializer.
+ 
+ Initializes a new progress indicator with FVProgressIndicatorDeterminate style
+ @return The progress indicator. */
+- (id)init;
+
+/** @brief Change the progress value.
+ 
+ Sets the value of the progress indicator (size of the filled sector) as a percentage.  A value of 1.00 will fill the entire circle.
+ @param progress The progress value. */
 - (void)setCurrentProgress:(CGFloat)progress;
+
+/** @brief Current progress value.
+ 
+ @return Current progress value. */
 - (CGFloat)currentProgress;
 
-// default is FVProgressIndicatorDeterminate
+/** @brief Change the style.
+ 
+ Set the style of the progress indicator to determinate or indeterminate.  This should generally be set before updating currentProgress.
+ @param style Progress indicator style. */
 - (void)setStyle:(FVProgressIndicatorStyle)style;
 
 @end
+
+/** @var FVProgressIndicatorIndeterminate
+ Indeterminate progress indicatory style
+ */
+/** @var FVProgressIndicatorDeterminate
+ Determinate progress indicator style
+ */

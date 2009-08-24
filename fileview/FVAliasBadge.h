@@ -38,10 +38,16 @@
 
 #import <Cocoa/Cocoa.h>
 
-
+/** @brief Alias badge layer.
+ 
+ This class provides a CGLayer with an alias badge (arrow in lower left).  One of several cached instances will be returned. */
 @interface FVAliasBadge : NSObject 
 
-// returns a cached layer for overlay on an icon
+/** @brief Get a layer.
+ 
+ This returns a cached CGLayer.  The size parameter is advisory, and the actual layer size may vary significantly from what was passed in.
+ @param size Size of the icon to be overlayed.
+ @return A CGLayer for overlay on an icon. */
 + (CGLayerRef)aliasBadgeWithSize:(NSSize)size;
 
 @end
