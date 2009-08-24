@@ -41,10 +41,12 @@
 @class FVCacheFile;
 
 /** @brief On-disk cache of images.
- 
- \warning You should not instantiate an FVCGImageCache and operate directly.
+  
+ \warning Only 8-bit RGB or grayscale images are supported (with optional alpha).  Call FVBitmapContext::FVImageIsIncompatible to determine if an image needs to be redrawn.
 
- Conceptually, this class provides a dictionary of images.  It's presently implemented using a compressed file on disk for storage, but may do other clever things in future.  Two caches are provided: one for large images, and one for small images.  Use the class methods to store CGImages and to get an efficient key for those images.
+ Conceptually, this class provides a dictionary of images.  It's presently implemented using a compressed file on disk for storage, but may do other clever things in future.  Two caches are provided: one for large images, and one for small images.  Use the class methods to store CGImages and to get an efficient key for those images; you cannot instantiate an FVCGImageCache and operate directly.
+ 
+ Note that the "large" vs. "small" distinction is purely notional.  Clients are free to decide which they will use, as the underlying storage is identical in either case.
  */
 @interface FVCGImageCache : NSObject
 {
@@ -52,21 +54,41 @@
     FVCacheFile *_cacheFile;
 }
 
-/** @brief Key for caching
+/** @brief Key for caching.
  
- Use this to get a key for caching images to disk, or anything else that requires a copyable key (e.g., NSDictionary).  If your object is represented by a file: URL, the key will attempt to be robust against file renaming.
+ Use this to get a key for caching images to disk, or anything else that requires a copyable key (e.g., NSDictionary).  If your object is represented by a file: URL, the key will attempt to be robust against file renaming.  Additionally, file: URL keys may use a more efficient hash/isEqual: implementation than NSURL itself, which is a very poor dictionary key.
  @param aURL A URL representation of your object.
  @return A new key instance. */
 + (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 
-// cache small images to disk
+/** Retrieve a thumbnail.
+ 
+ @param aKey The key representing the object to retrieve.
+ @return A new CGImage instance. */
 + (CGImageRef)newThumbnailForKey:(id)aKey;
+
+/** Store a thumbnail.
+
+ @param image The CGImage to store.
+ @param aKey The key representing the image, typically from FVCGImageCache::newKeyForURL:. */
 + (void)cacheThumbnail:(CGImageRef)image forKey:(id)aKey;
 
-// cache large images to disk
+/** Retrieve an image.
+ 
+ @param aKey The key representing the object to retrieve.
+ @return A new CGImage instance. */
 + (CGImageRef)newImageForKey:(id)aKey;
+
+/** Store an image.
+ 
+ @param image The CGImage to store.
+ @param aKey The key representing the image, typically from FVCGImageCache::newKeyForURL:. */
 + (void)cacheImage:(CGImageRef)image forKey:(id)aKey;
 
+/** @brief Remove images.
+ 
+ When an image has been changed and you want to continue using the same key, this will remove previously stored images for that key.
+ @param aKey The key representing the image, typically from FVCGImageCache::newKeyForURL:. */
 + (void)invalidateCachesForKey:(id)aKey;
 
 @end
