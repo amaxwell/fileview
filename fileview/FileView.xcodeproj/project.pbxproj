@@ -48,7 +48,7 @@
 		F94692030CA56EC500AC2772 /* FileView.m in Sources */ = {isa = PBXBuildFile; fileRef = F94691F80CA56EC500AC2772 /* FileView.m */; };
 		F94692040CA56EC500AC2772 /* FVArrowButtonCell.h in Headers */ = {isa = PBXBuildFile; fileRef = F94691F90CA56EC500AC2772 /* FVArrowButtonCell.h */; };
 		F94692050CA56EC500AC2772 /* FVArrowButtonCell.m in Sources */ = {isa = PBXBuildFile; fileRef = F94691FA0CA56EC500AC2772 /* FVArrowButtonCell.m */; };
-		F94692060CA56EC500AC2772 /* FVIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F94691FB0CA56EC500AC2772 /* FVIcon.h */; };
+		F94692060CA56EC500AC2772 /* FVIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F94691FB0CA56EC500AC2772 /* FVIcon.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		F94692070CA56EC500AC2772 /* FVIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F94691FC0CA56EC500AC2772 /* FVIcon.m */; };
 		F94692080CA56EC500AC2772 /* FVOperationQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = F94691FD0CA56EC500AC2772 /* FVOperationQueue.h */; };
 		F94692090CA56EC500AC2772 /* FVOperationQueue.m in Sources */ = {isa = PBXBuildFile; fileRef = F94691FE0CA56EC500AC2772 /* FVOperationQueue.m */; };
@@ -84,7 +84,7 @@
 		F991B8B80E2C657B0046000A /* _FVSplitSet.m in Sources */ = {isa = PBXBuildFile; fileRef = F991B8B60E2C657B0046000A /* _FVSplitSet.m */; };
 		F99FEC860E43CB3A006FC8E4 /* FVAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = F99FEC840E43CB3A006FC8E4 /* FVAllocator.h */; };
 		F99FEC870E43CB3A006FC8E4 /* FVAllocator.m in Sources */ = {isa = PBXBuildFile; fileRef = F99FEC850E43CB3A006FC8E4 /* FVAllocator.m */; };
-		F9A2D39D0CCBB3B5002F517B /* FVCGImageCache.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D39B0CCBB3B5002F517B /* FVCGImageCache.h */; };
+		F9A2D39D0CCBB3B5002F517B /* FVCGImageCache.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D39B0CCBB3B5002F517B /* FVCGImageCache.h */; settings = {ATTRIBUTES = (Private, ); }; };
 		F9A2D39E0CCBB3B5002F517B /* FVCGImageCache.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D39C0CCBB3B5002F517B /* FVCGImageCache.m */; };
 		F9A2D3DA0CCBDDDF002F517B /* FVBitmapContext.h in Headers */ = {isa = PBXBuildFile; fileRef = F9A2D3D80CCBDDDF002F517B /* FVBitmapContext.h */; };
 		F9A2D3DB0CCBDDDF002F517B /* FVBitmapContext.m in Sources */ = {isa = PBXBuildFile; fileRef = F9A2D3D90CCBDDDF002F517B /* FVBitmapContext.m */; };
