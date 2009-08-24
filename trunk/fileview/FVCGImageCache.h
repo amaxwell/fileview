@@ -1,5 +1,5 @@
 //
-//  FVIconCache.h
+//  FVCGImageCache.h
 //  FileView
 //
 //  Created by Adam Maxwell on 10/21/07.
@@ -40,14 +40,14 @@
 
 @class FVCacheFile;
 
-@interface FVIconCache : NSObject
+@interface FVCGImageCache : NSObject
 {
 @private;
     FVCacheFile *_cacheFile;
 }
 
 // use this to get a key for caching images to disk
-+ (id)newKeyForURL:(NSURL *)aURL;
++ (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 
 // cache small images to disk
 + (CGImageRef)newThumbnailForKey:(id)aKey;

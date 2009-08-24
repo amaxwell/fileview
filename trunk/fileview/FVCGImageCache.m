@@ -1,5 +1,5 @@
 //
-//  FVIconCache.m
+//  FVCGImageCache.m
 //  FileView
 //
 //  Created by Adam Maxwell on 10/21/07.
@@ -36,7 +36,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "FVIconCache.h"
+#import "FVCGImageCache.h"
 #import "FVUtilities.h"
 #import "FVCGImageDescription.h"
 #import "FVCacheFile.h"
@@ -48,18 +48,18 @@
 static CGImageRef FVCreateCGImageWithData(NSData *data);
 static CFDataRef FVCreateDataWithCGImage(CGImageRef image);
 
-@implementation FVIconCache
+@implementation FVCGImageCache
 
-static FVIconCache *_bigImageCache = nil;
-static FVIconCache *_smallImageCache = nil;
+static FVCGImageCache *_bigImageCache = nil;
+static FVCGImageCache *_smallImageCache = nil;
 
 + (void)initialize
 {
-    FVINITIALIZE(FVIconCache);
+    FVINITIALIZE(FVCGImageCache);
 
-    _bigImageCache = [FVIconCache new];
+    _bigImageCache = [FVCGImageCache new];
     [_bigImageCache setName:@"full size images"];
-    _smallImageCache = [FVIconCache new];
+    _smallImageCache = [FVCGImageCache new];
     [_smallImageCache setName:@"thumbnail images"];
 }
 
@@ -89,7 +89,7 @@ static FVIconCache *_smallImageCache = nil;
 
 - (void)dealloc
 {
-    NSLog(@"*** error *** attempt to deallocate FVIconCache");
+    NSLog(@"*** error *** attempt to deallocate FVCGImageCache");
     if (0) [super dealloc];
 }
 
