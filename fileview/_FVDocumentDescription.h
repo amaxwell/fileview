@@ -50,14 +50,14 @@
 
 /** @internal @brief Get a description for a previously stored key.
  
- @param aKey A key object conforming to <NSCopying>
+ @param aKey A key object conforming to &lt;NSCopying&gt;
  @return A description or nil if not previously stored. */
 + (_FVDocumentDescription *)descriptionForKey:(id)aKey;
 
 /** @internal @brief Cache a description for the given key.
  
  @param description A document description object
- @param aKey A key object conforming to <NSCopying>. */
+ @param aKey A key object conforming to &lt;NSCopying&gt;. */
 + (void)setDescription:(_FVDocumentDescription *)description forKey:(id <NSCopying>)aKey;
 
 @end
