@@ -98,7 +98,7 @@ static NSInteger FVCacheLogLevel = 0;
     FVCacheLogLevel = [[NSUserDefaults standardUserDefaults] integerForKey:@"FVCacheLogLevel"];  
 }
 
-+ (id)newKeyForURL:(NSURL *)aURL;
++ (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 {
     return [_FVCacheKey newWithURL:aURL];
 }
@@ -281,7 +281,7 @@ static NSInteger FVCacheLogLevel = 0;
     }
 }
 
-- (void)saveData:(NSData *)data forKey:(id)aKey;
+- (void)saveData:(NSData *)data forKey:(id <NSObject, NSCopying>)aKey;
 {
     // hold the lock for the entire method, since we don't want anyone else messing with the file descriptor or _deflateBuffer
     [_writeLock lock];
