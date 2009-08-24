@@ -53,6 +53,12 @@ static CFDataRef FVCreateDataWithCGImage(CGImageRef image);
 static FVCGImageCache *_bigImageCache = nil;
 static FVCGImageCache *_smallImageCache = nil;
 
+// sets name for recording/logging statistics
+- (void)setName:(NSString *)name
+{
+    [_cacheFile setName:name];
+}
+
 + (void)initialize
 {
     FVINITIALIZE(FVCGImageCache);
@@ -93,11 +99,6 @@ static FVCGImageCache *_smallImageCache = nil;
     if (0) [super dealloc];
 }
 
-- (void)setName:(NSString *)name
-{
-    [_cacheFile setName:name];
-}
-
 - (CGImageRef)newImageForKey:(id)aKey;
 {
     NSData *data = [_cacheFile copyDataForKey:aKey];
@@ -120,7 +121,7 @@ static FVCGImageCache *_smallImageCache = nil;
 
 #pragma mark Class methods
 
-+ (id)newKeyForURL:(NSURL *)aURL;
++ (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 {
     return [FVCacheFile newKeyForURL:aURL];
 }
