@@ -43,7 +43,7 @@
 
 // subclasses use various functions from these headers
 #import "FVBitmapContext.h"
-#import "FVIconCache.h"
+#import "FVCGImageCache.h"
 #import <pthread.h>
 #import <libkern/OSAtomic.h>
 #import "FVCGImageUtilities.h"
