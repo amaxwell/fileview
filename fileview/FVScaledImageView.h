@@ -40,6 +40,10 @@
 
 @class FVIcon;
 
+/** @internal @brief Simple FVIcon view.
+ 
+ This view is used for displaying an FVIcon as an image, filling the frame proportionately, or as an icon with a text description of the file along with it. */
+ 
 @interface FVScaledImageView : NSView
 {
 @private
@@ -48,6 +52,16 @@
     NSAttributedString *_text;
 }
 
+/** @internal @brief Display as icon with details.
+ 
+ Loads an FVIcon for the given file: URL, along with attributes of the file.  This method does not redraw or mark the view as needing display.
+ @param aURL A file: URL */
 - (void)displayIconForURL:(NSURL *)aURL;
+
+/** @internal @brief Display an image using FVIcon.
+ 
+ Loads an FVIcon for the given URL, without details of the file.  May be used for other URL schemes, including those that aren't handled by the URL loading system.  This method does not redraw or mark the view as needing display.
+ @param aURL Any URL */
 - (void)displayImageAtURL:(NSURL *)aURL;
+
 @end
