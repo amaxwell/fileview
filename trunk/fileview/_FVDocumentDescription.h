@@ -39,15 +39,25 @@
 #import <Cocoa/Cocoa.h>
 #import "FVObject.h"
 
-// enables instantation entirely from pre-cached objects, so no longer necessary to load the PDF/PS document
-
+/** @internal @brief Cached document attributes.
+ 
+ This object enables instantation of an icon entirely from pre-cached objects, so it is no longer necessary to load the document just to figure out the size and number of pages.  This is mainly intended for use with PDF/PS documents, which can be expensive to open and parse. */
 @interface _FVDocumentDescription : FVObject {
 @public
     size_t   _pageCount;
     NSSize   _fullSize;
 }
 
+/** @internal @brief Get a description for a previously stored key.
+ 
+ @param aKey A key object conforming to <NSCopying>
+ @return A description or nil if not previously stored. */
 + (_FVDocumentDescription *)descriptionForKey:(id)aKey;
-+ (void)setDescription:(_FVDocumentDescription *)description forKey:(id)aKey;
+
+/** @internal @brief Cache a description for the given key.
+ 
+ @param description A document description object
+ @param aKey A key object conforming to <NSCopying>. */
++ (void)setDescription:(_FVDocumentDescription *)description forKey:(id <NSCopying>)aKey;
 
 @end
