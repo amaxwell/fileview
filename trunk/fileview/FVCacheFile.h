@@ -64,7 +64,7 @@
  @warning Do not rely on this being the same class between releases or even between calls to this method.
  @param aURL An NSURL representing the object to be cached.
  @return A newly created key. */
-+ (id <NSCopying>)newKeyForURL:(NSURL *)aURL;
++ (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 
 /** Saving data.
  
@@ -72,7 +72,7 @@
  
  @param data The data object to store.
  @param aKey Key may be any object that conforms to &lt;NSCopying&gt;, and it must implement -hash and -isEqual: correctly.  */ 
-- (void)saveData:(NSData *)data forKey:(id <NSCopying>)aKey;
+- (void)saveData:(NSData *)data forKey:(id <NSObject, NSCopying>)aKey;
 
 /** Reading data.
  

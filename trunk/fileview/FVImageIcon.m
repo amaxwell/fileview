@@ -110,7 +110,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
 
 - (void)recache;
 {
-    [FVIconCache invalidateCachesForKey:_cacheKey];
+    [FVCGImageCache invalidateCachesForKey:_cacheKey];
     [self releaseResources];
 }
 
@@ -164,7 +164,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
         // initialize size since it could have been cached by some other instance
         // always load the thumbnail for the fast drawing path
         if (NULL == _thumbnail) {
-            _thumbnail = [FVIconCache newThumbnailForKey:_cacheKey];
+            _thumbnail = [FVCGImageCache newThumbnailForKey:_cacheKey];
             _thumbnailSize = FVCGImageSize(_thumbnail);
         }
         
@@ -174,7 +174,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
             NSParameterAssert(NSEqualSizes(_thumbnailSize, NSZeroSize) == NO);
             
             if (FVShouldDrawFullImageWithThumbnailSize(_desiredSize, _thumbnailSize) && NULL == _fullImage) {
-                _fullImage = [FVIconCache newImageForKey:_cacheKey];
+                _fullImage = [FVCGImageCache newImageForKey:_cacheKey];
                 if (_fullImage) {
                     [self unlock];
                     [[self class] _stopRenderingForKey:_cacheKey];
@@ -206,7 +206,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
     
     if (src && CGImageSourceGetCount(src) > 0) {
 
-        // Now we have a thumbnail, create the full image so we have both of them in the cache.  Originally only the large image was cached to disk, and then only if it was actually resampled.  ImageIO is fast, in general, so FVIconCache doesn't really benefit us significantly.  The problem is FVMovieIcon, which hits the main thread to get image data.  To avoid hiccups in the subclass, then, we'll just cache both images for consistency.
+        // Now we have a thumbnail, create the full image so we have both of them in the cache.  Originally only the large image was cached to disk, and then only if it was actually resampled.  ImageIO is fast, in general, so FVCGImageCache doesn't really benefit us significantly.  The problem is FVMovieIcon, which hits the main thread to get image data.  To avoid hiccups in the subclass, then, we'll just cache both images for consistency.
         CGImageRef sourceImage = CGImageSourceCreateImageAtIndex(src, 0, _imsrcOptions);
         if (sourceImage) {
             // limit the size for better drawing/memory performance
@@ -249,10 +249,10 @@ static CFDictionaryRef _imsrcOptions = NULL;
     [self unlock];
     
     // now cache to disk; we're still holding the lock that keeps any other instance from rendering these icons
-    if (fullImage) [FVIconCache cacheImage:fullImage forKey:_cacheKey];
+    if (fullImage) [FVCGImageCache cacheImage:fullImage forKey:_cacheKey];
     CGImageRelease(fullImage);
     
-    if (thumbnail) [FVIconCache cacheThumbnail:thumbnail forKey:_cacheKey];
+    if (thumbnail) [FVCGImageCache cacheThumbnail:thumbnail forKey:_cacheKey];
     CGImageRelease(thumbnail);
 
     [[self class] _stopRenderingForKey:_cacheKey];

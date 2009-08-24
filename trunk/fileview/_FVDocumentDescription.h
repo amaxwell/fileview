@@ -58,6 +58,6 @@
  
  @param description A document description object
  @param aKey A key object conforming to &lt;NSCopying&gt;. */
-+ (void)setDescription:(_FVDocumentDescription *)description forKey:(id <NSCopying>)aKey;
++ (void)setDescription:(_FVDocumentDescription *)description forKey:(id <NSObject, NSCopying>)aKey;
 
 @end

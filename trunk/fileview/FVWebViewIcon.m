@@ -164,7 +164,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         FVIconLimitFullImageSize(&_fullImageSize);
         _desiredSize = NSZeroSize;
                 
-        _cacheKey = [FVIconCache newKeyForURL:_httpURL];
+        _cacheKey = [FVCGImageCache newKeyForURL:_httpURL];
         _condLock = [[NSConditionLock allocWithZone:[self zone]] initWithCondition:IDLE];
         _cancelledLoad = false;
     }
@@ -262,7 +262,7 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
 
 - (void)recache;
 {
-    [FVIconCache invalidateCachesForKey:_cacheKey];
+    [FVCGImageCache invalidateCachesForKey:_cacheKey];
     [self releaseResources];
     
     // this is a sentinel value for needsRenderForSize:
@@ -557,11 +557,11 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     
     // note that _fullImage may be non-NULL if we were added to the FVOperationQueue multiple times before renderOffscreen was called
     if (NULL == _fullImage && FVShouldDrawFullImageWithThumbnailSize(_desiredSize, [self _thumbnailSize]))
-        _fullImage = [FVIconCache newImageForKey:_cacheKey];
+        _fullImage = [FVCGImageCache newImageForKey:_cacheKey];
     
     // always load for the fast drawing path
     if (NULL == _thumbnail)
-        _thumbnail = [FVIconCache newThumbnailForKey:_cacheKey];
+        _thumbnail = [FVCGImageCache newThumbnailForKey:_cacheKey];
 
     // unlock before calling performSelectorOnMainThread:... since it could cause a callout that tries to acquire the lock (one of the delegate methods)
     
@@ -607,8 +607,8 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         // unlock before caching images so drawing can take place
         [_condLock unlockWithCondition:IDLE];
         
-        if (fullImage) [FVIconCache cacheImage:fullImage forKey:_cacheKey];
-        if (thumbnail) [FVIconCache cacheThumbnail:thumbnail forKey:_cacheKey];
+        if (fullImage) [FVCGImageCache cacheImage:fullImage forKey:_cacheKey];
+        if (thumbnail) [FVCGImageCache cacheThumbnail:thumbnail forKey:_cacheKey];
         
         CGImageRelease(fullImage);
         CGImageRelease(thumbnail);

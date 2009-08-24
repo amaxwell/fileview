@@ -60,7 +60,7 @@ static OSSpinLock _descriptionLock = OS_SPINLOCK_INIT;
     return desc;
 }
 
-+ (void)setDescription:(_FVDocumentDescription *)description forKey:(id <NSCopying>)aKey;
++ (void)setDescription:(_FVDocumentDescription *)description forKey:(id <NSObject, NSCopying>)aKey;
 {
     NSParameterAssert(nil != description);
     NSParameterAssert(nil != aKey);

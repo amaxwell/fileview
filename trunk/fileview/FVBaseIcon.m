@@ -46,7 +46,7 @@
     self = [self init];
     if (self) {
         _drawsLinkBadge = [[self class] _shouldDrawBadgeForURL:aURL copyTargetURL:&_fileURL];     
-        _cacheKey = [FVIconCache newKeyForURL:_fileURL];
+        _cacheKey = [FVCGImageCache newKeyForURL:_fileURL];
         pthread_mutex_init(&_mutex, NULL);
     }
     return self;

@@ -311,7 +311,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 - (void)recache;
 {
-    [FVIconCache invalidateCachesForKey:_cacheKey];
+    [FVCGImageCache invalidateCachesForKey:_cacheKey];
     [self releaseResources];
 }
 
@@ -430,12 +430,12 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     else {
         
         if (NULL == _thumbnail) {
-            _thumbnail = [FVIconCache newThumbnailForKey:_cacheKey];
+            _thumbnail = [FVCGImageCache newThumbnailForKey:_cacheKey];
             _thumbnailSize = FVCGImageSize(_thumbnail);
         }
         
         if (_thumbnail && FVShouldDrawFullImageWithThumbnailSize(_desiredSize, _thumbnailSize)) {
-            _fullImage = [FVIconCache newImageForKey:_cacheKey];
+            _fullImage = [FVCGImageCache newImageForKey:_cacheKey];
             if (NULL != _fullImage) {
                 [self unlock];
                 [[self class] _stopRenderingForKey:_cacheKey];
@@ -539,9 +539,9 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     [self unlock];    
     
     // cache and release
-    if (fullImage) [FVIconCache cacheImage:fullImage forKey:_cacheKey];
+    if (fullImage) [FVCGImageCache cacheImage:fullImage forKey:_cacheKey];
     CGImageRelease(fullImage);
-    if (thumbnail) [FVIconCache cacheThumbnail:thumbnail forKey:_cacheKey];
+    if (thumbnail) [FVCGImageCache cacheThumbnail:thumbnail forKey:_cacheKey];
     CGImageRelease(thumbnail);
 
     [[self class] _stopRenderingForKey:_cacheKey];
