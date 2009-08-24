@@ -40,13 +40,23 @@
 
 @class FVCacheFile;
 
+/** @brief On-disk cache of images.
+ 
+ \warning You should not instantiate an FVCGImageCache and operate directly.
+
+ Conceptually, this class provides a dictionary of images.  It's presently implemented using a compressed file on disk for storage, but may do other clever things in future.  Two caches are provided: one for large images, and one for small images.  Use the class methods to store CGImages and to get an efficient key for those images.
+ */
 @interface FVCGImageCache : NSObject
 {
 @private;
     FVCacheFile *_cacheFile;
 }
 
-// use this to get a key for caching images to disk
+/** @brief Key for caching
+ 
+ Use this to get a key for caching images to disk, or anything else that requires a copyable key (e.g., NSDictionary).  If your object is represented by a file: URL, the key will attempt to be robust against file renaming.
+ @param aURL A URL representation of your object.
+ @return A new key instance. */
 + (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 
 // cache small images to disk
@@ -58,8 +68,5 @@
 + (void)cacheImage:(CGImageRef)image forKey:(id)aKey;
 
 + (void)invalidateCachesForKey:(id)aKey;
-
-// sets name for recording/logging statistics
-- (void)setName:(NSString *)name;
 
 @end
