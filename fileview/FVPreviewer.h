@@ -67,6 +67,11 @@
  @warning FVPreviewer may only be used on the main thread, due to usage of various Cocoa views. */
 + (FVPreviewer *)sharedPreviewer;
 
+/** Determine if Quick Look will/should be used.
+ 
+ Currently returns NO for non-file: URLs, and documents that can be loaded in PDFView or NSTextView, since those views allow copying whereas Quick Look's raster preview does not.  Returns YES for all other types.
+ 
+ @return YES if FVPreviewer would use Quick Look for previewing. */
 + (BOOL)useQuickLookForURL:(NSURL *)aURL;
 
 /** Display a preview for a single URL.
