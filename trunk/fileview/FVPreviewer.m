@@ -458,6 +458,8 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 
 - (void)previewFileURLs:(NSArray *)absoluteURLs;
 {
+    previousIconFrame = NSZeroRect;
+    
     [self _killTask];
     
     NSMutableArray *paths = [NSMutableArray array];
