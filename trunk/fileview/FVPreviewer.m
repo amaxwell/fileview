@@ -156,6 +156,7 @@
         [[fullScreenButton cell] setBackgroundStyle:NSBackgroundStyleDark];
         [fullScreenButton setImage:[NSImage imageNamed:NSImageNameEnterFullScreenTemplate]];
         [fullScreenButton setAlternateImage:[NSImage imageNamed:NSImageNameExitFullScreenTemplate]];
+        [fullScreenButton setRefusesFirstResponder:YES];
         
         // only set delegate on alpha animation, since we only need the delegate callback once
         CABasicAnimation *fadeAnimation = [CABasicAnimation animationWithKeyPath:@"alphaValue"];
@@ -526,8 +527,6 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
     else {
         NSWindow *theWindow = [self window];
         
-        if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4)
-            [theWindow setAlphaValue:0.0];
         [[contentView tabViewItemAtIndex:0] setView:newView];
         
         if ([absoluteURL isFileURL]) {
@@ -542,6 +541,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         NSRect newWindowFrame = [theWindow isVisible] ? [theWindow frame] : [self savedFrame];
         if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4) {
             
+            [theWindow setAlphaValue:0.0];
             [[self window] makeKeyAndOrderFront:nil];
 
             if (NO == NSEqualRects(newWindowFrame, NSZeroRect)) {
@@ -575,11 +575,23 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
                 // saved frame was set to zero rect (not previously in defaults database) and user will adjust
                 [[self windowAnimator] setAlphaValue:1.0];
             }
+            
+            /*
+             This is the only way I've found on 10.5 and later to get the fullscreen button to resign first responder.
+             Evidently the animator resets first responder and ignores -refusesFirstResponder from the button.
+             Disabling the keyview loop calculation doesn't help, nor does changing the panel to non-activating.
+             */
+            NSTimeInterval delay = [[NSAnimationContext currentContext] duration] + 0.05;
+            [[self window] performSelector:@selector(makeFirstResponder:) withObject:nil afterDelay:delay];
+
         }
         else {
-            [[self window] setFrame:newWindowFrame display:YES animate:YES];
+            [contentView selectFirstTabViewItem:nil];
+            if (NO == NSEqualRects(newWindowFrame, NSZeroRect))
+                [[self window] setFrame:newWindowFrame display:YES animate:YES];
             [self showWindow:self];
-        }
+            [[self window] makeFirstResponder:nil];
+        }        
     }
 }
 
