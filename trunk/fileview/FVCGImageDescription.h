@@ -41,7 +41,10 @@
 
 @class FVCGColorSpaceDescription;
 
-@interface FVCGImageDescription : NSObject <NSCoding>
+/** @internal @brief CGImage archive wrapper.
+ 
+ FVCGImageDescription is a wrapper object for a CGImage that allows archiving it with NSArchiver.  Color spaces are represented by FVCGColorSpaceDescription, which may result in loss of information, but it is more efficient than conversion to TIFF or other standard image formats.  */
+@interface FVCGImageDescription : NSObject <NSCoding> 
 {
 @private;
     size_t                     _width;
@@ -59,7 +62,17 @@
     CGImageRef                 _image;
 }
 
+/** @internal @brief Designated initializer.
+ 
+ Initializes the instance with a given CGImage.  In the best case, bitmap data will not be copied.
+ @param image The CGImage to archive.
+ @return An initialized instance, suitable for archiving. */
 - (id)initWithImage:(CGImageRef)image;
+
+/** @internal @brief Create a CGImage.
+ 
+ Lazily creates a new CGImage from the internal description information and bitmap data.  If the image has already been created, it is retained before being returned.  The caller is always responsible for releasing this object.
+ @return A CGImage based on the internal description. */
 - (CGImageRef)newImage;
 
 @end
