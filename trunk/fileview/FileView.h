@@ -38,6 +38,10 @@
 
 #import <Cocoa/Cocoa.h>
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
+#import <Quartz/Quartz.h>
+#endif
+
 /** @file FileView.h  Primary view class.  */ 
 
 enum {
@@ -62,7 +66,11 @@ enum {
  @see @link NSObject(FileViewDataSource) @endlink
  @see @link NSObject(FileViewDataSource) @endlink
  */
-@interface FileView : NSView 
+#if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
+@interface FileView : NSView <QLPreviewPanelDataSource, QLPreviewPanelDelegate>
+#else
+@interface FileView : NSView
+#endif
 {
     /* all instance variables are private */
 @protected
@@ -88,7 +96,8 @@ enum {
         unsigned int hasArrows:1;
         unsigned int isAnimatingArrowAlpha:1;
         unsigned int dropOperation:2;
-        unsigned int reserved:22;
+        unsigned int controllingPreviewPanel:1;
+        unsigned int reserved:21;
     } _fvFlags;
     NSRect                  _dropRectForHighlight;
     double                  _maxScale;

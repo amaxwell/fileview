@@ -50,6 +50,19 @@
 #import "FVColorMenuView.h"
 #import "_FVController.h"
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_5
+@class QLPreviewPanel;
+@protocol QLPreviewItem;
+@interface NSObject (QLPreviewPanelDummy)
+
++ (id)sharedPreviewPanel;
+- (void)updateController;
+
+@end
+
+#endif
+
+
 @interface FileView (Private)
 
 // only declare methods here to shut the compiler up if we can't rearrange
@@ -63,6 +76,8 @@
 - (void)_hideArrows;
 - (BOOL)_showsSlider;
 - (void)_reloadIconsAndController:(BOOL)shouldReloadController;
+- (void)_previewURLs:(NSArray *)iconURLs;
+- (void)_previewURL:(NSURL *)aURL forIconInRect:(NSRect)iconRect;
 
 @end
 
@@ -93,6 +108,7 @@ static NSDictionary *_labeledAttributes = nil;
 static NSDictionary *_subtitleAttributes = nil;
 static CGFloat       _titleHeight = 0.0;
 static CGFloat       _subtitleHeight = 0.0;
+static Class         QLPreviewPanelClass = Nil;
 
 // KVO context pointers (pass address): http://lists.apple.com/archives/cocoa-dev/2008/Aug/msg02471.html
 static char _FVInternalSelectionObserverContext;
@@ -146,6 +162,8 @@ static char _FVContentBindingToControllerObserverContext;
     [self exposeBinding:@"backgroundColor"];
     [self exposeBinding:@"maxIconScale"];
     [self exposeBinding:@"minIconScale"];
+    
+    QLPreviewPanelClass = NSClassFromString(@"QLPreviewPanel");
 }
 
 + (NSColor *)defaultBackgroundColor
@@ -186,6 +204,7 @@ static char _FVContentBindingToControllerObserverContext;
     _fvFlags.dropOperation = FVDropNone;
     _fvFlags.isRescaling = NO;
     _fvFlags.scheduledLiveResize = NO;
+    _fvFlags.controllingPreviewPanel = NO;
     _selectedIndexes = [[NSMutableIndexSet alloc] init];
     _lastClickedIndex = NSNotFound;
     _rubberBandRect = NSZeroRect;
@@ -193,12 +212,10 @@ static char _FVContentBindingToControllerObserverContext;
     _fvFlags.isEditable = NO;
     [self setBackgroundColor:[[self class] defaultBackgroundColor]];
     _selectionOverlay = NULL;
-        
-    CFAllocatorRef alloc = CFAllocatorGetDefault();
-    
+            
     _lastOrigin = NSZeroPoint;
     _timeOfLastOrigin = CFAbsoluteTimeGetCurrent();
-    _trackingRectMap = CFDictionaryCreateMutable(alloc, 0, &FVIntegerKeyDictionaryCallBacks, &FVIntegerValueDictionaryCallBacks);
+    _trackingRectMap = CFDictionaryCreateMutable(CFAllocatorGetDefault(), 0, &FVIntegerKeyDictionaryCallBacks, &FVIntegerValueDictionaryCallBacks);
         
     _leftArrow = [[FVArrowButtonCell alloc] initWithArrowDirection:FVArrowLeft];
     [_leftArrow setTarget:self];
@@ -766,10 +783,10 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [self setNeedsDisplay:YES];
         
         FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
-        if (updatePreviewer && [previewer isPreviewing] && NSNotFound != [_selectedIndexes firstIndex]) {
-            [previewer setWebViewContextMenuDelegate:[self delegate]];
-            [previewer previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[[previewer window] frame]];
-        }
+        if (updatePreviewer && NSNotFound != [_selectedIndexes firstIndex] && ([previewer isPreviewing] || _fvFlags.controllingPreviewPanel)) {
+            [self _previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:NSZeroRect];
+        }      
+
     }
     else if (context == &_FVContentBindingToControllerObserverContext) {
         NSParameterAssert(nil != _contentBinding);
@@ -2152,14 +2169,8 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         // change selection first, as Finder does
         if ([event clickCount] > 1 && [self _URLAtPoint:p] != nil) {
             if (flags & NSAlternateKeyMask) {
-                FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
-                [previewer setWebViewContextMenuDelegate:[self delegate]];
                 [self _getGridRow:&r column:&c atPoint:p];
-                NSRect iconRect = [self _rectOfIconInRow:r column:c];
-                iconRect = [self convertRect:iconRect toView:nil];
-                NSPoint origin = [[self window] convertBaseToScreen:iconRect.origin];
-                iconRect.origin = origin;
-                [previewer previewURL:[self _URLAtPoint:p] forIconInRect:iconRect];
+                [self _previewURL:[self _URLAtPoint:p] forIconInRect:[self _rectOfIconInRow:r column:c]];
             } else {
                 [self openSelectedURLs:self];
             }
@@ -2695,23 +2706,19 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 - (IBAction)previewAction:(id)sender;
 {
-    FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
-    if ([previewer isPreviewing]) {
-        [previewer stopPreviewing];
+    if ([[FVPreviewer sharedPreviewer] isPreviewing] || _fvFlags.controllingPreviewPanel) {
+        [[FVPreviewer sharedPreviewer] stopPreviewing];
+        [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
+        [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
+        [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
     }
     else if ([_selectedIndexes count] == 1) {
-        [[FVPreviewer sharedPreviewer] setWebViewContextMenuDelegate:[self delegate]];
         NSUInteger r, c;
         [self _getGridRow:&r column:&c ofIndex:[_selectedIndexes lastIndex]];
-        NSRect iconRect = [self _rectOfIconInRow:r column:c];
-        iconRect = [self convertRect:iconRect toView:nil];
-        NSPoint origin = [[self window] convertBaseToScreen:iconRect.origin];
-        iconRect.origin = origin;
-        [previewer previewURL:[[self _selectedURLs] lastObject] forIconInRect:iconRect];
+        [self _previewURL:[[self _selectedURLs] lastObject] forIconInRect:[self _rectOfIconInRow:r column:c]];
     }
     else {
-        [previewer setWebViewContextMenuDelegate:nil];
-        [previewer previewFileURLs:[self _selectedURLs]];
+        [self _previewURLs:[self _selectedURLs]];
     }
 }
 
@@ -3031,6 +3038,100 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     NSUInteger selIndex = [_selectedIndexes firstIndex];
     if (NSNotFound != selIndex)
         [_controller downloadURLAtIndex:selIndex];
+}
+
+#pragma mark Quick Look support
+
+- (void)_previewURLs:(NSArray *)iconURLs
+{
+    if (_fvFlags.controllingPreviewPanel) {
+        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+            [[FVPreviewer sharedPreviewer] stopPreviewing];
+        [[QLPreviewPanelClass sharedPreviewPanel] reloadData];
+        [[QLPreviewPanelClass sharedPreviewPanel] refreshCurrentPreviewItem];
+    }
+    else if (QLPreviewPanelClass) {
+        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+            [[FVPreviewer sharedPreviewer] stopPreviewing];
+        [[QLPreviewPanelClass sharedPreviewPanel] makeKeyAndOrderFront:nil];        
+    }
+    else {
+        [[FVPreviewer sharedPreviewer] setWebViewContextMenuDelegate:nil];
+        [[FVPreviewer sharedPreviewer] previewFileURLs:iconURLs];
+    }
+}
+
+- (void)_previewURL:(NSURL *)aURL forIconInRect:(NSRect)iconRect
+{
+    if ([FVPreviewer useQuickLookForURL:aURL] == NO || Nil == QLPreviewPanelClass) {
+        iconRect = [self convertRect:iconRect toView:nil];
+        iconRect.origin = [[self window] convertBaseToScreen:iconRect.origin];
+        if (_fvFlags.controllingPreviewPanel) {
+            iconRect = [[QLPreviewPanelClass sharedPreviewPanel] frame];
+            [[QLPreviewPanelClass sharedPreviewPanel] performSelector:@selector(orderOut:) withObject:nil afterDelay:0.0];
+        }
+        [[FVPreviewer sharedPreviewer] setWebViewContextMenuDelegate:[self delegate]];
+        [[FVPreviewer sharedPreviewer] previewURL:aURL forIconInRect:iconRect];        
+    }
+    else if (_fvFlags.controllingPreviewPanel) {
+        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+            [[FVPreviewer sharedPreviewer] stopPreviewing];
+        [[QLPreviewPanelClass sharedPreviewPanel] reloadData];
+        [[QLPreviewPanelClass sharedPreviewPanel] refreshCurrentPreviewItem];
+    }
+    else {
+        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+            [[FVPreviewer sharedPreviewer] stopPreviewing];
+        [[QLPreviewPanelClass sharedPreviewPanel] makeKeyAndOrderFront:nil]; 
+    }
+}
+
+- (BOOL)previewPanel:(QLPreviewPanel *)panel handleEvent:(NSEvent *)event;
+{
+    NSLog(@"handleEvent: %@", event);
+    return NO;
+}
+
+- (BOOL)acceptsPreviewPanelControl:(QLPreviewPanel *)panel;
+{
+    return YES;
+}
+
+- (void)beginPreviewPanelControl:(QLPreviewPanel *)panel;
+{
+    _fvFlags.controllingPreviewPanel = YES;
+    [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:self];
+    [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:self];
+    [[QLPreviewPanelClass sharedPreviewPanel] reloadData];    
+}
+
+- (void)endPreviewPanelControl:(QLPreviewPanel *)panel;
+{
+    _fvFlags.controllingPreviewPanel = NO;
+    [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
+    [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
+}
+
+- (NSInteger)numberOfPreviewItemsInPreviewPanel:(QLPreviewPanel *)panel;
+{
+    return [[self _selectedURLs] count];
+}
+
+- (id <QLPreviewItem>)previewPanel:(QLPreviewPanel *)panel previewItemAtIndex:(NSInteger)idx;
+{
+    return [[self _selectedURLs] objectAtIndex:idx];
+}
+
+- (NSRect)previewPanel:(QLPreviewPanel *)panel sourceFrameOnScreenForPreviewItem:(id <QLPreviewItem>)item;
+{
+    NSUInteger r, c;
+    NSRect iconRect = NSZeroRect;
+    if ([self numberOfPreviewItemsInPreviewPanel:panel] == 1 && [self _getGridRow:&r column:&c ofIndex:[_selectedIndexes lastIndex]]) {
+        iconRect = [self _rectOfIconInRow:r column:c];
+        iconRect = [self convertRect:iconRect toView:nil];
+        iconRect.origin = [[self window] convertBaseToScreen:iconRect.origin];
+    }
+    return iconRect;
 }
 
 - (_FVController *)_controller { return _controller; }
