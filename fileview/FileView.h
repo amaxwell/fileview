@@ -38,10 +38,6 @@
 
 #import <Cocoa/Cocoa.h>
 
-#if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
-#import <Quartz/Quartz.h>
-#endif
-
 /** @file FileView.h  Primary view class.  */ 
 
 enum {
@@ -67,6 +63,7 @@ enum {
  @see @link NSObject(FileViewDataSource) @endlink
  */
 #if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
+#import <Quartz/Quartz.h>
 @interface FileView : NSView <QLPreviewPanelDataSource, QLPreviewPanelDelegate>
 #else
 @interface FileView : NSView
