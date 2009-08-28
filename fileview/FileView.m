@@ -50,6 +50,11 @@
 #import "FVColorMenuView.h"
 #import "_FVController.h"
 
+/*
+ Forward declarations to allow compilation on 10.5.  Note: the private Quick Look UI framework
+ on 10.5 has a significantly different interface, so it would be fairly difficult to adapt it
+ to use that (aside from the fact that using private frameworks crosses the line for me).
+*/
 #if MAC_OS_X_VERSION_MAX_ALLOWED <= MAC_OS_X_VERSION_10_5
 @class QLPreviewPanel;
 @protocol QLPreviewItem;
@@ -57,9 +62,10 @@
 
 + (id)sharedPreviewPanel;
 - (void)updateController;
+- (void)refreshCurrentPreviewItem;
+- (void)reloadData;
 
 @end
-
 #endif
 
 
