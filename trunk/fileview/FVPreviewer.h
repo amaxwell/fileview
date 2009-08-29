@@ -44,7 +44,11 @@
  
  Quick Look is one of the great new features in Mac OS X Leopard.  Unfortunately, it doesn't allow copy-paste from text windows (including PDF).  While understandable in some respects, it's a serious limitation.  FVPreviewer uses Quick Look as a fallback on 10.5, and uses a pseudo-Quick Look the rest of the time (which allows copy-paste).  The list of supported types is essentially the union of all types supported by FVIcon and all types supported by Quick Look.
  
- Note that using FVPreviewer implies some risk due to using qlmanage to display the previewer window, also: http://lists.apple.com/archives/quicklook-dev/2008/Jun/msg00020.html gives some reasons for not doing this.  In the absence of a real API, it's presently the best workaround, since I do not consider linking against a private framework an acceptable alternative. */
+ Note that using FVPreviewer implies some risk due to using qlmanage to display the previewer window, also: http://lists.apple.com/archives/quicklook-dev/2008/Jun/msg00020.html gives some reasons for not doing this.  In the absence of a real API, it's presently the best workaround, since I do not consider linking against a private framework an acceptable alternative. 
+ 
+ Note for 10.6: now that the Quick Look panel has a real API, qlmanage should only be used on 10.5.  Messing with the responder chain in FVPreviewer was too problematic to use it for control of the QLPreviewPanel, and the delegate/datasource implementation was much better suited to FileView itself.  Hence, FVPreviewer now has the role of a fallback viewer only.
+ 
+ */
 @interface FVPreviewer : NSWindowController {
 @private;
     IBOutlet NSTabView         *contentView;
@@ -69,9 +73,9 @@
 
 /** Determine if Quick Look will/should be used.
  
- Currently returns NO for non-file: URLs, and documents that can be loaded in PDFView or NSTextView, since those views allow copying whereas Quick Look's raster preview does not.  Returns YES for all other types.
+ Currently returns NO for non-file: URLs, and documents that can be loaded in PDFView or NSTextView, since those views allow copying whereas Quick Look's raster preview does not.  Returns YES for all other types.  Use this in a controller to determine if FVPreviewer or QLPreviewPanel should be used (on 10.4 and 10.5, FVPreviewer should always be used).  FVPreviewer will still function on 10.6, as well, regardless of what this method returns.
  
- @return YES if FVPreviewer would use Quick Look for previewing. */
+ @return YES if FVPreviewer would use qlmanage for previewing. */
 + (BOOL)useQuickLookForURL:(NSURL *)aURL;
 
 /** Display a preview for a single URL.
