@@ -143,6 +143,9 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 + (NSArray *)_supportedUTIs
 {
+#if MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5
+    return [NSAttributedString textUnfilteredTypes];
+#else
     // new in 10.5
     if ([NSAttributedString respondsToSelector:@selector(textUnfilteredTypes)])
         return [NSAttributedString performSelector:@selector(textUnfilteredTypes)];
@@ -167,6 +170,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
         }
     }
     return [UTIs allObjects];
+#endif
 }
 
 // This should be very reliable, but in practice it's only as reliable as the UTI declaration.  For instance, OmniGraffle declares .graffle files as public.composite-content and public.xml in its Info.plist.  Since we see that it's public.xml (which is in this list), we open it as text, and it will actually open with NSAttributedString...and display as binary garbage.
