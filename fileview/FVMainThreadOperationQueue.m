@@ -41,7 +41,7 @@
 #import "FVPriorityQueue.h"
 #import "FVUtilities.h"
 
-#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
+#if USE_DISPATCH_QUEUE
 #import <dispatch/dispatch.h>
 #endif
 #import <pthread.h>
@@ -126,7 +126,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 - (void)addOperation:(FVOperation *)operation;
 {
     [operation setQueue:self];
-#if USE_DISPATCH_QUEUE || (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6)
+#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
     dispatch_async(dispatch_get_main_queue(), ^{
         [operation start];
     });
@@ -142,7 +142,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 - (void)addOperations:(NSArray *)operations;
 {
     [operations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
-#if USE_DISPATCH_QUEUE || (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6)
+#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
     dispatch_async(dispatch_get_main_queue(), ^{
         for (FVOperation *op in operations) {
             if ([op isCancelled] == NO)
