@@ -82,7 +82,11 @@
 - (void)awakeFromNib
 {
     NSString *base = [@"~/Desktop" stringByStandardizingPath];
+#if MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_5
     NSArray *files = [[NSFileManager defaultManager] directoryContentsAtPath:base];
+#else
+    NSArray *files = [[NSFileManager defaultManager] contentsOfDirectoryAtPath:base error:NULL];
+#endif
     NSString *path;
     NSUInteger i, iMax = [files count];
     for (i = 0; i < iMax; i++) {
