@@ -84,6 +84,7 @@
 - (void)_reloadIconsAndController:(BOOL)shouldReloadController;
 - (void)_previewURLs:(NSArray *)iconURLs;
 - (void)_previewURL:(NSURL *)aURL forIconInRect:(NSRect)iconRect;
+- (NSArray *)_selectedURLs;
 
 @end
 
@@ -790,7 +791,14 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
         if (updatePreviewer && NSNotFound != [_selectedIndexes firstIndex] && ([previewer isPreviewing] || _fvFlags.controllingPreviewPanel)) {
-            [self _previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:NSZeroRect];
+            if ([_selectedIndexes count] == 1) {
+                NSUInteger r, c;
+                [self _getGridRow:&r column:&c ofIndex:[_selectedIndexes firstIndex]];
+                [self _previewURL:[_controller URLAtIndex:[_selectedIndexes firstIndex]] forIconInRect:[self _rectOfIconInRow:r column:c]];
+            }
+            else {
+                [self _previewURLs:[self _selectedURLs]];
+            }
         }      
 
     }
