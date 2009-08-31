@@ -41,6 +41,10 @@
 #import "FVThread.h"
 #import <libkern/OSAtomic.h>
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
+#import <dispatch/dispatch.h>
+#endif
+
 struct FVOpFlags {
     volatile int32_t _cancelled;
     volatile int32_t _priority;
@@ -101,11 +105,32 @@ struct FVOpFlags {
         [NSException raise:NSInternalInconsistencyException format:@"attempt to start a previously executed operation"];
     
     OSAtomicIncrement32Barrier(&(_flags->_executing));
-    
-    if ([self isConcurrent])
+    if ([self isConcurrent]) {
+#if USE_DISPATCH_QUEUE || (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6)
+        dispatch_queue_t dq;
+        switch ([self queuePriority]) {
+            case FVOperationQueuePriorityVeryLow:
+            case FVOperationQueuePriorityLow:
+                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+                break;
+            case FVOperationQueuePriorityVeryHigh:
+            case FVOperationQueuePriorityHigh:
+                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
+                break;
+            default:
+                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+                break;
+        }
+        dispatch_async(dq, ^{
+            [self main];
+        });
+#else
         [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
-    else
+#endif        
+    }
+    else {
         [self main];
+    }
 }
 
 - (void)finished

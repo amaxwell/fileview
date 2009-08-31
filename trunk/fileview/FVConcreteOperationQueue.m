@@ -51,6 +51,10 @@
 #import <mach/mach.h>
 #import <mach/mach_port.h>
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
+#import <dispatch/dispatch.h>
+#endif
+
 @implementation FVConcreteOperationQueue
 
 // NSConditionLock conditions
@@ -231,7 +235,13 @@ static uint32_t __FVSendTrivialMachMessage(mach_port_t port, uint32_t msg_id, CF
             [_activeOperations addObject:op];
             // avoid a deadlock for a non-threaded operation; -start can trigger -finishedOperation immediately on this thread
             OSSpinLockUnlock(&_queueLock);
+#if USE_DISPATCH_QUEUE || (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6)
+            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+                [op start];
+            });
+#else
             [op start];
+#endif
             OSSpinLockLock(&_queueLock);
         }        
     }
