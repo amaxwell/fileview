@@ -82,8 +82,11 @@ enum {
 
 @end
 
-#define THREAD_POOL_MAX 20
-#define THREAD_POOL_MIN 4
+// GCD seems to collect its threads fairly rapidly, and lets the number grow quite high
+#define TIME_TO_DIE 10
+
+#define THREAD_POOL_MAX 60
+#define THREAD_POOL_MIN 0
 
 static NSMutableArray  *_threadPool = nil;
 static OSSpinLock       _lock = OS_SPINLOCK_INIT;
@@ -91,11 +94,7 @@ static int32_t          _threadPoolCapacity = THREAD_POOL_MAX;
 static volatile int32_t _threadCount = 0;
 
 #define DEBUG_REAPER 0
-#if DEBUG_REAPER
-#define TIME_TO_DIE 60
-#else
-#define TIME_TO_DIE 300
-#endif
+
 
 @implementation _FVThread
 
@@ -136,10 +135,18 @@ static volatile int32_t _threadCount = 0;
         [_threadPool removeLastObject];
     }
     OSSpinLockUnlock(&_lock);
+    static int32_t reuseCount = 0;
+    static int32_t newCount = 0;
+    OSAtomicIncrement32Barrier(&newCount);
     if (nil == thread) {
         thread = [_FVThread new];
         OSAtomicIncrement32Barrier(&_threadCount);
     }
+    else {
+    OSAtomicIncrement32Barrier(&reuseCount);
+    }
+    if (newCount % 10)
+        fprintf(stderr, "Of %d threads requested, %d reused (%.2f%%)\n", newCount, reuseCount, reuseCount*100 / (double)newCount);
     return thread;
 }
 
