@@ -73,9 +73,13 @@ static volatile int32_t _activeCPUs = 0;
 // Allow a maximum of 10 operations per active CPU core and a minimum of 2 per core; untuned.  Main idea here is to keep from killing performance by creating too many threads or operations, but memory/disk are also big factors that are unaccounted for here.
 + (NSUInteger)_availableOperationCount
 {
+#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
+    return NSUIntegerMax;
+#else
     int32_t maxConcurrentOperations = _activeCPUs * 10;
     int32_t minConcurrentOperations = 2;    
     return MAX((maxConcurrentOperations - ((_activeQueueCount - 1) * minConcurrentOperations)), minConcurrentOperations);
+#endif
 }
 
 + (void)_updateKernelInfo:(id)unused
@@ -235,13 +239,7 @@ static uint32_t __FVSendTrivialMachMessage(mach_port_t port, uint32_t msg_id, CF
             [_activeOperations addObject:op];
             // avoid a deadlock for a non-threaded operation; -start can trigger -finishedOperation immediately on this thread
             OSSpinLockUnlock(&_queueLock);
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
-            dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-                [op start];
-            });
-#else
             [op start];
-#endif
             OSSpinLockLock(&_queueLock);
         }        
     }
