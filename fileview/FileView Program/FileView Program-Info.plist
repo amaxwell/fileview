@@ -20,7 +20,9 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
-    <key>QuartzGLEnabled</key>
-    <false/>
+	<key>QuartzGLEnabled</key>
+	<false/>
+	<key>NSSupportsSuddenTermination</key>
+	<true/>
 </dict>
 </plist>
