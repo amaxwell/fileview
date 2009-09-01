@@ -83,7 +83,7 @@ enum {
 @end
 
 // GCD seems to collect its threads fairly rapidly, and lets the number grow quite high
-#define TIME_TO_DIE 10
+#define TIME_TO_DIE 30.0
 
 #define THREAD_POOL_MAX 60
 #define THREAD_POOL_MIN 0
@@ -135,18 +135,10 @@ static volatile int32_t _threadCount = 0;
         [_threadPool removeLastObject];
     }
     OSSpinLockUnlock(&_lock);
-    static int32_t reuseCount = 0;
-    static int32_t newCount = 0;
-    OSAtomicIncrement32Barrier(&newCount);
     if (nil == thread) {
         thread = [_FVThread new];
         OSAtomicIncrement32Barrier(&_threadCount);
     }
-    else {
-    OSAtomicIncrement32Barrier(&reuseCount);
-    }
-    if (newCount % 10)
-        fprintf(stderr, "Of %d threads requested, %d reused (%.2f%%)\n", newCount, reuseCount, reuseCount*100 / (double)newCount);
     return thread;
 }
 
