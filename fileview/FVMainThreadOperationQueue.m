@@ -128,7 +128,8 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
     [operation setQueue:self];
 #if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
     dispatch_async(dispatch_get_main_queue(), ^{
-        [operation start];
+        if ([operation isCancelled] == NO)
+            [operation start];
     });
 #else
     OSSpinLockLock(&_queueLock);
@@ -143,12 +144,12 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 {
     [operations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
 #if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
-    dispatch_async(dispatch_get_main_queue(), ^{
-        for (FVOperation *op in operations) {
+    for (FVOperation *op in operations) {
+        dispatch_async(dispatch_get_main_queue(), ^{
             if ([op isCancelled] == NO)
                 [op start];
-        }
-    });
+        });
+    }
 #else
     OSSpinLockLock(&_queueLock);
     [_pendingOperations pushMultiple:operations];
