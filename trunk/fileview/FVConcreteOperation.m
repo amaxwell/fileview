@@ -106,7 +106,7 @@ struct FVOpFlags {
     
     OSAtomicIncrement32Barrier(&(_flags->_executing));
     if ([self isConcurrent]) {
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
+#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
         dispatch_queue_t dq;
         switch ([self queuePriority]) {
             case FVOperationQueuePriorityVeryLow:
