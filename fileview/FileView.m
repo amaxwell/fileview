@@ -170,7 +170,13 @@ static char _FVContentBindingToControllerObserverContext;
     [self exposeBinding:@"maxIconScale"];
     [self exposeBinding:@"minIconScale"];
     
-    QLPreviewPanelClass = NSClassFromString(@"QLPreviewPanel");
+    // even without loading the framework on 10.5, this returns a class
+    QLPreviewPanelClass = Nil;
+#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
+    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5) 
+        QLPreviewPanelClass = NSClassFromString(@"QLPreviewPanel");
+#endif
+    
 }
 
 + (NSColor *)defaultBackgroundColor
