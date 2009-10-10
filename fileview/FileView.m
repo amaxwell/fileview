@@ -172,7 +172,7 @@ static char _FVContentBindingToControllerObserverContext;
     
     // even without loading the framework on 10.5, this returns a class
     QLPreviewPanelClass = Nil;
-#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
+#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5) 
         QLPreviewPanelClass = NSClassFromString(@"QLPreviewPanel");
 #endif
