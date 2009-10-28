@@ -1807,7 +1807,8 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 {
     // only called if we originated the drag, so the row/column must be valid
     if ((operation & NSDragOperationDelete) != 0 && [self isEditable]) {
-        [[self dataSource] fileView:self deleteURLsAtIndexes:_selectedIndexes];
+        // pass copy of _selectionIndexes
+        [[self dataSource] fileView:self deleteURLsAtIndexes:[self selectionIndexes]];
         [self setSelectionIndexes:[NSIndexSet indexSet]];
         [self reloadIcons];
     }
@@ -2744,7 +2745,8 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 - (IBAction)delete:(id)sender;
 {
-    if (NO == [self isEditable] || NO == [[self dataSource] fileView:self deleteURLsAtIndexes:_selectedIndexes])
+    // pass copy of _selectionIndexes
+    if (NO == [self isEditable] || NO == [[self dataSource] fileView:self deleteURLsAtIndexes:[self selectionIndexes]])
         NSBeep();
     else
         [self reloadIcons];
@@ -2788,8 +2790,8 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (IBAction)reloadSelectedIcons:(id)sender;
 {
     // callers aren't required to validate based on selection, so make this a noop in that case
-    if ([[self selectionIndexes] count]) {
-        NSEnumerator *iconEnum = [[_controller iconsAtIndexes:[self selectionIndexes]] objectEnumerator];
+    if ([_selectedIndexes count]) {
+        NSEnumerator *iconEnum = [[_controller iconsAtIndexes:_selectedIndexes] objectEnumerator];
         FVIcon *anIcon;
         while ((anIcon = [iconEnum nextObject]) != nil)
             [anIcon recache];
