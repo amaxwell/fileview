@@ -176,7 +176,8 @@
             
             // header doesn't specify that this increments the refcount, but the doc page does
 
-            err = GetIconRefFromFileInfo(&fileRef, name.length, name.unicode, kIconServicesCatalogInfoMask, &catInfo, kIconServicesNoBadgeFlag, &_icon, NULL);
+            if (noErr == err)
+                err = GetIconRefFromFileInfo(&fileRef, name.length, name.unicode, kIconServicesCatalogInfoMask, &catInfo, kIconServicesNoBadgeFlag, &_icon, NULL);
             
             // file likely doesn't exist; can't just return FVMissingFinderIcon since we may need a link badge
             if (noErr != err)
