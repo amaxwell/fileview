@@ -528,7 +528,8 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
     }
     else {
         NSWindow *theWindow = [self window];
-        
+        NSWindow *previousKeyWindow = [NSApp keyWindow];
+
         [[contentView tabViewItemAtIndex:0] setView:newView];
         
         if ([absoluteURL isFileURL]) {
@@ -585,6 +586,17 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
              */
             NSTimeInterval delay = [[NSAnimationContext currentContext] duration] + 0.05;
             [[self window] performSelector:@selector(makeFirstResponder:) withObject:nil afterDelay:delay];
+            
+            /*
+             It would be more correct to use a panel that returns NO from canBecomeKeyWindow, as far as
+             compatibility with Quick Look.  However, that breaks copying from the panel, which is a
+             critical feature of the custom previewer.
+             
+             Until I can find a better solution, this hack restores the previous key window, so you can
+             still navigate icons or whatever.  Unfortunately, it also means that esc no longer closes
+             this panel, so that needs to be in the controller as well.
+             */
+            [previousKeyWindow performSelector:@selector(makeKeyWindow) withObject:nil afterDelay:delay];
 
         }
         else {
@@ -593,14 +605,15 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
                 [[self window] setFrame:newWindowFrame display:YES animate:YES];
             [self showWindow:self];
             [[self window] makeFirstResponder:nil];
-        }        
+            [previousKeyWindow makeKeyWindow];
+        }          
     }
 }
 
 - (void)previewURL:(NSURL *)absoluteURL forIconInRect:(NSRect)screenRect
 {
     FVAPIParameterAssert(nil != absoluteURL);
-    
+
     // set up a rect in the middle of the main screen for a default value from which to animate
     if (NSEqualRects(screenRect, NSZeroRect)) {
         previousIconFrame = NSZeroRect;
