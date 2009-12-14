@@ -748,6 +748,9 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
             // reload might result in an empty view...
             if ([_selectedIndexes count] == 0) {
                 [[FVPreviewer sharedPreviewer] stopPreviewing];
+                [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
+                [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
+                [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
             }
             else if ([_selectedIndexes count] == 1) {
                 NSUInteger r, c;
