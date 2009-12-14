@@ -659,7 +659,17 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 // end up getting this via the responder chain for most views
 - (void)cancel:(id)sender
 {
-    [self stopPreviewing];
+    // !!! since this is now part of the API, make sure it's save to call
+    if (floor(NSAppKitVersionNumber) <= NSAppKitVersionNumber10_4)
+        return;
+    
+    if ([[[self window] contentView] isInFullScreenMode]) {
+        [[[self window] contentView] exitFullScreenModeWithOptions:nil];
+        [[fullScreenButton cell] setBackgroundStyle:NSBackgroundStyleDark];
+    }
+    else {
+        [self stopPreviewing];
+    }
 }    
 
 
