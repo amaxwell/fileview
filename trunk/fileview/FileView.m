@@ -744,7 +744,12 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         // Content or ordering of selection (may) have changed, so reload any previews
         if ([[FVPreviewer sharedPreviewer] isPreviewing] || _fvFlags.controllingPreviewPanel) {
-            if ([_selectedIndexes count] == 1) {
+            
+            // reload might result in an empty view...
+            if ([_selectedIndexes count] == 0) {
+                [[FVPreviewer sharedPreviewer] stopPreviewing];
+            }
+            else if ([_selectedIndexes count] == 1) {
                 NSUInteger r, c;
                 [self _getGridRow:&r column:&c ofIndex:[_selectedIndexes lastIndex]];
                 [self _previewURL:[[self _selectedURLs] lastObject] forIconInRect:[self _rectOfIconInRow:r column:c]];
