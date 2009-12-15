@@ -40,8 +40,18 @@
 			<string>ObjC</string>
 		</dict>
 		<dict>
+			<key>CLASS</key>
+			<string>_FVPreviewerWindow</string>
+			<key>LANGUAGE</key>
+			<string>ObjC</string>
+			<key>SUPERCLASS</key>
+			<string>NSPanel</string>
+		</dict>
+		<dict>
 			<key>ACTIONS</key>
 			<dict>
+				<key>cancel</key>
+				<string>id</string>
 				<key>previewAction</key>
 				<string>id</string>
 				<key>toggleFullscreen</key>
