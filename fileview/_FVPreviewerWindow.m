@@ -86,8 +86,6 @@ static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType 
 {
     // keep listening; window's content has just changed
     _didClickWindow = NO;
-    
-    // ??? change focus to next window here?  need to force the window server to update
 }
 
 - (void)close
