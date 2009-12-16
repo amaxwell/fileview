@@ -45,7 +45,7 @@ static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType 
 {
     _FVPreviewerWindow *self = refcon;
     if (NO == self->_didClickWindow && CGRectContainsPoint(NSRectToCGRect([self frame]), CGEventGetUnflippedLocation(event))) {
-        FVLog(@"mouse down event");
+
         self->_didClickWindow = YES;
         
         // this allows selection to work immediately
