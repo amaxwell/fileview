@@ -3128,9 +3128,13 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     }
 }
 
+// gets sent while doing keyboard navigation when the panel is up
 - (BOOL)previewPanel:(QLPreviewPanel *)panel handleEvent:(NSEvent *)event;
 {
-    NSLog(@"handleEvent: %@", event);
+    if ([event type] == NSKeyDown) {
+        [self interpretKeyEvents:[NSArray arrayWithObject:event]];
+        return YES;
+    }
     return NO;
 }
 
