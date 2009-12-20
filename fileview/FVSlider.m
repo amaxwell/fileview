@@ -165,7 +165,8 @@ NSString * const FVSliderMouseExitedNotificationName = @"FVSliderMouseExitedNoti
 {
     NSAssert(nil == [self parentWindow], @"attempt to fade active child window");
     [[self animator] setAlphaValue:0.0];
-    [self performSelector:@selector(safeOrderOut) withObject:nil afterDelay:0.5];
+    NSTimeInterval delay = [[NSAnimationContext currentContext] duration] + 0.01;
+    [self performSelector:@selector(safeOrderOut) withObject:nil afterDelay:delay];
 }
 
 @end
