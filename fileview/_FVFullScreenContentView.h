@@ -40,6 +40,11 @@
 
 @class FVPreviewer;
 
+/** @internal @brief Full screen window content view.
+ 
+ Forwards an esc key event to the window's delegate by invoking -(void)cancel:(id)sender when in
+ fullscreen mode, since the normal responder chain won't work.  For consistency, also does this when
+ not in fullscreen mode. */
 @interface _FVFullScreenContentView : NSView
 {
     FVPreviewer *_windowDelegate;
