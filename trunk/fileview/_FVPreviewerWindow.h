@@ -38,7 +38,17 @@
 
 #import <Cocoa/Cocoa.h>
 
-
+/** @internal @brief Window subclass for the previewer.
+ 
+ The Quick Look panel allows the controlling responder/view to remain key, practically.  The best
+ way to handle this in the custom preview is to return NO from NSWindow::canBecomeKeyWindow, but
+ that breaks text selection in views.  Since text selection is the only reason for using this as
+ a substitute for the real thing on 10.5 and later, we need to allow text selection.
+ 
+ This class installs a CGEventTap listening for mouse down events in its process, and returns YES
+ for NSWindow::canBecomeKeyWindow after a mouse down.  The controller needs to reset this periodically,
+ as a change in content without dismissing the window should also reset the canBecomeKeyWindow flag.
+ */
 @interface _FVPreviewerWindow : NSPanel
 {
 @private
@@ -47,6 +57,7 @@
     CFMachPortRef      _mouseDownTap;
 }
 
+/** @internal Call as needed to return NO for NSWindow::canBecomeKeyWindow. */
 - (void)resetKeyStatus;
 
 @end
