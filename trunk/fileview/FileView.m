@@ -3131,6 +3131,13 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 // gets sent while doing keyboard navigation when the panel is up
 - (BOOL)previewPanel:(QLPreviewPanel *)panel handleEvent:(NSEvent *)event;
 {
+    /*
+     This works fine if navigating icons via the FileView with arrow keys, but breaks
+     down when navigating BibDesk's tableview with arrow keys and the QL panel, since in that
+     case the delegate should be the table's delegate.  FVPreviewer works better in that case,
+     since it doesn't frob the responder chain like QLPreviewPanel.  This is enough of an edge 
+     case that it's not worth a great deal of trouble, though.
+     */
     if ([event type] == NSKeyDown) {
         [self interpretKeyEvents:[NSArray arrayWithObject:event]];
         return YES;
