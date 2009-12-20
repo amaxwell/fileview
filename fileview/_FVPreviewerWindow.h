@@ -48,6 +48,10 @@
  This class installs a CGEventTap listening for mouse down events in its process, and returns YES
  for NSWindow::canBecomeKeyWindow after a mouse down.  The controller needs to reset this periodically,
  as a change in content without dismissing the window should also reset the canBecomeKeyWindow flag.
+ 
+ I originally tried saving and restoring NSApp::keyWindow when showing the panel, but that required
+ a delay to work around the animation, which makes the fullscreen button first responder after the
+ animation completes (regardless of NSButton::refusesFirstResponder returning NO).
  */
 @interface _FVPreviewerWindow : NSPanel
 {
