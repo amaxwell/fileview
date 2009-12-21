@@ -43,7 +43,7 @@
 
 - (BOOL)enterFullScreenMode:(NSScreen *)screen withOptions:(NSDictionary *)options;
 {
-    _windowDelegate = [[self window] delegate];
+    _windowDelegate = (FVPreviewer *)[[self window] delegate];
     return [super enterFullScreenMode:screen withOptions:options];
 }
 
@@ -63,7 +63,7 @@
     if ([[event characters] length] && [[event characters] characterAtIndex:0] == 0x001b) {
 
         if ([[self window] delegate]) 
-            [[[self window] delegate] cancel:self];
+            [(FVPreviewer *)[[self window] delegate] cancel:self];
         else
             [_windowDelegate cancel:self];
         
