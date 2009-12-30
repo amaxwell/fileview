@@ -55,6 +55,7 @@ static CGLayerRef   _pageLayer = NULL;
     unsigned char split = [_FVMappedDataProvider maxProviderCount] / 2 - 1;
     _releaseableIcons = [[_FVSplitSet allocWithZone:[self zone]] initWithSplit:split];
     
+#warning reduce
     const CGSize layerSize = { 1, 1 };
     CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
     _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);

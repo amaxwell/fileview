@@ -68,6 +68,7 @@
 {
     FVINITIALIZE(FVFinderIcon);
     
+#warning reduce
     // create all singletons now to avoid locking
     [FVMissingFinderIcon sharedIcon];
     [FVHTTPURLIcon sharedIcon];

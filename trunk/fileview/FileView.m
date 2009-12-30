@@ -139,7 +139,7 @@ static char _FVContentBindingToControllerObserverContext;
 + (void)initialize 
 {
     FVINITIALIZE(FileView);
-    
+#warning reduce
     NSMutableDictionary *ta = [NSMutableDictionary dictionary];
     [ta setObject:[NSFont systemFontOfSize:12.0] forKey:NSFontAttributeName];
     [ta setObject:[NSColor darkGrayColor] forKey:NSForegroundColorAttributeName];
