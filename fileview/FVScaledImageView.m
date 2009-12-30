@@ -41,11 +41,8 @@
 
 @implementation FVScaledImageView
 
-static NSDictionary *_textAttributes = nil;
-
-+ (void)initialize {
-    FVINITIALIZE(FVScaledImageView);
-
+- (void)makeText
+{
     NSMutableDictionary *ta = [NSMutableDictionary dictionary];
     [ta setObject:[NSFont systemFontOfSize:[NSFont systemFontSize]] forKey:NSFontAttributeName];
     [ta setObject:[NSColor darkGrayColor] forKey:NSForegroundColorAttributeName];
@@ -53,13 +50,9 @@ static NSDictionary *_textAttributes = nil;
     [ps setAlignment:NSCenterTextAlignment];
     [ta setObject:ps forKey:NSParagraphStyleAttributeName];
     [ps release];
-    _textAttributes = [ta copy];
-}
-
-- (void)makeText
-{
+    
     NSMutableAttributedString *fileDescription = [[NSMutableAttributedString alloc] initWithString:[[NSFileManager defaultManager] displayNameAtPath:[_fileURL path]]];
-    [fileDescription addAttributes:_textAttributes range:NSMakeRange(0, [fileDescription length])];
+    [fileDescription addAttributes:ta range:NSMakeRange(0, [fileDescription length])];
     [fileDescription addAttribute:NSFontAttributeName value:[NSFont boldSystemFontOfSize:[NSFont systemFontSize]] range:NSMakeRange(0, [fileDescription length])];
     
     MDItemRef mdItem = MDItemCreate(NULL, (CFStringRef)[_fileURL path]);
@@ -72,7 +65,7 @@ static NSDictionary *_textAttributes = nil;
     NSBundle *bundle = [NSBundle bundleForClass:[FVScaledImageView class]];
     
     if (nil != mdAttributes) {
-        NSMutableAttributedString *kindString = [[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:@"\n\n%@", [mdAttributes objectForKey:(id)kMDItemKind]] attributes:_textAttributes];
+        NSMutableAttributedString *kindString = [[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:@"\n\n%@", [mdAttributes objectForKey:(id)kMDItemKind]] attributes:ta];
         if ([mdAttributes objectForKey:(id)kMDItemPixelHeight] && [mdAttributes objectForKey:(id)kMDItemPixelWidth])
             [[kindString mutableString] appendFormat:NSLocalizedStringFromTableInBundle(@"\n%@ by %@ pixels", @"FileView", bundle, @"two string format specifiers"), [mdAttributes objectForKey:(id)kMDItemPixelWidth], [mdAttributes objectForKey:(id)kMDItemPixelHeight]];
         [fileDescription appendAttributedString:kindString];
@@ -100,7 +93,7 @@ static NSDictionary *_textAttributes = nil;
             mbsize /= 1024.0f;
             label = @"GB";
         }
-        NSMutableAttributedString *details = [[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"\n\nSize: %.1f %@\nCreated: %@\nModified: %@", @"FileView", bundle, @"message displayed in preview"), mbsize, label, [formatter stringFromDate:[fattrs objectForKey:NSFileCreationDate]], [formatter stringFromDate:[fattrs objectForKey:NSFileModificationDate]]] attributes:_textAttributes];
+        NSMutableAttributedString *details = [[NSMutableAttributedString alloc] initWithString:[NSString stringWithFormat:NSLocalizedStringFromTableInBundle(@"\n\nSize: %.1f %@\nCreated: %@\nModified: %@", @"FileView", bundle, @"message displayed in preview"), mbsize, label, [formatter stringFromDate:[fattrs objectForKey:NSFileCreationDate]], [formatter stringFromDate:[fattrs objectForKey:NSFileModificationDate]]] attributes:ta];
         [details addAttribute:NSFontAttributeName value:[NSFont systemFontOfSize:[NSFont smallSystemFontSize]] range:NSMakeRange(0, [details length])];
         [fileDescription appendAttributedString:details];
         [details release];
