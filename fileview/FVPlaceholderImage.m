@@ -48,6 +48,7 @@ static const NSUInteger _sizes[] = { 32, 64, 128, 256, 512 };
 + (void)initialize
 {
     FVINITIALIZE(FVPlaceholderImage);
+#warning reduce
     
     _placeholders = CFDictionaryCreateMutable(NULL, 0, &FVIntegerKeyDictionaryCallBacks, &kCFTypeDictionaryValueCallBacks);
     NSUInteger i, iMax = sizeof(_sizes) / sizeof(NSUInteger);
