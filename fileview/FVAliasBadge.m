@@ -44,10 +44,11 @@
 static CFMutableDictionaryRef _badges = NULL;
 static const NSUInteger _sizes[] = { 32, 64, 128, 256, 512 };
 
+// OK to do this in +initialize, since the class is only used to access badges
 + (void)initialize
 {
     FVINITIALIZE(FVAliasBadge);
-#warning reduce
+
     _badges = CFDictionaryCreateMutable(NULL, 0, &FVIntegerKeyDictionaryCallBacks, &kCFTypeDictionaryValueCallBacks);
     NSUInteger i, iMax = sizeof(_sizes) / sizeof(NSUInteger);
     
