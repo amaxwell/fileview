@@ -37,8 +37,14 @@
  */
 
 #import "FVFinderIcon.h"
+#import <pthread.h>
 
-// Apple seems to use JPEG2000 storage for icons, and decompressing them is a serious performance hit on the main thread (when scrolling).  Hence, we'll create the images here and burn some memory to handle the common cases.  Custom icons still get their own instance and are drawn as needed with Icon Services.
+/*
+ Apple seems to use JPEG2000 storage for icons, and decompressing them is a serious 
+ performance hit on the main thread (when scrolling).  Hence, we'll create the images 
+ here and burn some memory to handle the common cases.  Custom icons still get their 
+ own instance and are drawn as needed with Icon Services.
+ */
 @interface FVSingletonFinderIcon : FVFinderIcon
 {
 @protected;
@@ -63,21 +69,6 @@
 @end
 
 @implementation FVFinderIcon
-
-+ (void)initialize
-{
-    FVINITIALIZE(FVFinderIcon);
-    
-#warning reduce
-    // create all singletons now to avoid locking
-    [FVMissingFinderIcon sharedIcon];
-    [FVHTTPURLIcon sharedIcon];
-    [FVGenericURLIcon sharedIcon];
-    [FVFTPURLIcon sharedIcon];
-    [FVMailURLIcon sharedIcon];
-    [FVGenericFolderIcon sharedIcon];
-    [FVSavedSearchIcon sharedIcon];
-}
 
 + (BOOL)_isSavedSearchURL:(NSURL *)aURL
 {
@@ -278,12 +269,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVMissingFinderIcon
 
+static id _missingFinderIcon = nil;
+static void __FVMissingFinderIconInit() { _missingFinderIcon = [FVMissingFinderIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVMissingFinderIconInit);
+    return _missingFinderIcon;
 }
 
 - (id)init
@@ -339,12 +332,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVHTTPURLIcon
 
+static id _HTTPURLIcon = nil;
+static void __FVHTTPURLIconInit() { _HTTPURLIcon = [FVHTTPURLIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVHTTPURLIconInit);
+    return _HTTPURLIcon;
 }
 
 - (id)init
@@ -372,12 +367,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVGenericURLIcon
 
+static id _genericURLIcon = nil;
+static void __FVGenericURLIconInit() { _genericURLIcon = [FVGenericURLIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVGenericURLIconInit);
+    return _genericURLIcon;
 }
 
 - (id)init
@@ -405,12 +402,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVFTPURLIcon 
 
+static id _FTPURLIcon = nil;
+static void __FVFTPURLIconInit() { _FTPURLIcon = [FVFTPURLIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVFTPURLIconInit);
+    return _FTPURLIcon;
 }
 
 - (id)init
@@ -438,12 +437,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVMailURLIcon 
 
+static id _mailURLIcon = nil;
+static void __FVMailURLIconInit() { _mailURLIcon = [FVMailURLIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVMailURLIconInit);
+    return _mailURLIcon;
 }
 
 - (id)init
@@ -471,12 +472,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVGenericFolderIcon 
 
+static id _genericFolderIcon = nil;
+static void __FVGenericFolderIconInit() { _genericFolderIcon = [FVGenericFolderIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVGenericFolderIconInit);
+    return _genericFolderIcon;
 }
 
 - (id)init
@@ -504,12 +507,14 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 
 @implementation FVSavedSearchIcon 
 
+static id _savedSearchIcon = nil;
+static void __FVSavedSearchIconInit() { _savedSearchIcon = [FVSavedSearchIcon new]; }
+
 + (id)sharedIcon
 {
-    static id sharedInstance = nil;
-    if (nil == sharedInstance)
-        sharedInstance = [[self allocWithZone:[self zone]] init];
-    return sharedInstance;
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVSavedSearchIconInit);
+    return _savedSearchIcon;
 }
 
 - (id)init
