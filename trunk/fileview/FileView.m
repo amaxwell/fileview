@@ -110,11 +110,6 @@ typedef NSUInteger FVDropOperation;
 // draws grid and margin frames
 #define DEBUG_GRID 0
 
-static NSDictionary *_titleAttributes = nil;
-static NSDictionary *_labeledAttributes = nil;
-static NSDictionary *_subtitleAttributes = nil;
-static CGFloat       _titleHeight = 0.0;
-static CGFloat       _subtitleHeight = 0.0;
 static Class         QLPreviewPanelClass = Nil;
 
 // KVO context pointers (pass address): http://lists.apple.com/archives/cocoa-dev/2008/Aug/msg02471.html
@@ -139,29 +134,6 @@ static char _FVContentBindingToControllerObserverContext;
 + (void)initialize 
 {
     FVINITIALIZE(FileView);
-#warning reduce
-    NSMutableDictionary *ta = [NSMutableDictionary dictionary];
-    [ta setObject:[NSFont systemFontOfSize:12.0] forKey:NSFontAttributeName];
-    [ta setObject:[NSColor darkGrayColor] forKey:NSForegroundColorAttributeName];
-    NSMutableParagraphStyle *ps = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
-    // Apple uses this in IKImageBrowserView
-    [ps setLineBreakMode:NSLineBreakByTruncatingTail];
-    [ps setAlignment:NSCenterTextAlignment];
-    [ta setObject:ps forKey:NSParagraphStyleAttributeName];
-    [ps release];
-    _titleAttributes = [ta copy];
-    
-    [ta setObject:[NSColor blackColor] forKey:NSForegroundColorAttributeName];
-    _labeledAttributes = [ta copy];
-    
-    [ta setObject:[NSFont systemFontOfSize:10.0] forKey:NSFontAttributeName];
-    [ta setObject:[NSColor grayColor] forKey:NSForegroundColorAttributeName];
-    _subtitleAttributes = [ta copy];
-    
-    NSLayoutManager *lm = [[NSLayoutManager alloc] init];
-    _titleHeight = [lm defaultLineHeightForFont:[_titleAttributes objectForKey:NSFontAttributeName]];
-    _subtitleHeight = [lm defaultLineHeightForFont:[_subtitleAttributes objectForKey:NSFontAttributeName]];
-    [lm release];
         
     [self exposeBinding:@"iconScale"];
     [self exposeBinding:@"content"];
@@ -199,6 +171,59 @@ static char _FVContentBindingToControllerObserverContext;
 }
 
 + (BOOL)accessInstanceVariablesDirectly { return NO; }
+
+// always returns a new instance, so declare as mutable for internal usage and avoid copies
+- (NSMutableDictionary *)_titleAttributes
+{
+    NSMutableDictionary *ta = [NSMutableDictionary dictionary];
+    [ta setObject:[NSFont systemFontOfSize:12.0] forKey:NSFontAttributeName];
+    [ta setObject:[NSColor darkGrayColor] forKey:NSForegroundColorAttributeName];
+    NSMutableParagraphStyle *ps = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
+    // Apple uses this in IKImageBrowserView
+    [ps setLineBreakMode:NSLineBreakByTruncatingTail];
+    [ps setAlignment:NSCenterTextAlignment];
+    [ta setObject:ps forKey:NSParagraphStyleAttributeName];
+    [ps release];
+
+    return ta;
+}
+
+- (NSDictionary *)_labeledAttributes
+{
+    NSMutableDictionary *ta = [self _titleAttributes];
+    [ta setObject:[NSColor blackColor] forKey:NSForegroundColorAttributeName];
+    return ta;
+}
+
+- (NSDictionary *)_subtitleAttributes
+{
+    NSMutableDictionary *ta = [self _titleAttributes];
+    [ta setObject:[NSFont systemFontOfSize:10.0] forKey:NSFontAttributeName];
+    [ta setObject:[NSColor grayColor] forKey:NSForegroundColorAttributeName];
+    return ta;
+}
+
+- (CGFloat)_titleHeight
+{
+    static CGFloat _titleHeight = -1;
+    if (_titleHeight < 0) {
+        NSLayoutManager *lm = [[NSLayoutManager alloc] init];
+        _titleHeight = [lm defaultLineHeightForFont:[[self _titleAttributes] objectForKey:NSFontAttributeName]];
+        [lm release];
+    }
+    return _titleHeight;
+}
+
+- (CGFloat)_subtitleHeight
+{
+    static CGFloat _subtitleHeight = -1;
+    if (_subtitleHeight < 0) {
+        NSLayoutManager *lm = [[NSLayoutManager alloc] init];
+        _subtitleHeight = [lm defaultLineHeightForFont:[[self _subtitleAttributes] objectForKey:NSFontAttributeName]];
+        [lm release];
+    }
+    return _subtitleHeight;
+}
 
 // not part of the API because padding is private, and that's a can of worms
 - (CGFloat)_columnWidth { return _iconSize.width + _padding.width; }
@@ -542,7 +567,7 @@ static char _FVContentBindingToControllerObserverContext;
 - (CGFloat)_rightMargin { return _padding.width / 2 + MARGIN_BASE; }
 
 // warning: if these are ever changed to depend on padding, _recalculateGridSize needs to be changed
-- (CGFloat)_topMargin { return _titleHeight; }
+- (CGFloat)_topMargin { return [self _titleHeight]; }
 - (CGFloat)_bottomMargin { return MARGIN_BASE; }
 
 - (NSUInteger)_numberOfColumnsInFrame:(NSRect)frameRect
@@ -561,10 +586,10 @@ static char _FVContentBindingToControllerObserverContext;
     NSSize size = NSZeroSize;
     CGFloat extraMargin = round(4.0 * scale);
     size.width = MINIMUM_PADDING + extraMargin;
-    size.height = _titleHeight + extraMargin;
+    size.height = [self _titleHeight] + extraMargin;
     // add subtitle + additional amount to keep from clipping descenders on subtitles with selection layer
     if ([_dataSource respondsToSelector:@selector(fileView:subtitleAtIndex:)])
-        size.height += 1.3 * _subtitleHeight;
+        size.height += 1.3 * [self _subtitleHeight];
     return size;
 }
 
@@ -1621,6 +1646,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     CGColorRef shadowColor = CGColorCreate(cspace, shadowComponents);
     CGColorSpaceRelease(cspace);
     
+    NSDictionary *titleAttributes = [self _titleAttributes];
+    NSDictionary *labeledAttributes = [self _labeledAttributes];
+    NSDictionary *subtitleAttributes = [self _subtitleAttributes];
+    
     // iterate each row/column to see if it's in the dirty rect, and evaluate the current cache state
     for (r = rMin; r < rMax; r++) 
     {
@@ -1686,24 +1715,25 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     NSUInteger label;
                     [_controller getDisplayName:&name andLabel:&label forURL:aURL];
                     NSStringDrawingOptions stringOptions = NSStringDrawingUsesLineFragmentOrigin|NSStringDrawingOneShot;
+                    const CGFloat titleHeight = [self _titleHeight];
                     
                     if (label > 0) {
                         CGRect labelRect = NSRectToCGRect(textRect);
-                        labelRect.size.height = _titleHeight;                        
+                        labelRect.size.height = titleHeight;                        
                         [FVFinderLabel drawFinderLabel:label inRect:labelRect ofContext:cgContext flipped:YES roundEnds:YES];
                         
                         // labeled title uses black text for greater contrast; inset horizontally because of the rounded end caps
-                        NSRect titleRect = NSInsetRect(textRect, _titleHeight / 2.0, 0);
-                        [name drawWithRect:titleRect options:stringOptions attributes:_labeledAttributes];
+                        NSRect titleRect = NSInsetRect(textRect, titleHeight / 2.0, 0);
+                        [name drawWithRect:titleRect options:stringOptions attributes:labeledAttributes];
                     }
                     else {
-                        [name drawWithRect:textRect options:stringOptions attributes:_titleAttributes];
+                        [name drawWithRect:textRect options:stringOptions attributes:titleAttributes];
                     }
                     
                     if (subtitle) {
-                        textRect.origin.y += _titleHeight;
-                        textRect.size.height -= _titleHeight;
-                        [subtitle drawWithRect:textRect options:stringOptions attributes:_subtitleAttributes];
+                        textRect.origin.y += titleHeight;
+                        textRect.size.height -= titleHeight;
+                        [subtitle drawWithRect:textRect options:stringOptions attributes:subtitleAttributes];
                     }
                     CGContextRestoreGState(cgContext);
                 } 
