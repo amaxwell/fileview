@@ -2937,7 +2937,7 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 - (NSMenu *)menuForEvent:(NSEvent *)event
 {
     _lastMouseDownLocInView = [self convertPoint:[event locationInWindow] fromView:nil];
-    NSMenu *menu = [[[[self class] defaultMenu] copyWithZone:[NSMenu menuZone]] autorelease];
+    NSMenu *menu = [[self class] defaultMenu];
     
     NSUInteger i,r,c,idx = NSNotFound;
     if ([self _getGridRow:&r column:&c atPoint:_lastMouseDownLocInView])
@@ -3048,58 +3048,54 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 + (NSMenu *)defaultMenu
 {
-    static NSMenu *sharedMenu = nil;
-    if (nil == sharedMenu) {
-        NSMenuItem *anItem;
-        
-        sharedMenu = [[NSMenu allocWithZone:[NSMenu menuZone]] initWithTitle:@""];
-        NSBundle *bundle = [NSBundle bundleForClass:[FileView class]];
-        
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Quick Look", @"FileView", bundle, @"context menu title") action:@selector(previewAction:) keyEquivalent:@""];
-        [anItem setTag:FVQuickLookMenuItemTag];
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Open", @"FileView", bundle, @"context menu title") action:@selector(openSelectedURLs:) keyEquivalent:@""];
-        [anItem setTag:FVOpenMenuItemTag];
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Reveal in Finder", @"FileView", bundle, @"context menu title") action:@selector(revealInFinder:) keyEquivalent:@""];
-        [anItem setTag:FVRevealMenuItemTag];
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Reload", @"FileView", bundle, @"context menu title") action:@selector(reloadSelectedIcons:) keyEquivalent:@""];
-        [anItem setTag:FVReloadMenuItemTag];        
-        
-        [sharedMenu addItem:[NSMenuItem separatorItem]];
-        
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Remove", @"FileView", bundle, @"context menu title") action:@selector(delete:) keyEquivalent:@""];
-        [anItem setTag:FVRemoveMenuItemTag];
-        
-        // Finder labels: submenu on 10.4, NSView on 10.5
-        if ([anItem respondsToSelector:@selector(setView:)])
-            [sharedMenu addItem:[NSMenuItem separatorItem]];
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Set Finder Label", @"FileView", bundle, @"context menu title") action:NULL keyEquivalent:@""];
-        [anItem setTag:FVChangeLabelMenuItemTag];
-        
-        if ([anItem respondsToSelector:@selector(setView:)]) {
-            FVColorMenuView *view = [FVColorMenuView menuView];
-            [view setTarget:nil];
-            [view setAction:@selector(changeFinderLabel:)];
-            [anItem setView:view];
-        }
-        else {
-            NSMenu *submenu = [[NSMenu allocWithZone:[sharedMenu zone]] initWithTitle:@""];
-            [anItem setSubmenu:submenu];
-            [submenu release];
-            addFinderLabelsToSubmenu(submenu);
-        }
-        
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Download and Replace", @"FileView", bundle, @"context menu title") action:@selector(downloadSelectedLink:) keyEquivalent:@""];
-        [anItem setTag:FVDownloadMenuItemTag];
-        
-        [sharedMenu addItem:[NSMenuItem separatorItem]];
-        
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Zoom In", @"FileView", bundle, @"context menu title") action:@selector(zoomIn:) keyEquivalent:@""];
-        [anItem setTag:FVZoomInMenuItemTag];
-        anItem = [sharedMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Zoom Out", @"FileView", bundle, @"context menu title") action:@selector(zoomOut:) keyEquivalent:@""];
-        [anItem setTag:FVZoomOutMenuItemTag];
-
+    NSMenuItem *anItem;
+    NSMenu *defaultMenu = [[[NSMenu allocWithZone:[NSMenu menuZone]] initWithTitle:@""] autorelease];
+    NSBundle *bundle = [NSBundle bundleForClass:[FileView class]];
+    
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Quick Look", @"FileView", bundle, @"context menu title") action:@selector(previewAction:) keyEquivalent:@""];
+    [anItem setTag:FVQuickLookMenuItemTag];
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Open", @"FileView", bundle, @"context menu title") action:@selector(openSelectedURLs:) keyEquivalent:@""];
+    [anItem setTag:FVOpenMenuItemTag];
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Reveal in Finder", @"FileView", bundle, @"context menu title") action:@selector(revealInFinder:) keyEquivalent:@""];
+    [anItem setTag:FVRevealMenuItemTag];
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Reload", @"FileView", bundle, @"context menu title") action:@selector(reloadSelectedIcons:) keyEquivalent:@""];
+    [anItem setTag:FVReloadMenuItemTag];        
+    
+    [defaultMenu addItem:[NSMenuItem separatorItem]];
+    
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Remove", @"FileView", bundle, @"context menu title") action:@selector(delete:) keyEquivalent:@""];
+    [anItem setTag:FVRemoveMenuItemTag];
+    
+    // Finder labels: submenu on 10.4, NSView on 10.5
+    if ([anItem respondsToSelector:@selector(setView:)])
+        [defaultMenu addItem:[NSMenuItem separatorItem]];
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Set Finder Label", @"FileView", bundle, @"context menu title") action:NULL keyEquivalent:@""];
+    [anItem setTag:FVChangeLabelMenuItemTag];
+    
+    if ([anItem respondsToSelector:@selector(setView:)]) {
+        FVColorMenuView *view = [FVColorMenuView menuView];
+        [view setTarget:nil];
+        [view setAction:@selector(changeFinderLabel:)];
+        [anItem setView:view];
     }
-    return sharedMenu;
+    else {
+        NSMenu *submenu = [[NSMenu allocWithZone:[defaultMenu zone]] initWithTitle:@""];
+        [anItem setSubmenu:submenu];
+        [submenu release];
+        addFinderLabelsToSubmenu(submenu);
+    }
+    
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Download and Replace", @"FileView", bundle, @"context menu title") action:@selector(downloadSelectedLink:) keyEquivalent:@""];
+    [anItem setTag:FVDownloadMenuItemTag];
+    
+    [defaultMenu addItem:[NSMenuItem separatorItem]];
+    
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Zoom In", @"FileView", bundle, @"context menu title") action:@selector(zoomIn:) keyEquivalent:@""];
+    [anItem setTag:FVZoomInMenuItemTag];
+    anItem = [defaultMenu addItemWithTitle:NSLocalizedStringFromTableInBundle(@"Zoom Out", @"FileView", bundle, @"context menu title") action:@selector(zoomOut:) keyEquivalent:@""];
+    [anItem setTag:FVZoomOutMenuItemTag];
+
+    return defaultMenu;
 }
 
 #pragma mark Download support
