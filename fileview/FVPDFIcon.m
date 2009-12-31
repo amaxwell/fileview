@@ -38,6 +38,7 @@
 
 #import "FVPDFIcon.h"
 #import <libkern/OSAtomic.h>
+#import <pthread.h>
 
 #import "_FVMappedDataProvider.h"
 #import "_FVSplitSet.h"
@@ -45,7 +46,6 @@
 
 static OSSpinLock   _releaseLock = OS_SPINLOCK_INIT;
 static _FVSplitSet *_releaseableIcons = nil;
-static CGLayerRef   _pageLayer = NULL;
 
 @implementation FVPDFIcon
 
@@ -54,8 +54,12 @@ static CGLayerRef   _pageLayer = NULL;
     FVINITIALIZE(FVPDFIcon);
     unsigned char split = [_FVMappedDataProvider maxProviderCount] / 2 - 1;
     _releaseableIcons = [[_FVSplitSet allocWithZone:[self zone]] initWithSplit:split];
-    
-#warning reduce
+}
+
+// Do not use directly!  File scope only because pthread_once doesn't take an argument.
+static CGLayerRef _pageLayer = NULL;
+static void __FVPageLayerInit()
+{
     const CGSize layerSize = { 1, 1 };
     CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
     _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
@@ -76,6 +80,13 @@ static CGLayerRef   _pageLayer = NULL;
     pageRect.size = CGLayerGetSize(_pageLayer);
     CGContextClipToRect(context, pageRect);
     CGContextFillRect(context, pageRect);
+}
+
++ (CGLayerRef)_pageLayer
+{
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __FVPageLayerInit);
+    return _pageLayer;
 }
 
 /*
@@ -374,7 +385,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
 
         // set a white page background
         CGRect pageRect = CGRectMake(0, 0, _thumbnailSize.width, _thumbnailSize.height);
-        CGContextDrawLayerInRect(ctxt, pageRect, _pageLayer);
+        CGContextDrawLayerInRect(ctxt, pageRect, [[self class] _pageLayer]);
         
         if (_pdfPage) {
             
@@ -468,7 +479,7 @@ static bool __FVPDFIconLimitThumbnailSize(NSSize *size)
         if (FVShouldDrawFullImageWithThumbnailSize(dstRect.size, _thumbnailSize) && NULL != _pdfDoc) {
             
             // don't clip, because the caller has a shadow set
-            CGContextDrawLayerInRect(context, drawRect, _pageLayer);
+            CGContextDrawLayerInRect(context, drawRect, [[self class] _pageLayer]);
 
             // get rid of any shadow, or we may draw a text shadow if the page is transparent
             CGContextSaveGState(context);
