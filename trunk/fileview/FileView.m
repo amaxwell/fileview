@@ -136,8 +136,8 @@ static char _FVContentBindingToControllerObserverContext;
     FVINITIALIZE(FileView);
         
     [self exposeBinding:@"iconScale"];
-    [self exposeBinding:@"content"];
-    [self exposeBinding:@"selectionIndexes"];
+    [self exposeBinding:NSContentBinding];
+    [self exposeBinding:NSSelectionIndexesBinding];
     [self exposeBinding:@"backgroundColor"];
     [self exposeBinding:@"maxIconScale"];
     [self exposeBinding:@"minIconScale"];
@@ -762,9 +762,9 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         // Follow NSTableView's example and clear selection outside the current range of indexes
         NSUInteger lastSelIndex = [_selectedIndexes lastIndex];
         if (NSNotFound != lastSelIndex && lastSelIndex >= [_controller numberOfIcons]) {
-            [self willChangeValueForKey:@"selectionIndexes"];
+            [self willChangeValueForKey:NSSelectionIndexesBinding];
             [_selectedIndexes removeIndexesInRange:NSMakeRange([_controller numberOfIcons], lastSelIndex + 1 - [_controller numberOfIcons])];
-            [self didChangeValueForKey:@"selectionIndexes"];
+            [self didChangeValueForKey:NSSelectionIndexesBinding];
         }
         
         // Content or ordering of selection (may) have changed, so reload any previews
@@ -813,7 +813,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 {    
     if (context == &_FVInternalSelectionObserverContext || context == &_FVSelectionBindingToControllerObserverContext) {
 
-        NSParameterAssert([keyPath isEqualToString:@"selectionIndexes"]);
+        NSParameterAssert([keyPath isEqualToString:NSSelectionIndexesBinding]);
         
         _FVBinding *selBinding = _selectionBinding;
         BOOL updatePreviewer = NO;
@@ -874,7 +874,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         FVLog(@"*** warning *** binding options are unsupported in -[%@ %@] (requested %@)", [self class], NSStringFromSelector(_cmd), options);
     
     // Note: we don't bind to this, some client does.  We do register as an observer, but that's a different code path.
-    if ([binding isEqualToString:@"selectionIndexes"]) {
+    if ([binding isEqualToString:NSSelectionIndexesBinding]) {
         
         FVAPIAssert3(nil == _selectionBinding, @"attempt to bind %@ to %@ when bound to %@", keyPath, observable, ((_FVBinding *)_selectionBinding)->_observable);
         
@@ -887,7 +887,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         _selectedIndexes = [[observable valueForKeyPath:keyPath] mutableCopy];
         [self setNeedsDisplay:YES];
     }
-    else if ([binding isEqualToString:@"content"]) {
+    else if ([binding isEqualToString:NSContentBinding]) {
      
         FVAPIAssert3(nil == _contentBinding, @"attempt to bind %@ to %@ when bound to %@", keyPath, observable, ((_FVBinding *)_contentBinding)->_observable);
                 
@@ -909,12 +909,12 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 {    
     [super unbind:binding];
 
-    if ([binding isEqualToString:@"selectionIndexes"]) {
+    if ([binding isEqualToString:NSSelectionIndexesBinding]) {
         FVAPIAssert2(nil != _selectionBinding, @"%@: attempt to unbind %@ when unbound", self, binding);
         [_selectionBinding release];
         _selectionBinding = nil;
     }
-    else if ([binding isEqualToString:@"content"]) {
+    else if ([binding isEqualToString:NSContentBinding]) {
         FVAPIAssert2(nil != _contentBinding, @"%@: attempt to unbind %@ when unbound", self, binding);
         
         _FVBinding *contentBinding = (_FVBinding *)_contentBinding;
@@ -933,9 +933,9 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 - (NSDictionary *)infoForBinding:(NSString *)binding;
 {
     NSDictionary *info = nil;
-    if (([binding isEqualToString:@"selectionIndexes"] && nil != _selectionBinding) || ([binding isEqualToString:@"content"] && nil != _contentBinding)) {
+    if (([binding isEqualToString:NSSelectionIndexesBinding] && nil != _selectionBinding) || ([binding isEqualToString:NSContentBinding] && nil != _contentBinding)) {
         NSMutableDictionary *bindingInfo = [NSMutableDictionary dictionary];
-        _FVBinding *theBinding = [binding isEqualToString:@"selectionIndexes"] ? _selectionBinding : _contentBinding;
+        _FVBinding *theBinding = [binding isEqualToString:NSSelectionIndexesBinding] ? _selectionBinding : _contentBinding;
         if (theBinding->_observable) [bindingInfo setObject:theBinding->_observable forKey:NSObservedObjectKey];
         if (theBinding->_keyPath) [bindingInfo setObject:theBinding->_keyPath forKey:NSObservedKeyPathKey];
         if (theBinding->_options) [bindingInfo setObject:theBinding->_options forKey:NSOptionsKey];
@@ -950,9 +950,9 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 - (Class)valueClassForBinding:(NSString *)binding
 {
     Class valueClass = Nil;
-    if ([binding isEqualToString:@"selectionIndexes"])
+    if ([binding isEqualToString:NSSelectionIndexesBinding])
         valueClass = [NSIndexSet class];
-    else if ([binding isEqualToString:@"content"])
+    else if ([binding isEqualToString:NSContentBinding])
         valueClass = [NSArray class];
     else if ([binding isEqualToString:@"backgroundColor"])
         valueClass = [NSColor class];
@@ -979,7 +979,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 #warning fixme
     NSArray *options;
     
-    if ([binding isEqualToString:@"selectionIndexes"]) {
+    if ([binding isEqualToString:NSSelectionIndexesBinding]) {
         NSAttributeDescription *desc = [NSAttributeDescription new];
         [desc setName:@"Selection indexes"];
         [desc setAttributeType:NSUndefinedAttributeType];
@@ -988,7 +988,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         options = [NSArray arrayWithObject:desc];
         [desc release];
     }
-    else if ([binding isEqualToString:@"content"]) {
+    else if ([binding isEqualToString:NSContentBinding]) {
         NSAttributeDescription *desc = [NSAttributeDescription new];
         [desc setName:@"Content"];
         [desc setAttributeType:NSUndefinedAttributeType];
@@ -1048,7 +1048,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     if (nil == newSuperview) {
         
         if (_fvFlags.isObservingSelectionIndexes) {
-            [self removeObserver:self forKeyPath:@"selectionIndexes"];
+            [self removeObserver:self forKeyPath:NSSelectionIndexesBinding];
             _fvFlags.isObservingSelectionIndexes = NO;
         }
         
@@ -1063,7 +1063,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     else {
         
         if (NO == _fvFlags.isObservingSelectionIndexes) {
-            [self addObserver:self forKeyPath:@"selectionIndexes" options:0 context:&_FVInternalSelectionObserverContext];
+            [self addObserver:self forKeyPath:NSSelectionIndexesBinding options:0 context:&_FVInternalSelectionObserverContext];
             _fvFlags.isObservingSelectionIndexes = YES;
         }
         
@@ -2256,9 +2256,9 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                 // add a single index for an unmodified or cmd-click
                 // add a single index for shift click only if there is no current selection
                 if ((flags & NSShiftKeyMask) == 0 || [_selectedIndexes count] == 0) {
-                    [self willChangeValueForKey:@"selectionIndexes"];
+                    [self willChangeValueForKey:NSSelectionIndexesBinding];
                     [_selectedIndexes addIndex:i];
-                    [self didChangeValueForKey:@"selectionIndexes"];
+                    [self didChangeValueForKey:NSSelectionIndexesBinding];
                 }
                 else if ((flags & NSShiftKeyMask) != 0) {
                     // Shift-click extends by a region; this is equivalent to iPhoto's grid view.  Finder treats shift-click like cmd-click in icon view, but we have a fixed layout, so this behavior is convenient and will be predictable.
@@ -2270,23 +2270,23 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     NSUInteger end = [_selectedIndexes lastIndex];
 
                     if (i < start) {
-                        [self willChangeValueForKey:@"selectionIndexes"];
+                        [self willChangeValueForKey:NSSelectionIndexesBinding];
                         [_selectedIndexes addIndexesInRange:NSMakeRange(i, start - i)];
-                        [self didChangeValueForKey:@"selectionIndexes"];
+                        [self didChangeValueForKey:NSSelectionIndexesBinding];
                     }
                     else if (i > end) {
-                        [self willChangeValueForKey:@"selectionIndexes"];
+                        [self willChangeValueForKey:NSSelectionIndexesBinding];
                         [_selectedIndexes addIndexesInRange:NSMakeRange(end + 1, i - end)];
-                        [self didChangeValueForKey:@"selectionIndexes"];
+                        [self didChangeValueForKey:NSSelectionIndexesBinding];
                     }
                     else if (NSNotFound != _lastClickedIndex) {
                         // This handles the case of clicking in a deselected region between two selected regions.  We want to extend from the last click to the current one, instead of randomly picking an end to start from.
-                        [self willChangeValueForKey:@"selectionIndexes"];
+                        [self willChangeValueForKey:NSSelectionIndexesBinding];
                         if (_lastClickedIndex > i)
                             [_selectedIndexes addIndexesInRange:NSMakeRange(i, _lastClickedIndex - i)];
                         else
                             [_selectedIndexes addIndexesInRange:NSMakeRange(_lastClickedIndex + 1, i - _lastClickedIndex)];
-                        [self didChangeValueForKey:@"selectionIndexes"];
+                        [self didChangeValueForKey:NSSelectionIndexesBinding];
                     }
                 }
                 [self setNeedsDisplay:YES];     
@@ -2294,9 +2294,9 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         }
         else if ((flags & NSCommandKeyMask) != 0) {
             // cmd-clicked a previously selected index, so remove it from the selection
-            [self willChangeValueForKey:@"selectionIndexes"];
+            [self willChangeValueForKey:NSSelectionIndexesBinding];
             [_selectedIndexes removeIndex:i];
-            [self didChangeValueForKey:@"selectionIndexes"];
+            [self didChangeValueForKey:NSSelectionIndexesBinding];
             [self setNeedsDisplay:YES];
         }
         
