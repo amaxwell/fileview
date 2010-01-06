@@ -974,6 +974,72 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     }
 }
 
+- (NSArray *)optionDescriptionsForBinding:(NSString *)binding;
+{
+#warning fixme
+    NSArray *options;
+    
+    if ([binding isEqualToString:@"selectionIndexes"]) {
+        NSAttributeDescription *desc = [NSAttributeDescription new];
+        [desc setName:@"Selection indexes"];
+        [desc setAttributeType:NSUndefinedAttributeType];
+        [desc setDefaultValue:[NSIndexSet indexSet]];
+        [desc setAttributeValueClassName:@"NSIndexSet"];
+        options = [NSArray arrayWithObject:desc];
+        [desc release];
+    }
+    else if ([binding isEqualToString:@"content"]) {
+        NSAttributeDescription *desc = [NSAttributeDescription new];
+        [desc setName:@"Content"];
+        [desc setAttributeType:NSUndefinedAttributeType];
+        [desc setDefaultValue:[NSArray array]];
+        [desc setAttributeValueClassName:@"NSArray"];
+        options = [NSArray arrayWithObject:desc];
+        [desc release];
+    }
+    else if ([binding isEqualToString:@"backgroundColor"]) {
+        NSAttributeDescription *desc = [NSAttributeDescription new];
+        [desc setName:@"Background color"];
+        [desc setAttributeType:NSUndefinedAttributeType];
+        [desc setDefaultValue:[[self class] defaultBackgroundColor]];
+        [desc setAttributeValueClassName:@"NSColor"];
+        options = [NSArray arrayWithObject:desc];
+        [desc release];    
+    }
+    else if ([binding isEqualToString:@"iconScale"]) {
+        NSAttributeDescription *desc = [NSAttributeDescription new];
+        [desc setName:@"Icon scale"];
+        [desc setAttributeType:NSDoubleAttributeType];
+        [desc setDefaultValue:[NSNumber numberWithDouble:1.0]];
+        [desc setAttributeValueClassName:@"NSNumber"];
+        options = [NSArray arrayWithObject:desc];
+        [desc release];
+    }
+    else if ([binding isEqualToString:@"maxIconScale"]) {
+        NSAttributeDescription *desc = [NSAttributeDescription new];
+        [desc setName:@"Maximum icon scale"];
+        [desc setAttributeType:NSDoubleAttributeType];
+        [desc setDefaultValue:[NSNumber numberWithDouble:10.0]];
+        [desc setAttributeValueClassName:@"NSNumber"];
+        options = [NSArray arrayWithObject:desc];
+        [desc release];
+    }
+    else if ([binding isEqualToString:@"minIconScale"]) {
+        NSAttributeDescription *desc = [NSAttributeDescription new];
+        [desc setName:@"Minimum icon scale"];
+        [desc setAttributeType:NSDoubleAttributeType];
+        [desc setDefaultValue:[NSNumber numberWithDouble:0.5]];
+        [desc setAttributeValueClassName:@"NSNumber"];
+        options = [NSArray arrayWithObject:desc];
+        [desc release];
+    }
+    else {
+        options = [super optionDescriptionsForBinding:binding];
+    }
+    FVLog(@"binding = %@, options = %@", binding, options);
+    return options;
+}
+
 - (void)viewWillMoveToSuperview:(NSView *)newSuperview
 {
     [super viewWillMoveToSuperview:newSuperview];
