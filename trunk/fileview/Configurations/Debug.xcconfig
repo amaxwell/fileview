@@ -5,7 +5,7 @@
 //  Created by Adam Maxwell on 07/02/08.
 
 ARCHS = $(NATIVE_ARCH_32_BIT)
-SDKROOT = macosx10.5
+SDKROOT = macosx10.6
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 MACOSX_DEPLOYMENT_TARGET = 10.4
 PREBINDING = NO
