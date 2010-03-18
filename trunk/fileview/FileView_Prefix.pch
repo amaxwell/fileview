@@ -49,7 +49,7 @@ _FVAPIAssertBody((condition), @"Invalid parameter not satisfying: %s", #conditio
 
 #ifndef MAC_OS_X_VERSION_10_6
 #define USE_DISPATCH_QUEUE 0
-#else
+#elif MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
 #define USE_DISPATCH_QUEUE 1
 #warning Using dispatch queue
 #endif
