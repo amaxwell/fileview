@@ -416,62 +416,61 @@ static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
     OSAtomicIncrement32Barrier((volatile int32_t *)&zone->_reallocCount);
 #endif
     
-    void *newPtr;
+    // !!! two early returns here
     
-    // okay to call realloc with a NULL pointer, but should not be the typical usage
-    if (__builtin_expect(NULL != ptr, 1)) {    
+    // okay to call realloc with a NULL pointer, but should not be the typical usage; just malloc a new block
+    if (__builtin_expect(NULL == ptr, 0))
+        return fv_zone_malloc(fvzone, size);
         
-        // bizarre, but documented behavior of realloc(3)
-        if (__builtin_expect(0 == size, 0)) {
-            fv_zone_free(fvzone, ptr);
-            return fv_zone_malloc(fvzone, size);
-        }
-        
-        fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
-        // error on an invalid pointer
-        if (__builtin_expect(NULL == alloc, 0)) {
-            malloc_printf("%s: pointer %p not malloced in zone %s\n", __func__, ptr, malloc_get_zone_name(&zone->_basic_zone));
-            malloc_printf("Break on malloc_printf to debug.\n");
-            HALT;
-            return NULL; /* not reached; keep clang happy */
-        }
-        
-        kern_return_t ret = KERN_FAILURE;
-        
-        // See if it's already large enough, due to padding, or the caller requesting a smaller block (so we never resize downwards).
-        if (alloc->ptrSize >= size) {
+    // bizarre, but documented behavior of realloc(3)
+    if (__builtin_expect(0 == size, 0)) {
+        fv_zone_free(fvzone, ptr);
+        return fv_zone_malloc(fvzone, size);
+    }
+    
+    void *newPtr;
+
+    fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
+    // error on an invalid pointer
+    if (__builtin_expect(NULL == alloc, 0)) {
+        malloc_printf("%s: pointer %p not malloced in zone %s\n", __func__, ptr, malloc_get_zone_name(&zone->_basic_zone));
+        malloc_printf("Break on malloc_printf to debug.\n");
+        HALT;
+        return NULL; /* not reached; keep clang happy */
+    }
+    
+    kern_return_t ret = KERN_FAILURE;
+    
+    // See if it's already large enough, due to padding, or the caller requesting a smaller block (so we never resize downwards).
+    if (alloc->ptrSize >= size) {
+        newPtr = ptr;
+        ret = KERN_SUCCESS;
+    }
+    else if (alloc->guard == &_vm_guard) {
+        // pointer to the current end of this region
+        vm_address_t addr = (vm_address_t)alloc->base + alloc->allocSize;
+        // attempt to allocate at a specific address and extend the existing region
+        ret = vm_allocate(mach_task_self(), &addr, round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
+        // if this succeeds, increase sizes and assign newPtr to the original parameter
+        if (KERN_SUCCESS == ret) {
+            alloc->allocSize += round_page(size);
+            alloc->ptrSize += round_page(size);
+            // adjust allocation size in the zone
+            OSSpinLockLock(&zone->_spinLock);
+            zone->_allocatedSize += round_page(size);
+            OSSpinLockUnlock(&zone->_spinLock);
             newPtr = ptr;
         }
-        else if (alloc->guard == &_vm_guard) {
-            // pointer to the current end of this region
-            vm_address_t addr = (vm_address_t)alloc->base + alloc->allocSize;
-            // attempt to allocate at a specific address and extend the existing region
-            ret = vm_allocate(mach_task_self(), &addr, round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
-            // if this succeeds, increase sizes and assign newPtr to the original parameter
-            if (KERN_SUCCESS == ret) {
-                alloc->allocSize += round_page(size);
-                alloc->ptrSize += round_page(size);
-                // adjust allocation size in the zone
-                OSSpinLockLock(&zone->_spinLock);
-                zone->_allocatedSize += round_page(size);
-                OSSpinLockUnlock(&zone->_spinLock);
-                newPtr = ptr;
-            }
-        }
-        
-        // if this wasn't a vm region or the vm region couldn't be extended, allocate a new block
-        if (KERN_SUCCESS != ret) {
-            // get a new buffer, copy contents, return original ptr to the pool; should try to use vm_copy here
-            newPtr = fv_zone_malloc(fvzone, size);
-            memcpy(newPtr, ptr, alloc->ptrSize);
-            fv_zone_free(fvzone, ptr);
-        }
-        
     }
-    else {
-        // original pointer was NULL, so just malloc a new block
+    
+    // if this wasn't a vm region or the vm region couldn't be extended, allocate a new block
+    if (KERN_SUCCESS != ret) {
+        // get a new buffer, copy contents, return original ptr to the pool; should try to use vm_copy here
         newPtr = fv_zone_malloc(fvzone, size);
+        memcpy(newPtr, ptr, alloc->ptrSize);
+        fv_zone_free(fvzone, ptr);
     }
+        
     return newPtr;
 }
 
