@@ -481,16 +481,25 @@ static void fv_zone_destroy(malloc_zone_t *fvzone)
     
     // remove from timed processing
     pthread_mutex_lock(&_allZonesLock);
+    if (_allZones->count(zone) == 0) {
+        malloc_printf("attempt to destroy invalid fvzone %s\n", malloc_get_zone_name(&zone->_basic_zone));
+        HALT;
+    }
     _allZones->erase(zone);
     pthread_mutex_unlock(&_allZonesLock);
     
     // remove all the free buffers
     OSSpinLockLock(&zone->_spinLock);
     zone->_availableAllocations->clear();
-    
+    delete zone->_availableAllocations;
+    zone->_availableAllocations = NULL;
+
     // now deallocate all buffers allocated using this zone, regardless of underlying call
     for_each(zone->_allocations->begin(), zone->_allocations->end(), __fv_zone_destroy_allocation);
-    zone->_allocations->clear();
+    zone->_allocations->clear();    
+    delete zone->_allocations;
+    zone->_allocations = NULL;
+    
     zone->_allocPtr = NULL;
     zone->_allocPtrCount = 0;
     OSSpinLockUnlock(&zone->_spinLock);
