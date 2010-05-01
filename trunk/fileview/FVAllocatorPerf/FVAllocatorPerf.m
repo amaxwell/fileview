@@ -5,7 +5,7 @@
 #import "FVUtilities.h"
 #import <libkern/OSAtomic.h>
 
-static CGContextRef FVCFIconBitmapContextCreateWithSize(size_t width, size_t height)
+static CGContextRef FVIconBitmapContextCreateWithSize(CFAllocatorRef alloc, size_t width, size_t height)
 {
     size_t bitsPerComponent = 8;
     size_t nComponents = 4;
@@ -24,42 +24,7 @@ static CGContextRef FVCFIconBitmapContextCreateWithSize(size_t width, size_t hei
      Based on the older post outlined above, I was already using a device RGB colorspace, but former information indicated that 16 byte row alignment was best, and I was using ARGB on both ppc and x86.  Not sure if the alignment comment is completely applicable since I'm not interacting directly with the GPU, but it shouldn't hurt.
      */
     
-    char *bitmapData = CFAllocatorAllocate(NULL, requiredDataSize, 0);
-    if (NULL == bitmapData) return NULL;
-    
-    CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
-    CGContextRef ctxt;
-    CGBitmapInfo bitmapInfo = (kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host);
-    ctxt = CGBitmapContextCreate(bitmapData, width, height, bitsPerComponent, bytesPerRow, cspace, bitmapInfo);
-    CGColorSpaceRelease(cspace);
-    
-    CGContextSetRenderingIntent(ctxt, kCGRenderingIntentAbsoluteColorimetric);
-    
-    // note that bitmapData and the context itself are allocated and not freed here
-    
-    return ctxt;
-}
-
-static CGContextRef FVIconBitmapContextCreateWithSize(size_t width, size_t height)
-{
-    size_t bitsPerComponent = 8;
-    size_t nComponents = 4;
-    size_t bytesPerRow = FVPaddedRowBytesForWidth(nComponents, width);
-    
-    size_t requiredDataSize = bytesPerRow * height;
-    
-    /* 
-     CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB) gives us a device independent colorspace, but we don't care in this case, since we're just drawing to the screen, and color conversion when blitting the CGImageRef is a pretty big hit.  See http://www.cocoabuilder.com/archive/message/cocoa/2002/10/31/56768 for additional details, including a recommendation to use alpha in the highest 8 bits (ARGB) and use kCGRenderingIntentAbsoluteColorimetric for rendering intent.
-     */
-    
-    /*
-     From John Harper on quartz-dev: http://lists.apple.com/archives/Quartz-dev/2008/Feb/msg00045.html
-     "Since you are creating the images you give to CA in the GenericRGB color space, CA will have to copy each image and color-match it to the display before they can be uploaded to the GPU. So the first thing I would try is using a DisplayRGB colorspace when you create the bitmap context. Also, to avoid having the graphics card make another copy, you should align the row bytes of the new image to at least 64 bytes. Finally, it's normally best to create BGRA images on intel machines and ARGB on ppc, so that would be the image format (kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host)."
-     
-     Based on the older post outlined above, I was already using a device RGB colorspace, but former information indicated that 16 byte row alignment was best, and I was using ARGB on both ppc and x86.  Not sure if the alignment comment is completely applicable since I'm not interacting directly with the GPU, but it shouldn't hurt.
-     */
-    
-    char *bitmapData = CFAllocatorAllocate(FVAllocatorGetDefault(), requiredDataSize, 0);
+    char *bitmapData = CFAllocatorAllocate(alloc, requiredDataSize, 0);
     if (NULL == bitmapData) return NULL;
     
     CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
@@ -87,11 +52,13 @@ static void func1()
     t1 = CFAbsoluteTimeGetCurrent();
     CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
     NSMutableArray *array = [NSMutableArray new];
+    CFAllocatorRef alloc = FVAllocatorGetDefault();
+    CFAllocatorRef defaultAlloc = CFAllocatorGetDefault();
     for (int i = 0; i < NUM_IMAGES; i++) {    
-        CGContextRef context = FVIconBitmapContextCreateWithSize(dimension, dimension);
+        CGContextRef context = FVIconBitmapContextCreateWithSize(alloc, dimension, dimension);
         CGContextSetFillColor(context, fill);
         CGContextFillRect(context, fillRect);
-        CFDataRef cfData = CFDataCreateWithBytesNoCopy(NULL, CGBitmapContextGetData(context), CGBitmapContextGetBytesPerRow(context) * dimension, FVAllocatorGetDefault());
+        CFDataRef cfData = CFDataCreateWithBytesNoCopy(defaultAlloc, CGBitmapContextGetData(context), CGBitmapContextGetBytesPerRow(context) * dimension, alloc);
         CGDataProviderRef provider = CGDataProviderCreateWithCFData(cfData);
         CFRelease(cfData);
         CGImageRef anImage = CGImageCreate(dimension, dimension, 8, 32, CGBitmapContextGetBytesPerRow(context), cspace, (kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host), provider, NULL, true, kCGRenderingIntentDefault);
@@ -117,11 +84,12 @@ static void func2()
     t1 = CFAbsoluteTimeGetCurrent();
     CGColorSpaceRef cspace = CGColorSpaceCreateDeviceRGB();
     NSMutableArray *array = [NSMutableArray new];
+    CFAllocatorRef alloc = CFAllocatorGetDefault();
     for (int i = 0; i < NUM_IMAGES; i++) {    
-        CGContextRef context = FVCFIconBitmapContextCreateWithSize(dimension, dimension);
+        CGContextRef context = FVIconBitmapContextCreateWithSize(alloc, dimension, dimension);
         CGContextSetFillColor(context, fill);
         CGContextFillRect(context, fillRect);
-        CFDataRef cfData = CFDataCreateWithBytesNoCopy(NULL, CGBitmapContextGetData(context), CGBitmapContextGetBytesPerRow(context) * dimension, CFAllocatorGetDefault());
+        CFDataRef cfData = CFDataCreateWithBytesNoCopy(alloc, CGBitmapContextGetData(context), CGBitmapContextGetBytesPerRow(context) * dimension, alloc);
         CGDataProviderRef provider = CGDataProviderCreateWithCFData(cfData);
         CFRelease(cfData);
         CGImageRef anImage = CGImageCreate(dimension, dimension, 8, 32, CGBitmapContextGetBytesPerRow(context), cspace, (kCGImageAlphaPremultipliedFirst | kCGBitmapByteOrder32Host), provider, NULL, true, kCGRenderingIntentDefault);
