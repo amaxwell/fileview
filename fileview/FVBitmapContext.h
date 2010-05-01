@@ -40,7 +40,7 @@
 #define _FVBITMAPCONTEXT_H_
 
 #import <Cocoa/Cocoa.h>
-#import <FVObject.h>
+#import "FVObject.h"
 
 __BEGIN_DECLS
 
