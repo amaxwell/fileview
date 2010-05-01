@@ -126,6 +126,7 @@ static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *
     fv_allocation_t *alloc = NULL;
     if ((uintptr_t)ptr >= sizeof(fv_allocation_t))
         alloc = (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t));
+    OSSpinLockLock(&zone->_spinLock);
     if (find(zone->_allocations->begin(), zone->_allocations->end(), alloc) == zone->_allocations->end()) {
         alloc = NULL;
     } 
@@ -133,6 +134,7 @@ static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *
         malloc_printf("inconsistency in allocation records for zone %s\n", malloc_get_zone_name(&zone->_basic_zone));
         HALT;
     }
+    OSSpinLockUnlock(&zone->_spinLock);
     /*
      The simple check to ensure that this is one of our pointers will fail if the math results in a pointer outside our address space, if we're passed a non-FVAllocator pointer in a certain memory region.  This happens when loading the plugin into IB, for instance.
      if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard)
