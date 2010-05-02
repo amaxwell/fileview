@@ -97,12 +97,12 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 
 - (void)handleAppTerminate:(NSNotification *)aNote
 {
-    [[NSNotificationCenter defaultCenter] removeObserver:self];
-    [self cancel];
+    [self terminate];
 }
 
 - (void)terminate;
 {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
     CFRunLoopRemoveObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode);
     CFRunLoopRemoveObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes);
     [self cancel];
