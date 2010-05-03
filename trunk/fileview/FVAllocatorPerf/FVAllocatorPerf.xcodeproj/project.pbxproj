@@ -10,7 +10,7 @@
 		8DD76F9A0486AA7600D96B5E /* FVAllocatorPerf.m in Sources */ = {isa = PBXBuildFile; fileRef = 08FB7796FE84155DC02AAC07 /* FVAllocatorPerf.m */; settings = {ATTRIBUTES = (); }; };
 		8DD76F9C0486AA7600D96B5E /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 08FB779EFE84155DC02AAC07 /* Foundation.framework */; };
 		8DD76F9F0486AA7600D96B5E /* FVAllocatorPerf.1 in CopyFiles */ = {isa = PBXBuildFile; fileRef = C6859EA3029092ED04C91782 /* FVAllocatorPerf.1 */; };
-		F957064D0FEAFD10007AFD94 /* fv_zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F957064B0FEAFD10007AFD94 /* fv_zone.cpp */; };
+		F957064D0FEAFD10007AFD94 /* fv_zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F957064B0FEAFD10007AFD94 /* fv_zone.cpp */; settings = {COMPILER_FLAGS = "-O3"; }; };
 		F9D4F0B00E47FFF500775E83 /* FVAllocator.m in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0AD0E47FFF500775E83 /* FVAllocator.m */; };
 		F9D4F0B10E47FFF500775E83 /* FVUtilities.m in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0AF0E47FFF500775E83 /* FVUtilities.m */; };
 		F9D4F0BD0E4800A400775E83 /* FVObject.m in Sources */ = {isa = PBXBuildFile; fileRef = F9D4F0BC0E4800A400775E83 /* FVObject.m */; };
