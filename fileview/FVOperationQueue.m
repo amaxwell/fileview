@@ -39,8 +39,7 @@
 #import "FVOperationQueue.h"
 #import "FVConcreteOperationQueue.h"
 #import "FVMainThreadOperationQueue.h"
-
-NSString * const FVMainQueueRunLoopMode = @"FVMainQueueRunLoopMode";
+#import "FVMainThreadOperationDispatchQueue.h"
 
 @implementation FVOperationQueue
 
@@ -58,7 +57,11 @@ static Class FVOperationQueueClass = Nil;
     FVINITIALIZE(FVOperationQueue);  
     FVOperationQueueClass = self;
     defaultPlaceholderQueue = (FVOperationQueue *)NSAllocateObject(FVOperationQueueClass, 0, [self zone]);
+#if USE_DISPATCH_QUEUE
+    _mainThreadQueue = [FVMainThreadOperationDispatchQueue new];
+#else
     _mainThreadQueue = [FVMainThreadOperationQueue new];
+#endif
 }
 
 + (id)allocWithZone:(NSZone *)aZone

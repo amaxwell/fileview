@@ -496,7 +496,7 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
             _FVAttributedStringOperation *operation = [[_FVAttributedStringOperation allocWithZone:[self zone]] initWithURL:_fileURL];
             [[FVOperationQueue mainQueue] addOperation:operation];
             while (NO == [operation isFinished])
-                [[NSRunLoop currentRunLoop] runMode:FVMainQueueRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
+                CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, TRUE);
             attrString = [[operation attributedString] retain];
             documentAttributes = [[[operation documentAttributes] retain] autorelease];
             [operation release];
