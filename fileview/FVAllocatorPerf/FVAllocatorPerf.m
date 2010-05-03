@@ -140,39 +140,39 @@ static volatile int32_t _threadCount = 0;
 @end
 
 #define USE_THREADS 1
-#define THREADCOUNT 4
+#define THREADCOUNT ((NSInteger)[[NSProcessInfo processInfo] activeProcessorCount] * 2)
 #define USE_FVALLOCATOR 1
-#define USE_CFALLOCATOR 1
+#define USE_CFALLOCATOR 0
 
 int main (int argc, const char * argv[]) {
     NSAutoreleasePool * pool = [[NSAutoreleasePool alloc] init];
-    
+   
 #if USE_THREADS
     for (int j = THREADCOUNT; j <= THREADCOUNT; j++) {
-    FVLog(@"Number of threads: %d", j);
+        FVLog(@"Number of threads: %d", j);
 #if USE_FVALLOCATOR
-    for (int i = 0; i < j; i++) {
-        [NSThread detachNewThreadSelector:@selector(run) toTarget:[[ThreadObject1 new] autorelease] withObject:nil];
-    }
-    while (0 < _threadCount) {
-        [NSThread sleepForTimeInterval:1.0];
-    }
-    [pool drain];
-    pool = [NSAutoreleasePool new];
+        for (int i = 0; i < j; i++) {
+            [NSThread detachNewThreadSelector:@selector(run) toTarget:[[ThreadObject1 new] autorelease] withObject:nil];
+        }
+        while (0 < _threadCount) {
+            [NSThread sleepForTimeInterval:1.0];
+        }
+        [pool drain];
+        pool = [NSAutoreleasePool new];
 #endif /* USE_FVALLOCATOR */
-    
+        
 #if USE_CFALLOCATOR  
     for (int i = 0; i < j; i++) {
-        [NSThread detachNewThreadSelector:@selector(run) toTarget:[[ThreadObject2 new] autorelease] withObject:nil];
-    }
-    while (0 < _threadCount) {
-        [NSThread sleepForTimeInterval:1.0];
-    }
-    [pool drain];
-    pool = [NSAutoreleasePool new];
-    }
+            [NSThread detachNewThreadSelector:@selector(run) toTarget:[[ThreadObject2 new] autorelease] withObject:nil];
+        }
+        while (0 < _threadCount) {
+            [NSThread sleepForTimeInterval:1.0];
+        }
+        [pool drain];
+        pool = [NSAutoreleasePool new];
 #endif /* USE_CFALLOCATOR */
-#else
+    }
+#else /* USE_THREADS */
 #if USE_FVALLOCATOR
     func1();
 #endif /* USE_FVALLOCATOR */
@@ -180,9 +180,7 @@ int main (int argc, const char * argv[]) {
 #if USE_CFALLOCATOR  
     func2();
 #endif /* USE_CFALLOCATOR */
-
-#endif /* USE_THREADS */
-    
+#endif /* USE_THREADS */    
     [pool drain];
     return 0;
 }
