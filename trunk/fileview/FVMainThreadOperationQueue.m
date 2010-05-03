@@ -41,10 +41,9 @@
 #import "FVPriorityQueue.h"
 #import "FVUtilities.h"
 
-#if USE_DISPATCH_QUEUE
-#import <dispatch/dispatch.h>
-#endif
 #import <pthread.h>
+
+static NSString * const FVMainQueueRunLoopMode = @"FVMainQueueRunLoopMode";
 
 @implementation FVMainThreadOperationQueue
 
@@ -126,37 +125,21 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 - (void)addOperation:(FVOperation *)operation;
 {
     [operation setQueue:self];
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
-    dispatch_async(dispatch_get_main_queue(), ^{
-        if ([operation isCancelled] == NO)
-            [operation start];
-    });
-#else
     OSSpinLockLock(&_queueLock);
     [_pendingOperations push:operation];
     OSSpinLockUnlock(&_queueLock); 
     // needed if the app is in the background
     CFRunLoopWakeUp(CFRunLoopGetMain());
-#endif
 }
 
 - (void)addOperations:(NSArray *)operations;
 {
     [operations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
-    for (FVOperation *op in operations) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if ([op isCancelled] == NO)
-                [op start];
-        });
-    }
-#else
     OSSpinLockLock(&_queueLock);
     [_pendingOperations pushMultiple:operations];
     OSSpinLockUnlock(&_queueLock);   
     // needed if the app is in the background
     CFRunLoopWakeUp(CFRunLoopGetMain());
-#endif
 }
 
 /*
