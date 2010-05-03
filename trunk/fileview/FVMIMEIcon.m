@@ -98,13 +98,18 @@ static FVMIMEIcon *defaultPlaceholderIcon = nil;
 
 - (NSSize)size { return (NSSize){ FVMaxThumbnailDimension, FVMaxThumbnailDimension }; }   
 
-// We always ignore the result of +allocWithZone: since we may return a previously allocated instance.  No need to do [self release] on the placeholder.
+/*
+ We always ignore the result of +allocWithZone: since we may return a previously allocated instance.  
+ No need to do [self release] on the placeholder.
+ */
 - (id)initWithMIMEType:(NSString *)type;
 {
     NSParameterAssert(nil != type);
     NSParameterAssert(defaultPlaceholderIcon == self);
     [_iconTableLock lock];
     FVMIMEIcon *icon = [_iconTable objectForKey:type];
+    [_iconTableLock unlock];    
+
     if (nil == icon) {
         icon = (FVMIMEIcon *)NSAllocateObject(FVMIMEIconClass, 0, [self zone]);
         FVInvocationOperation *operation = [[FVInvocationOperation alloc] initWithTarget:icon selector:@selector(_initWithMIMEType:) object:type];
@@ -113,17 +118,24 @@ static FVMIMEIcon *defaultPlaceholderIcon = nil;
         [operation setQueuePriority:FVOperationQueuePriorityVeryHigh];
         [[FVOperationQueue mainQueue] addOperation:operation];
         [operation autorelease];
-        // If this is already the main thread, running it in the default runloop mode should cause the operation to complete, but may lead to a deadlock since webview callouts can be sent multiple times due to server push or multiple views loading the same icon simultaneously (and this method is not reentrant).  The problem is that it can flush all pending operations.
+        /*
+         If this is already the main thread, running it in the default runloop mode should cause the 
+         operation to complete, but may lead to a deadlock if we held _iconTableLock, since webview 
+         callouts can be sent multiple times due to server push or multiple views loading the same 
+         icon simultaneously (and this method is not reentrant).  The problem is that it can flush 
+         all pending operations.
+         */
         while (NO == [operation isFinished])
-            CFRunLoopRunInMode((CFStringRef)FVMainQueueRunLoopMode, 0.1, YES);
+            CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, YES);
         
         icon = [operation result];
         if (icon) {
+            [_iconTableLock lock];
             [_iconTable setObject:icon forKey:type];
+            [_iconTableLock unlock];    
             [icon release];
         }
     }
-    [_iconTableLock unlock];    
     return [icon retain];
 }
 

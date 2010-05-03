@@ -42,10 +42,6 @@
 
 /** @file FVOperationQueue.h  Abstract operation queue. */ 
 
-/** \var FVMainQueueRunLoopMode 
- Can use this to run main queue operations in a blocking mode. */
-FV_PRIVATE_EXTERN NSString * const FVMainQueueRunLoopMode;
-
 /** Abstract operation queue.
  
  This class declares the interface for an operation queue with similar semantics to NSOperationQueue.  Initializers return an instance of a concrete subclass, never of an FVOperationQueue itself.  FVOperationQueue is thread safe, and instances may be shared between threads with no additional locking, although the client is responsible for keeping a valid reference. */
