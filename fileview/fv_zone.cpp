@@ -114,7 +114,7 @@ static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
 #define FV_COLLECT_THRESHOLD 104857600UL
 
 #if ENABLE_STATS
-#define FV_COLLECT_TIMEINTERVAL 60
+#define FV_COLLECT_TIMEINTERVAL 10
 #else
 #define FV_COLLECT_TIMEINTERVAL 300
 #endif
@@ -811,8 +811,8 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
         // clear out all of the available allocations; this could be more intelligent
         for (it = zone->_availableAllocations->begin(); it != zone->_availableAllocations->end(); it++) {
             // remove from the allocation list
-            vector<fv_allocation_t *>::iterator toerase = find(zone->_allocations->begin(), zone->_allocations->end(), *it);
-            fv_zone_assert(toerase != zone->_allocations->end());
+            vector<fv_allocation_t *>::iterator toerase = lower_bound(zone->_allocations->begin(), zone->_allocations->end(), *it);
+            fv_zone_assert(*toerase == *it);
             zone->_allocations->erase(toerase);
             
             // change the sizes in the zone's record
