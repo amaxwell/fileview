@@ -75,7 +75,7 @@ typedef struct _fv_zone_t {
     size_t             _allocPtrCount;        /* number of ALLOC pointers in _allocPtr */
     size_t             _allocatedSize;        /* free + active allocations (allocSize) */
     size_t             _freeSize;             /* available allocations (allocSize)     */
-    OSSpinLock         _spinLock;             /* lock before manipulating fields       */
+    OSSpinLock         _lock;                 /* lock before manipulating fields       */
 #if ENABLE_STATS
     volatile uint32_t  _cacheHits;
     volatile uint32_t  _cacheMisses;
@@ -96,8 +96,10 @@ typedef struct _fv_allocation_t {
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
-#define LOCK(z) OSSpinLockLock(&z->_spinLock)
-#define UNLOCK(z) OSSpinLockUnlock(&z->_spinLock)
+#define LOCK_INIT(z) z->_lock = OS_SPINLOCK_INIT
+#define LOCK(z) OSSpinLockLock(&z->_lock)
+#define UNLOCK(z) OSSpinLockUnlock(&z->_lock)
+#define TRYLOCK(z) OSSpinLockTry(&z->_lock)
 
 // used as sentinel field in allocation struct; do not rely on the value
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
@@ -777,7 +779,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     bool (*compare_ptr)(ALLOC, ALLOC) = __fv_alloc_size_compare;
     zone->_availableAllocations = new multiset<MSALLOC>(compare_ptr);
     zone->_allocations = new vector<ALLOC>;
-    zone->_spinLock = OS_SPINLOCK_INIT;
+    LOCK_INIT(zone);
     
     // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
     malloc_zone_register((malloc_zone_t *)zone);
@@ -806,7 +808,7 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
 #endif
     // read freeSize before locking, since collection isn't critical
     // if we can't lock immediately, wait for another opportunity
-    if (zone->_freeSize > FV_COLLECT_THRESHOLD && OSSpinLockTry(&zone->_spinLock)) {
+    if (zone->_freeSize > FV_COLLECT_THRESHOLD && TRYLOCK(zone)) {
             
         set<fv_allocation_t *>::iterator it;
         
