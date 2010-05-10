@@ -75,7 +75,7 @@ typedef struct _fv_zone_t {
     size_t             _allocPtrCount;        /* number of ALLOC pointers in _allocPtr */
     size_t             _allocatedSize;        /* free + active allocations (allocSize) */
     size_t             _freeSize;             /* available allocations (allocSize)     */
-    OSSpinLock         _lock;                 /* lock before manipulating fields       */
+    pthread_mutex_t    _lock;                 /* lock before manipulating fields       */
 #if ENABLE_STATS
     volatile uint32_t  _cacheHits;
     volatile uint32_t  _cacheMisses;
@@ -96,10 +96,10 @@ typedef struct _fv_allocation_t {
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
-#define LOCK_INIT(z) z->_lock = OS_SPINLOCK_INIT
-#define LOCK(z) OSSpinLockLock(&z->_lock)
-#define UNLOCK(z) OSSpinLockUnlock(&z->_lock)
-#define TRYLOCK(z) OSSpinLockTry(&z->_lock)
+#define LOCK_INIT(z) pthread_mutex_init(&z->_lock, NULL)
+#define LOCK(z) pthread_mutex_lock(&z->_lock)
+#define UNLOCK(z) pthread_mutex_unlock(&z->_lock)
+#define TRYLOCK(z) (pthread_mutex_trylock(&z->_lock) == 0)
 
 // used as sentinel field in allocation struct; do not rely on the value
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
