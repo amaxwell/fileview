@@ -107,6 +107,9 @@ typedef NSUInteger FVDropOperation;
 
 #define INSERTION_HIGHLIGHT_WIDTH ((CGFloat) 6.0)
 
+// set to 1 to get legacy behavior of spacebar; habit from Finder is killing me
+#define FV_SPACE_SCROLLS 0
+
 // draws grid and margin frames
 #define DEBUG_GRID 0
 
@@ -772,10 +775,15 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
             
             // reload might result in an empty view...
             if ([_selectedIndexes count] == 0) {
-                [[FVPreviewer sharedPreviewer] stopPreviewing];
-                [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
-                [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
-                [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
+                
+                if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
+                    [[FVPreviewer sharedPreviewer] stopPreviewing];
+                }
+                else if (_fvFlags.controllingPreviewPanel) {
+                    [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
+                    [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
+                    [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
+                }
             }
             else if ([_selectedIndexes count] == 1) {
                 NSUInteger r, c;
@@ -2201,15 +2209,19 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 {
     NSString *chars = [event characters];
     if ([chars length] > 0) {
-        unichar ch = [[event characters] characterAtIndex:0];
-        NSUInteger flags = [event modifierFlags];
+        unichar ch = [chars characterAtIndex:0];
         
         switch(ch) {
             case 0x0020:
+#if FV_SPACE_SCROLLS
+                NSUInteger flags = [event modifierFlags];
                 if ((flags & NSShiftKeyMask) != 0)
                     [[self enclosingScrollView] pageUp:self];
                 else
                     [[self enclosingScrollView] pageDown:self];
+#else
+                [self previewAction:self];
+#endif
                 break;
             default:
                 [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -2843,8 +2855,10 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 - (IBAction)previewAction:(id)sender;
 {
-    if ([[FVPreviewer sharedPreviewer] isPreviewing] || _fvFlags.controllingPreviewPanel) {
+    if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
         [[FVPreviewer sharedPreviewer] stopPreviewing];
+    }
+    else if (_fvFlags.controllingPreviewPanel) {
         [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
         [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
         [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
