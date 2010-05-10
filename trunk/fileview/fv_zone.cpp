@@ -127,7 +127,7 @@ static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *
     if ((uintptr_t)ptr >= sizeof(fv_allocation_t))
         alloc = (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t));
     OSSpinLockLock(&zone->_spinLock);
-    if (find(zone->_allocations->begin(), zone->_allocations->end(), alloc) == zone->_allocations->end()) {
+    if (binary_search(zone->_allocations->begin(), zone->_allocations->end(), alloc) == false) {
         alloc = NULL;
     } 
     else if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard) {
@@ -136,7 +136,10 @@ static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *
     }
     OSSpinLockUnlock(&zone->_spinLock);
     /*
-     The simple check to ensure that this is one of our pointers will fail if the math results in a pointer outside our address space, if we're passed a non-FVAllocator pointer in a certain memory region.  This happens when loading the plugin into IB, for instance.
+     This simple check to ensure that this is one of our pointers will fail if the math results in 
+     dereferenceing a pointer outside our address space, if we're passed a non-FVAllocator pointer 
+     in a certain memory region.  This happens when loading the plugin into IB, for instance.
+     
      if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard)
      alloc = NULL;
      */
@@ -213,8 +216,9 @@ static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t
 {
     OSSpinLockLock(&zone->_spinLock);
     fv_zone_assert(find(zone->_allocations->begin(), zone->_allocations->end(), alloc) == zone->_allocations->end());
-    zone->_allocations->push_back(alloc);
     zone->_allocatedSize += alloc->allocSize;
+    vector <fv_allocation_t *>::iterator it = upper_bound(zone->_allocations->begin(), zone->_allocations->end(), alloc);
+    zone->_allocations->insert(it, alloc);
     zone->_allocPtr = &zone->_allocations->front();
     zone->_allocPtrCount = zone->_allocations->size();
     OSSpinLockUnlock(&zone->_spinLock);
@@ -820,6 +824,8 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
             // deallocate underlying storage
             __fv_zone_destroy_allocation(*it);
         } 
+        
+        // removal doesn't alter sort order, so no need to call sort() here
         
         // reset heap pointer and length
         zone->_allocPtr = &zone->_allocations->front();
