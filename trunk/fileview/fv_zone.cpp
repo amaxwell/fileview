@@ -123,13 +123,15 @@ static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
 #define FV_COLLECT_TIMEINTERVAL 10
 #endif
 
+#define FV_ALLOC_FROM_POINTER(ptr) (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t))
+
 // fv_allocation_t struct always immediately precedes the data pointer
 // returns NULL if the pointer was not allocated in this zone
 static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *zone, const void *ptr)
 {
     fv_allocation_t *alloc = NULL;
     if ((uintptr_t)ptr >= sizeof(fv_allocation_t))
-        alloc = (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t));
+        alloc = FV_ALLOC_FROM_POINTER(ptr);
     LOCK(zone);
     if (binary_search(zone->_allocations->begin(), zone->_allocations->end(), alloc) == false) {
         alloc = NULL;
@@ -219,7 +221,7 @@ static inline size_t __fv_zone_round_size(const size_t requestedSize, bool *useV
 static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t *zone)
 {
     LOCK(zone);
-    fv_zone_assert(find(zone->_allocations->begin(), zone->_allocations->end(), alloc) == zone->_allocations->end());
+    fv_zone_assert(binary_search(zone->_allocations->begin(), zone->_allocations->end(), alloc) == false);
     zone->_allocatedSize += alloc->allocSize;
     vector <fv_allocation_t *>::iterator it = upper_bound(zone->_allocations->begin(), zone->_allocations->end(), alloc);
     zone->_allocations->insert(it, alloc);
@@ -389,6 +391,31 @@ static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
     return ret;
 }
 
+static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
+{
+    LOCK(zone);
+    // check to ensure that it's not already in the free list
+    pair <multiset<fv_allocation_t *>::iterator, multiset<fv_allocation_t *>::iterator> range;
+    range = zone->_availableAllocations->equal_range(alloc);
+    multiset <fv_allocation_t *>::iterator it;
+    for (it = range.first; it != range.second; it++) {
+        if (*it == alloc) {
+            malloc_printf("%s: double free of pointer %p in zone %s\n", __func__, alloc->ptr, malloc_get_zone_name(&zone->_basic_zone));
+            malloc_printf("Break on malloc_printf to debug.\n");
+            HALT;
+        }
+    }
+    // add to free list
+    zone->_availableAllocations->insert(alloc);
+    alloc->free = true;
+    zone->_freeSize += alloc->allocSize;
+    UNLOCK(zone);    
+    
+    // signal for collection if needed (lock not required, no effect if not blocking on the condition)
+    if (zone->_freeSize > FV_COLLECT_THRESHOLD)
+        pthread_cond_signal(&_collectorCond);    
+}
+
 static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
@@ -403,19 +430,15 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
             HALT;
             return; /* not reached; keep clang happy */
         }
-        // add to free list
-        LOCK(zone);
-        // check to ensure that it's not already in the free list
-        // FIXME: assert availableAllocations does not contain alloc
-        zone->_availableAllocations->insert(alloc);
-        alloc->free = true;
-        zone->_freeSize += alloc->allocSize;
-        UNLOCK(zone);    
-
-        // signal for collection if needed (lock not required, no effect if not blocking on the condition)
-        if (zone->_freeSize > FV_COLLECT_THRESHOLD)
-            pthread_cond_signal(&_collectorCond);
+        __fv_zone_free_allocation(zone, alloc);
     }
+}
+
+static void fv_zone_free_definite(malloc_zone_t *fvzone, void *ptr, size_t size)
+{
+    fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
+    fv_allocation_t *alloc = FV_ALLOC_FROM_POINTER(ptr);
+    __fv_zone_free_allocation(zone, alloc);
 }
 
 static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
@@ -769,6 +792,8 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.batch_free = NULL;
     zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
     zone->_basic_zone.version = 0;  /* from scalable_malloc.c in Libc-498.1.1 */
+    zone->_basic_zone.memalign = NULL;
+    zone->_basic_zone.free_definite_size = fv_zone_free_definite;
     
     // explicitly initialize padding to NULL
     zone->_reserved[0] = NULL;
