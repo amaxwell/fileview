@@ -2678,6 +2678,37 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 #pragma mark User interaction
 
+- (void)doCommandBySelector:(SEL)aSelector
+{
+    if (aSelector == @selector(pageUp:) || aSelector == @selector(pageDown:)) {
+        
+        /*
+         When you show a Quick Look panel in Finder, arrow keys control Finder icon navigation,
+         but page up/page down control the Quick Look panel.  Since the QL panel actually appears
+         to intercept pageUp:/pageDown: without sending them to the delegate, this code is 
+         currently only called on FVPreviewer.
+         */        
+        NSWindow *window = nil;
+        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+            window = [[FVPreviewer sharedPreviewer] window];
+        else if (_fvFlags.controllingPreviewPanel)
+            window = [QLPreviewPanelClass sharedPreviewPanel];
+        
+        // FVPreviewer implements pageUp:/pageDown: for this reason
+        NSResponder *r = [window firstResponder];
+        bool didPerform = false;
+        while (nil != r && false == didPerform) {
+            didPerform = [r tryToPerform:aSelector with:nil];
+            r = [r nextResponder];
+        }
+        
+        if (false == didPerform)
+            [super doCommandBySelector:aSelector];    }
+    else {
+        [super doCommandBySelector:aSelector];
+    }
+}
+
 - (void)scrollItemAtIndexToVisible:(NSUInteger)anIndex
 {
     NSUInteger r = 0, c = 0;
