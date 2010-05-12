@@ -293,6 +293,9 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 
 - (void)_loadAttributedString:(NSAttributedString *)string documentAttributes:(NSDictionary *)attrs inView:(NSTextView *)theView
 {
+    [theView setSelectedRange:NSMakeRange(0, 0)];
+    [theView scrollRangeToVisible:NSMakeRange(0, 0)];
+    
     NSTextStorage *textStorage = [theView textStorage];
     [textStorage setAttributedString:string];
     NSColor *backgroundColor = nil;
@@ -647,6 +650,19 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         return YES;
     }
     return NO;
+}
+
+// implemented for compatibility with Quick Look
+- (void)pageUp:(id)sender
+{
+    if ([[[contentView tabViewItemAtIndex:0] view] isHiddenOrHasHiddenAncestor] == NO)
+        [[[contentView tabViewItemAtIndex:0] view] tryToPerform:_cmd with:nil];
+}
+
+- (void)pageDown:(id)sender
+{
+    if ([[[contentView tabViewItemAtIndex:0] view] isHiddenOrHasHiddenAncestor] == NO)
+        [[[contentView tabViewItemAtIndex:0] view] tryToPerform:_cmd with:nil];
 }
 
 // end up getting this via the responder chain for most views
