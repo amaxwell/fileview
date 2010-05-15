@@ -96,10 +96,10 @@ typedef struct _fv_allocation_t {
     const void      *guard;     /* pointer to a check variable   */
 } fv_allocation_t;
 
-#define LOCK_INIT(z) pthread_mutex_init(&z->_lock, NULL)
-#define LOCK(z) pthread_mutex_lock(&z->_lock)
-#define UNLOCK(z) pthread_mutex_unlock(&z->_lock)
-#define TRYLOCK(z) (pthread_mutex_trylock(&z->_lock) == 0)
+#define LOCK_INIT(z) (pthread_mutex_init(&(z)->_lock, NULL))
+#define LOCK(z) (pthread_mutex_lock(&(z)->_lock))
+#define UNLOCK(z) (pthread_mutex_unlock(&(z)->_lock))
+#define TRYLOCK(z) (pthread_mutex_trylock(&(z)->_lock) == 0)
 
 // used as sentinel field in allocation struct; do not rely on the value
 static char _malloc_guard;  /* indicates underlying allocator is malloc_default_zone() */
@@ -123,7 +123,7 @@ static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
 #define FV_COLLECT_TIMEINTERVAL 10
 #endif
 
-#define FV_ALLOC_FROM_POINTER(ptr) (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t))
+#define FV_ALLOC_FROM_POINTER(ptr) ((fv_allocation_t *)((uintptr_t)(ptr) - sizeof(fv_allocation_t)))
 
 // fv_allocation_t struct always immediately precedes the data pointer
 // returns NULL if the pointer was not allocated in this zone
