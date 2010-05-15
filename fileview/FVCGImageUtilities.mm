@@ -69,10 +69,10 @@
 
 #ifdef IMAGE_SHEAR
 #define DEFAULT_OPTIONS kvImageNoFlags
-#define SHEAR_OPTIONS kvImageEdgeExtend | SCALE_QUALITY
+#define SHEAR_OPTIONS (kvImageEdgeExtend | SCALE_QUALITY)
 #else
 #define DEFAULT_OPTIONS kvImageDoNotTile
-#define SHEAR_OPTIONS kvImageEdgeExtend | kvImageDoNotTile | SCALE_QUALITY
+#define SHEAR_OPTIONS (kvImageEdgeExtend | kvImageDoNotTile | SCALE_QUALITY)
 #endif
 
 // monitor cached tile memory consumption by blocking render threads
