@@ -112,6 +112,9 @@ static pthread_mutex_t   _allZonesLock = PTHREAD_MUTEX_INITIALIZER;
 // used to explicitly signal collection
 static pthread_cond_t    _collectorCond = PTHREAD_COND_INITIALIZER;
 
+// MallocScribble
+static bool              _scribble = false;
+
 // small allocations (below 15K) use malloc_default_zone()
 #define FV_VM_THRESHOLD 15360UL
 // clean up the pool at 100 MB of freed memory
@@ -367,6 +370,10 @@ static void *fv_zone_malloc(malloc_zone_t *fvzone, size_t size)
         alloc->free = false;
         ret = alloc->ptr;
     }
+    if (_scribble) {
+        const int value = 0xaa;
+        memset(ret, value, alloc->ptrSize);
+    }
     return ret;    
 }
 
@@ -393,6 +400,10 @@ static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
 
 static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
 {
+    if (_scribble) {
+        const int value = 0x55;
+        memset(alloc->ptr, value, alloc->ptrSize);
+    }
     LOCK(zone);
     // check to ensure that it's not already in the free list
     pair <multiset<fv_allocation_t *>::iterator, multiset<fv_allocation_t *>::iterator> range;
@@ -776,6 +787,10 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     pthread_mutex_lock(&_allZonesLock);
     // TODO: is using new okay?
     if (NULL == _allZones) _allZones = new set<fv_zone_t *>;
+    if (getenv("MallocScribble") != NULL) {
+        malloc_printf("will scribble memory allocations in zone %s\n", name);
+        _scribble = true;
+    }
     pthread_mutex_unlock(&_allZonesLock);
 
     // let calloc zero all fields
