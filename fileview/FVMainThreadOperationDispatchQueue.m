@@ -65,7 +65,7 @@
     if (self) {
         
         // this lock protects all of the collection ivars
-        _queueLock = OS_SPINLOCK_INIT;
+        (void) pthread_mutex_init(&_queueLock, NULL);
         
         // pending and active operations
         _currentOperations = [NSMutableSet new];
@@ -78,6 +78,7 @@
 {
     [self terminate];
     [_currentOperations release];
+    (void) pthread_mutex_destroy(&_queueLock);
     [super dealloc];
 }
 
@@ -88,25 +89,25 @@
 
 - (void)cancel;
 {
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     
     // objects are either pending or executing; make sure they don't call -finishedOperation
     [_currentOperations makeObjectsPerformSelector:@selector(cancel)];
     [_currentOperations removeAllObjects];
     
-    OSSpinLockUnlock(&_queueLock);
+    pthread_mutex_unlock(&_queueLock);
 }
 
 - (void)addOperation:(FVOperation *)operation;
 {
     bool execute = false;
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     if ([_currentOperations containsObject:operation] == NO) {
         [_currentOperations addObject:operation];
         [operation setQueue:self];
         execute = true;
     }
-    OSSpinLockUnlock(&_queueLock); 
+    pthread_mutex_unlock(&_queueLock); 
     
     if (execute) {
         dispatch_async(dispatch_get_main_queue(), ^{
@@ -119,11 +120,11 @@
 - (void)addOperations:(NSArray *)operations;
 {
     NSMutableSet *possibleOperations = [[NSMutableSet alloc] initWithArray:operations];
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     [possibleOperations minusSet:_currentOperations];    
     if ([possibleOperations count])
         [_currentOperations unionSet:possibleOperations];
-    OSSpinLockUnlock(&_queueLock);   
+    pthread_mutex_unlock(&_queueLock);   
 
     if ([possibleOperations count]) {
         [possibleOperations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
@@ -148,9 +149,9 @@
 // finishedOperation: callback, typically received on the main thread
 - (void)finishedOperation:(FVOperation *)anOperation;
 {
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     [_currentOperations removeObject:anOperation];
-    OSSpinLockUnlock(&_queueLock);
+    pthread_mutex_unlock(&_queueLock);
 }
 
 #endif
