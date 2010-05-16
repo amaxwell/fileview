@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import "FVOperationQueue.h"
-#import <libkern/OSAtomic.h>
+#import <pthread.h>
 #import <mach/port.h>
 
 @class FVOperation, FVPriorityQueue;
@@ -52,7 +52,7 @@
     volatile int32_t _terminate;    
     mach_port_t      _threadPort;
     NSConditionLock *_threadLock;
-    OSSpinLock       _queueLock;
+    pthread_mutex_t  _queueLock;
     FVPriorityQueue *_pendingOperations;
     NSMutableSet    *_activeOperations;    
 }
