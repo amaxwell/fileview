@@ -51,9 +51,10 @@ __BEGIN_DECLS
  
  This is <b>not</b> a general-purpose replacement for the system allocator(s), and the code doesn't draw from tcmalloc or Apple's malloc implementation.  For some background on the problem, see this thread:  http://lists.apple.com/archives/perfoptimization-dev/2008/Apr/msg00018.html which indicates that waiting for a solution from Apple is probably not going to be very gratifying. 
  
- It's also worth noting that some of Apple's performance tool frameworks, used by Instruments and MallocDebug, hardcode zone names.  Consequently, even though I've gone to the trouble of implementing the zone introspection functions here, they're unused.  If you change the zone's name to one of Apple's zone names, the introspection functions are called, but the system gets really confused.  Shark at least records allocations from this zone in a Malloc Trace, whereas allocations using vm_allocate directly are not recorded, so there's some gain.
+ It's also worth noting that some of Apple's performance tool frameworks, used by Instruments and MallocDebug, hardcode zone names.  Consequently, even though I've gone to the trouble of implementing the zone introspection functions here, they're unused.  If you change the zone's name to one of Apple's zone names, the introspection functions are called, but the system gets really confused.  Shark at least records allocations from this zone in a Malloc Trace, whereas allocations using vm_allocate directly are not recorded, so there's some gain.  <b>NB: his restriction is lifted in Instruments, as of 10.6.  The zone introspection callbacks are now used.</b>
  
  @warning If allocations are sized such that you can't reuse them, this allocator is not for you.
+ @warning You must not use this to replace the system's malloc zone, since the implementation uses malloc.
  */
 
 /** @internal @brief Malloc zone.
