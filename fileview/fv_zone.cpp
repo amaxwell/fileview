@@ -42,7 +42,7 @@
 #import <libkern/OSAtomic.h>
 #import <malloc/malloc.h>
 #import <mach/mach.h>
-#import <mach/vm_map.h>
+#import <mach/mach_vm.h>
 #import <pthread.h>
 #import <sys/time.h>
 #import <math.h>
@@ -170,10 +170,10 @@ static inline void __fv_zone_destroy_allocation(fv_allocation_t *alloc)
     // _vm_guard indicates it should be freed with vm_deallocate
     if (__builtin_expect(&_vm_guard == alloc->guard, 1)) {
         fv_zone_assert(__fv_zone_use_vm(alloc->allocSize));
-        vm_size_t len = alloc->allocSize;
-        kern_return_t ret = vm_deallocate(mach_task_self(), (vm_address_t)alloc->base, len);
+        mach_vm_size_t len = alloc->allocSize;
+        kern_return_t ret = mach_vm_deallocate(mach_task_self(), (mach_vm_address_t)alloc->base, len);
         if (__builtin_expect(0 != ret, 0)) {
-            malloc_printf("vm_deallocate failed to deallocate object %p", alloc);        
+            malloc_printf("mach_vm_deallocate failed to deallocate object %p", alloc);        
             malloc_printf("Break on malloc_printf to debug.\n");
         }
     }
@@ -192,21 +192,21 @@ static inline size_t __fv_zone_round_size(const size_t requestedSize, bool *useV
     if (*useVM) {
         
         if (actualSize < 102400) 
-            actualSize = round_page(actualSize);
+            actualSize = mach_vm_round_page(actualSize);
         else if (actualSize < 143360)
-            actualSize = round_page(143360);
+            actualSize = mach_vm_round_page(143360);
         else if (actualSize < 204800)
-            actualSize = round_page(204800);
+            actualSize = mach_vm_round_page(204800);
         else if (actualSize < 262144)
-            actualSize = round_page(262144);
+            actualSize = mach_vm_round_page(262144);
         else if (actualSize < 307200)
-            actualSize = round_page(307200);
+            actualSize = mach_vm_round_page(307200);
         else if (actualSize < 512000)
-            actualSize = round_page(512000);
+            actualSize = mach_vm_round_page(512000);
         else if (actualSize < 614400)
-            actualSize = round_page(614400);
+            actualSize = mach_vm_round_page(614400);
         else 
-            actualSize = round_page(actualSize);
+            actualSize = mach_vm_round_page(actualSize);
         
     }
     else if (actualSize < 128) {
@@ -247,22 +247,22 @@ static inline void __fv_zone_record_allocation(fv_allocation_t *alloc, fv_zone_t
 static fv_allocation_t *__fv_zone_vm_allocation(const size_t requestedSize, fv_zone_t *zone)
 {
     // base address of the allocation, including fv_allocation_t
-    vm_address_t memory;
+    mach_vm_address_t memory;
     fv_allocation_t *alloc = NULL;
     
     // use this space for the header
-    size_t actualSize = requestedSize + vm_page_size;
-    fv_zone_assert(round_page(actualSize) == actualSize);
+    size_t actualSize = requestedSize + PAGE_SIZE;
+    fv_zone_assert(mach_vm_round_page(actualSize) == actualSize);
     
     // allocations going through this allocator will always be larger than 4K
     kern_return_t ret;
-    ret = vm_allocate(mach_task_self(), &memory, actualSize, VM_FLAGS_ANYWHERE);
+    ret = mach_vm_allocate(mach_task_self(), &memory, actualSize, VM_FLAGS_ANYWHERE);
     if (KERN_SUCCESS != ret) memory = 0;
     
     // set up the data structure
     if (__builtin_expect(0 != memory, 1)) {
         // align ptr to a page boundary
-        void *ptr = (void *)round_page((uintptr_t)(memory + sizeof(fv_allocation_t)));
+        void *ptr = (void *)mach_vm_round_page((uintptr_t)(memory + sizeof(fv_allocation_t)));
         // alloc struct immediately precedes ptr so we can find it again
         alloc = (fv_allocation_t *)((uintptr_t)ptr - sizeof(fv_allocation_t));
         alloc->ptr = ptr;
@@ -389,11 +389,11 @@ static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
 {
     // this will already be page-aligned if we're using vm
     const bool useVM = __fv_zone_use_vm(size);
-    if (false == useVM) size += vm_page_size;
+    if (false == useVM) size += PAGE_SIZE;
     void *memory = fv_zone_malloc(zone, size);
     memset(memory, 0, size);
     // this should have no effect if we used vm to allocate
-    void *ret = (void *)round_page((uintptr_t)memory);
+    void *ret = (void *)mach_vm_round_page((uintptr_t)memory);
     if (useVM) { fv_zone_assert(memory == ret); }
     return ret;
 }
@@ -492,16 +492,16 @@ static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
     }
     else if (alloc->guard == &_vm_guard) {
         // pointer to the current end of this region
-        vm_address_t addr = (vm_address_t)alloc->base + alloc->allocSize;
+        mach_vm_address_t addr = (mach_vm_address_t)alloc->base + alloc->allocSize;
         // attempt to allocate at a specific address and extend the existing region
-        ret = vm_allocate(mach_task_self(), &addr, round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
+        ret = mach_vm_allocate(mach_task_self(), &addr, mach_vm_round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
         // if this succeeds, increase sizes and assign newPtr to the original parameter
         if (KERN_SUCCESS == ret) {
-            alloc->allocSize += round_page(size);
-            alloc->ptrSize += round_page(size);
+            alloc->allocSize += mach_vm_round_page(size);
+            alloc->ptrSize += mach_vm_round_page(size);
             // adjust allocation size in the zone
             LOCK(zone);
-            zone->_allocatedSize += round_page(size);
+            zone->_allocatedSize += mach_vm_round_page(size);
             UNLOCK(zone);
             newPtr = ptr;
         }
