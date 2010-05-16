@@ -44,8 +44,8 @@
 #import "_FVSplitSet.h"
 #import "_FVDocumentDescription.h"
 
-static OSSpinLock   _releaseLock = OS_SPINLOCK_INIT;
-static _FVSplitSet *_releaseableIcons = nil;
+static pthread_mutex_t  _releaseLock = PTHREAD_MUTEX_INITIALIZER;
+static _FVSplitSet     *_releaseableIcons = nil;
 
 @implementation FVPDFIcon
 
@@ -98,7 +98,7 @@ static void __FVPageLayerInit()
 */
 + (void)_addIconForMappedRelease:(FVPDFIcon *)anIcon;
 {
-    OSSpinLockLock(&_releaseLock);
+    pthread_mutex_lock(&_releaseLock);
     [_releaseableIcons addObject:anIcon];
     NSSet *oldObjects = nil;
     // ??? is the second condition really required?
@@ -108,7 +108,7 @@ static void __FVPageLayerInit()
         // remove the first 100 objects, since the recently added ones are more likely to be needed again (scrolling up and down)
         [_releaseableIcons removeOldObjects];
     }
-    OSSpinLockUnlock(&_releaseLock);
+    pthread_mutex_unlock(&_releaseLock);
     
     if ([oldObjects count])
         [oldObjects makeObjectsPerformSelector:@selector(_releaseMappedResources)];
@@ -117,9 +117,9 @@ static void __FVPageLayerInit()
 
 + (void)_removeIconForMappedRelease:(FVPDFIcon *)anIcon;
 {
-    OSSpinLockLock(&_releaseLock);
+    pthread_mutex_lock(&_releaseLock);
     [_releaseableIcons removeObject:anIcon];
-    OSSpinLockUnlock(&_releaseLock);    
+    pthread_mutex_unlock(&_releaseLock);    
 }
 
 - (id)initWithURL:(NSURL *)aURL;
