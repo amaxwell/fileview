@@ -38,12 +38,12 @@
 
 #import <Cocoa/Cocoa.h>
 #import "FVOperationQueue.h"
-#import <libkern/OSAtomic.h>
+#import <pthread.h>
 
 @interface FVMainThreadOperationDispatchQueue : FVOperationQueue 
 {
-    OSSpinLock    _queueLock;
-    NSMutableSet *_currentOperations;
+    pthread_mutex_t  _queueLock;
+    NSMutableSet    *_currentOperations;
 }
 
 @end

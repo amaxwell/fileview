@@ -38,7 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import "FVOperationQueue.h"
-#import <libkern/OSAtomic.h>
+#import <pthread.h>
 
 @class FVOperation, FVPriorityQueue;
 
@@ -51,7 +51,7 @@
 {
 @private
     CFRunLoopObserverRef _observer;
-    OSSpinLock           _queueLock;
+    pthread_mutex_t      _queueLock;
     FVPriorityQueue     *_pendingOperations;
     NSMutableSet        *_activeOperations;  
 }

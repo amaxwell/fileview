@@ -65,7 +65,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
         [nc addObserver:self selector:@selector(handleAppTerminate:) name:NSApplicationWillTerminateNotification object:NSApp];
         
         // this lock protects all of the collection ivars
-        _queueLock = OS_SPINLOCK_INIT;
+        (void) pthread_mutex_init(&_queueLock, NULL);
         
         // pending operations
         _pendingOperations = [FVPriorityQueue new];
@@ -89,6 +89,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
     NSParameterAssert(FALSE == CFRunLoopContainsObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes));
     CFRelease(_observer);
     _observer = NULL;
+    (void) pthread_mutex_destroy(&_queueLock);
     [_pendingOperations release];
     [_activeOperations release];
     [super dealloc];
@@ -109,7 +110,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 
 - (void)cancel;
 {
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     
     // objects in _pendingOperations queue are waiting to be executed, so just removing is likely sufficient; cancel anyways, just to be safe
     [_pendingOperations makeObjectsPerformSelector:@selector(cancel)];
@@ -119,15 +120,15 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
     [_activeOperations makeObjectsPerformSelector:@selector(cancel)];
     [_activeOperations removeAllObjects];
     
-    OSSpinLockUnlock(&_queueLock);
+    pthread_mutex_unlock(&_queueLock);
 }
 
 - (void)addOperation:(FVOperation *)operation;
 {
     [operation setQueue:self];
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     [_pendingOperations push:operation];
-    OSSpinLockUnlock(&_queueLock); 
+    pthread_mutex_unlock(&_queueLock); 
     // needed if the app is in the background
     CFRunLoopWakeUp(CFRunLoopGetMain());
 }
@@ -135,9 +136,9 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 - (void)addOperations:(NSArray *)operations;
 {
     [operations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     [_pendingOperations pushMultiple:operations];
-    OSSpinLockUnlock(&_queueLock);   
+    pthread_mutex_unlock(&_queueLock);   
     // needed if the app is in the background
     CFRunLoopWakeUp(CFRunLoopGetMain());
 }
@@ -154,7 +155,7 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
     FVOperation *op = nil;
 
     // ignore cancelled operations, so we get finishedOperation: (no coalescing on _activeOperations)
-    OSSpinLockLock(&(queue->_queueLock));
+    pthread_mutex_lock(&(queue->_queueLock));
     do {
         op = [queue->_pendingOperations pop];
     } while ([op isCancelled]);
@@ -163,11 +164,11 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
     if (op) {
         [queue->_activeOperations addObject:op];
         // avoid deadlock: next call may trigger finishedOperation: on this thread
-        OSSpinLockUnlock(&(queue->_queueLock));
+        pthread_mutex_unlock(&(queue->_queueLock));
         [op start];
     }
     else {
-        OSSpinLockUnlock(&(queue->_queueLock));
+        pthread_mutex_unlock(&(queue->_queueLock));
     }
 }
 
@@ -179,10 +180,10 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 // finishedOperation: callback, typically received on the main thread
 - (void)finishedOperation:(FVOperation *)anOperation;
 {
-    OSSpinLockLock(&_queueLock);
+    pthread_mutex_lock(&_queueLock);
     [_activeOperations removeObject:anOperation];
     NSUInteger cnt = [_pendingOperations count];
-    OSSpinLockUnlock(&_queueLock);
+    pthread_mutex_unlock(&_queueLock);
     
     /*
      Process another operation if necessary.  If multiple ops added at once, we only get
