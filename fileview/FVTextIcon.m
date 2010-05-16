@@ -128,13 +128,14 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 
 + (void)pushTextStorage:(NSTextStorage *)textStorage
 {
+    // no point in keeping this around in memory; deleteCharactersInRange: seems to leak an NSConcreteAttributedString
+    NSAttributedString *empty = [NSAttributedString new];
+    [textStorage replaceCharactersInRange:NSMakeRange(0, [textStorage length]) withAttributedString:empty];
+    [empty release];
+
     OSSpinLockLock(&_cacheLock);
     if ([_cachedTextSystems count] < MAX_CACHED_TEXT_SYSTEMS) {
         [_cachedTextSystems addObject:textStorage];
-        // no point in keeping this around in memory; deleteCharactersInRange: seems to leak an NSConcreteAttributedString
-        NSAttributedString *empty = [NSAttributedString new];
-        [textStorage replaceCharactersInRange:NSMakeRange(0, [textStorage length]) withAttributedString:empty];
-        [empty release];
     }
     OSSpinLockUnlock(&_cacheLock);
 }
