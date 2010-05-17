@@ -38,7 +38,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "fv_zone.h"
+#import "fv_zone.h"
 #import <libkern/OSAtomic.h>
 #import <malloc/malloc.h>
 #import <mach/mach.h>
@@ -54,6 +54,11 @@
 #import <iostream>
 using namespace std;
 
+#define FV_USE_MMAP 0
+#if FV_USE_MMAP
+#import <sys/mman.h>
+#endif
+
 #if DEBUG
 #define ENABLE_STATS 0
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
@@ -61,6 +66,9 @@ using namespace std;
 #define ENABLE_STATS 0
 #define fv_zone_assert(condition)
 #endif
+
+#define FV_VM_MEMORY_MALLOC 240
+#define FV_VM_MEMORY_REALLOC 241
 
 // define so the template isn't insanely wide
 #define ALLOC struct _fv_allocation_t *
@@ -170,8 +178,12 @@ static inline void __fv_zone_destroy_allocation(fv_allocation_t *alloc)
     // _vm_guard indicates it should be freed with vm_deallocate
     if (__builtin_expect(&_vm_guard == alloc->guard, 1)) {
         fv_zone_assert(__fv_zone_use_vm(alloc->allocSize));
+#if FV_USE_MMAP
+        int ret = munmap(alloc->base, alloc->allocSize);
+#else
         mach_vm_size_t len = alloc->allocSize;
         kern_return_t ret = mach_vm_deallocate(mach_task_self(), (mach_vm_address_t)alloc->base, len);
+#endif
         if (__builtin_expect(0 != ret, 0)) {
             malloc_printf("mach_vm_deallocate failed to deallocate object %p", alloc);        
             malloc_printf("Break on malloc_printf to debug.\n");
@@ -255,9 +267,14 @@ static fv_allocation_t *__fv_zone_vm_allocation(const size_t requestedSize, fv_z
     fv_zone_assert(mach_vm_round_page(actualSize) == actualSize);
     
     // allocations going through this allocator will always be larger than 4K
+#if FV_USE_MMAP
+    memory = (mach_vm_address_t)mmap(0, actualSize, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, VM_MAKE_TAG(FV_VM_MEMORY_MALLOC), 0);
+    if ((void *)memory == MAP_FAILED) memory = 0;
+#else    
     kern_return_t ret;
-    ret = mach_vm_allocate(mach_task_self(), &memory, actualSize, VM_FLAGS_ANYWHERE);
-    if (KERN_SUCCESS != ret) memory = 0;
+    ret = mach_vm_allocate(mach_task_self(), &memory, actualSize, VM_FLAGS_ANYWHERE | VM_MAKE_TAG(FV_VM_MEMORY_MALLOC));
+    if (KERN_SUCCESS != ret) memory = 0;    
+#endif
     
     // set up the data structure
     if (__builtin_expect(0 != memory, 1)) {
@@ -370,10 +387,7 @@ static void *fv_zone_malloc(malloc_zone_t *fvzone, size_t size)
         alloc->free = false;
         ret = alloc->ptr;
     }
-    if (_scribble) {
-        const int value = 0xaa;
-        memset(ret, value, alloc->ptrSize);
-    }
+    if (_scribble) memset(ret, 0xaa, alloc->ptrSize);
     return ret;    
 }
 
@@ -400,10 +414,7 @@ static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
 
 static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
 {
-    if (_scribble) {
-        const int value = 0x55;
-        memset(alloc->ptr, value, alloc->ptrSize);
-    }
+    if (_scribble) memset(alloc->ptr, 0x55, alloc->ptrSize);
     LOCK(zone);
     // check to ensure that it's not already in the free list
     pair <multiset<fv_allocation_t *>::iterator, multiset<fv_allocation_t *>::iterator> range;
@@ -494,7 +505,7 @@ static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
         // pointer to the current end of this region
         mach_vm_address_t addr = (mach_vm_address_t)alloc->base + alloc->allocSize;
         // attempt to allocate at a specific address and extend the existing region
-        ret = mach_vm_allocate(mach_task_self(), &addr, mach_vm_round_page(size) - alloc->allocSize, VM_FLAGS_FIXED);
+        ret = mach_vm_allocate(mach_task_self(), &addr, mach_vm_round_page(size) - alloc->allocSize, VM_FLAGS_FIXED | VM_MAKE_TAG(FV_VM_MEMORY_REALLOC));
         // if this succeeds, increase sizes and assign newPtr to the original parameter
         if (KERN_SUCCESS == ret) {
             alloc->allocSize += mach_vm_round_page(size);
