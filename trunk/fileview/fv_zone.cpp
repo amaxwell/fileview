@@ -136,14 +136,11 @@ static bool              _scribble = false;
 
 #define FV_ALLOC_FROM_POINTER(ptr) ((fv_allocation_t *)((uintptr_t)(ptr) - sizeof(fv_allocation_t)))
 
-// fv_allocation_t struct always immediately precedes the data pointer
-// returns NULL if the pointer was not allocated in this zone
-static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *zone, const void *ptr)
+static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer_locked(fv_zone_t *zone, const void *ptr)
 {
     fv_allocation_t *alloc = NULL;
     if ((uintptr_t)ptr >= sizeof(fv_allocation_t))
         alloc = FV_ALLOC_FROM_POINTER(ptr);
-    LOCK(zone);
     if (binary_search(zone->_allocations->begin(), zone->_allocations->end(), alloc) == false) {
         alloc = NULL;
     } 
@@ -151,7 +148,6 @@ static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *
         malloc_printf("inconsistency in allocation records for zone %s\n", malloc_get_zone_name(&zone->_basic_zone));
         HALT;
     }
-    UNLOCK(zone);
     /*
      This simple check to ensure that this is one of our pointers will fail if the math results in 
      dereferenceing a pointer outside our address space, if we're passed a non-FVAllocator pointer 
@@ -160,6 +156,16 @@ static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *
      if (NULL != alloc && alloc->guard != &_vm_guard && alloc->guard != &_malloc_guard)
      alloc = NULL;
      */
+    return alloc;
+}
+
+// fv_allocation_t struct always immediately precedes the data pointer
+// returns NULL if the pointer was not allocated in this zone
+static inline fv_allocation_t *__fv_zone_get_allocation_from_pointer(fv_zone_t *zone, const void *ptr)
+{
+    LOCK(zone);
+    fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer_locked(zone, ptr);
+    UNLOCK(zone);
     return alloc;
 }
 
@@ -412,10 +418,9 @@ static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
     return ret;
 }
 
-static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
+static void __fv_zone_free_allocation_locked(fv_zone_t *zone, fv_allocation_t *alloc)
 {
     if (_scribble) memset(alloc->ptr, 0x55, alloc->ptrSize);
-    LOCK(zone);
     // check to ensure that it's not already in the free list
     pair <multiset<fv_allocation_t *>::iterator, multiset<fv_allocation_t *>::iterator> range;
     range = zone->_availableAllocations->equal_range(alloc);
@@ -431,11 +436,17 @@ static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
     zone->_availableAllocations->insert(alloc);
     alloc->free = true;
     zone->_freeSize += alloc->allocSize;
-    UNLOCK(zone);    
     
     // signal for collection if needed (lock not required, no effect if not blocking on the condition)
     if (zone->_freeSize > FV_COLLECT_THRESHOLD)
         pthread_cond_signal(&_collectorCond);    
+}
+
+static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
+{
+    LOCK(zone);
+    __fv_zone_free_allocation_locked(zone, alloc);
+    UNLOCK(zone);      
 }
 
 static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
@@ -444,7 +455,8 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
     
     // ignore NULL
     if (__builtin_expect(NULL != ptr, 1)) {    
-        fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer(zone, ptr);
+        LOCK(zone);
+        fv_allocation_t *alloc = __fv_zone_get_allocation_from_pointer_locked(zone, ptr);
         // error on an invalid pointer
         if (__builtin_expect(NULL == alloc, 0)) {
             malloc_printf("%s: pointer %p not malloced in zone %s\n", __func__, ptr, malloc_get_zone_name(&zone->_basic_zone));
@@ -452,7 +464,8 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
             HALT;
             return; /* not reached; keep clang happy */
         }
-        __fv_zone_free_allocation(zone, alloc);
+        __fv_zone_free_allocation_locked(zone, alloc);
+        UNLOCK(zone);
     }
 }
 
