@@ -43,8 +43,6 @@
 
 #import <pthread.h>
 
-static NSString * const FVMainQueueRunLoopMode = @"FVMainQueueRunLoopMode";
-
 @implementation FVMainThreadOperationQueue
 
 + (void)initialize
@@ -75,8 +73,6 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
         
         CFRunLoopObserverContext context = { 0, self, NULL, NULL, NULL };
         _observer = CFRunLoopObserverCreate(NULL, kCFRunLoopAllActivities, TRUE, 0, __FVProcessSingleEntry, &context);
-        CFRunLoopAddCommonMode(CFRunLoopGetMain(), (CFStringRef)FVMainQueueRunLoopMode);
-        CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode);
         CFRunLoopAddObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes);
     }
     return self;
@@ -85,7 +81,6 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 - (void)dealloc
 {
     [self terminate];
-    NSParameterAssert(FALSE == CFRunLoopContainsObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode));
     NSParameterAssert(FALSE == CFRunLoopContainsObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes));
     CFRelease(_observer);
     _observer = NULL;
@@ -103,7 +98,6 @@ static void __FVProcessSingleEntry(CFRunLoopObserverRef observer, CFRunLoopActiv
 - (void)terminate;
 {
     [[NSNotificationCenter defaultCenter] removeObserver:self];
-    CFRunLoopRemoveObserver(CFRunLoopGetMain(), _observer, (CFStringRef)FVMainQueueRunLoopMode);
     CFRunLoopRemoveObserver(CFRunLoopGetMain(), _observer, kCFRunLoopCommonModes);
     [self cancel];
 }
