@@ -59,6 +59,12 @@ using namespace std;
 #import <sys/mman.h>
 #endif
 
+#if MAC_OS_X_VERSION_MIN_REQUIRED <= MAC_OS_X_VERSION_10_5
+#ifndef mach_vm_round_page
+#define mach_vm_round_page(x) (((mach_vm_offset_t)(x) + PAGE_MASK) & ~((signed)PAGE_MASK))
+#endif
+#endif
+
 #if DEBUG
 #define ENABLE_STATS 0
 #define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
@@ -442,13 +448,6 @@ static void __fv_zone_free_allocation_locked(fv_zone_t *zone, fv_allocation_t *a
         pthread_cond_signal(&_collectorCond);    
 }
 
-static void __fv_zone_free_allocation(fv_zone_t *zone, fv_allocation_t *alloc)
-{
-    LOCK(zone);
-    __fv_zone_free_allocation_locked(zone, alloc);
-    UNLOCK(zone);      
-}
-
 static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
@@ -469,12 +468,16 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
     }
 }
 
+#if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
 static void fv_zone_free_definite(malloc_zone_t *fvzone, void *ptr, size_t size)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
     fv_allocation_t *alloc = FV_ALLOC_FROM_POINTER(ptr);
-    __fv_zone_free_allocation(zone, alloc);
+    LOCK(zone);
+    __fv_zone_free_allocation_locked(zone, alloc);
+    UNLOCK(zone);      
 }
+#endif
 
 static void *fv_zone_realloc(malloc_zone_t *fvzone, void *ptr, size_t size)
 {
@@ -831,8 +834,11 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.batch_free = NULL;
     zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
     zone->_basic_zone.version = 0;  /* from scalable_malloc.c in Libc-498.1.1 */
+    
+#if MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5
     zone->_basic_zone.memalign = NULL;
     zone->_basic_zone.free_definite_size = fv_zone_free_definite;
+#endif
     
     // explicitly initialize padding to NULL
     zone->_reserved[0] = NULL;
