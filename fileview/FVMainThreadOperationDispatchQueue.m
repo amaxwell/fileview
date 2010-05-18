@@ -41,14 +41,14 @@
 #import "FVPriorityQueue.h"
 #import "FVUtilities.h"
 
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
+#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
 #import <dispatch/dispatch.h>
 #endif
 #import <pthread.h>
 
 @implementation FVMainThreadOperationDispatchQueue
 
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
+#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
 
 #warning main thread queue is GCD
 

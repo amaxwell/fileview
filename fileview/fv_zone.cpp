@@ -468,7 +468,7 @@ static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
     }
 }
 
-#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
+#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
 static void fv_zone_free_definite(malloc_zone_t *fvzone, void *ptr, size_t size)
 {
     fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
@@ -835,7 +835,7 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
     zone->_basic_zone.version = 0;  /* from scalable_malloc.c in Libc-498.1.1 */
     
-#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
+#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
     zone->_basic_zone.memalign = NULL;
     zone->_basic_zone.free_definite_size = fv_zone_free_definite;
 #endif
