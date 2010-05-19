@@ -2678,32 +2678,52 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
 
 #pragma mark User interaction
 
+- (BOOL)_tryToPerform:(SEL)aSelector inViewAndDescendants:(NSView *)aView
+{
+    if ([aView isHiddenOrHasHiddenAncestor])
+        return NO;
+    
+    if ([aView tryToPerform:aSelector with:nil])
+        return YES;
+    
+    NSEnumerator *subviewEnum = [[aView subviews] objectEnumerator];
+    while ((aView = [subviewEnum nextObject]) != nil) {
+        if ([aView isHiddenOrHasHiddenAncestor])
+            continue;
+        if ([self _tryToPerform:aSelector inViewAndDescendants:aView])
+            return YES;
+    }
+    return NO;
+}
+
+- (void)_tryToPerformInPreviewer:(SEL)aSelector
+{
+    /*
+     When you show a Quick Look panel in Finder, arrow keys control Finder icon navigation,
+     but page up/page down control the Quick Look panel.  Since the QL panel actually appears
+     to intercept pageUp:/pageDown: without sending them to the delegate, this code is 
+     currently only called on FVPreviewer.
+     
+     Implementing pageUp:/pageDown: in FVPreviewer and walking the responder chain
+     led to an infinite loop with the PDFView.  Walking subviews is slightly unpleasant, but
+     it doesn't (and shouldn't) crash.
+     */        
+    NSWindow *window = nil;
+    if ([[FVPreviewer sharedPreviewer] isPreviewing])
+        window = [[FVPreviewer sharedPreviewer] window];
+    else if (_fvFlags.controllingPreviewPanel)
+        window = [QLPreviewPanelClass sharedPreviewPanel];
+    
+    if ([self _tryToPerform:aSelector inViewAndDescendants:[window contentView]] == NO)
+        [super doCommandBySelector:aSelector];
+}
+
 - (void)doCommandBySelector:(SEL)aSelector
 {
     if (aSelector == @selector(pageUp:) || aSelector == @selector(pageDown:)) {
         
-        /*
-         When you show a Quick Look panel in Finder, arrow keys control Finder icon navigation,
-         but page up/page down control the Quick Look panel.  Since the QL panel actually appears
-         to intercept pageUp:/pageDown: without sending them to the delegate, this code is 
-         currently only called on FVPreviewer.
-         */        
-        NSWindow *window = nil;
-        if ([[FVPreviewer sharedPreviewer] isPreviewing])
-            window = [[FVPreviewer sharedPreviewer] window];
-        else if (_fvFlags.controllingPreviewPanel)
-            window = [QLPreviewPanelClass sharedPreviewPanel];
-        
-        // FVPreviewer implements pageUp:/pageDown: for this reason
-        NSResponder *r = [window firstResponder];
-        bool didPerform = false;
-        while (nil != r && false == didPerform) {
-            didPerform = [r tryToPerform:aSelector with:nil];
-            r = [r nextResponder];
-        }
-        
-        if (false == didPerform)
-            [super doCommandBySelector:aSelector];    }
+        [self _tryToPerformInPreviewer:aSelector];
+    }
     else {
         [super doCommandBySelector:aSelector];
     }
