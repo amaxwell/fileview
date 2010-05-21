@@ -59,13 +59,19 @@
      Handle escape; this is essentially overriding any key bindings, but interpretKeyEvents:
      sends complete: on my system when I get an esc.  Even if that binding is not standard, it's
      fairly common.
+     
+     Use space bar to dismiss as well, since the views in the previewer are not editable.
      */
-    if ([[event characters] length] && [[event characters] characterAtIndex:0] == 0x001b) {
-
-        if ([[self window] delegate]) 
-            [(FVPreviewer *)[[self window] delegate] cancel:self];
-        else
-            [_windowDelegate cancel:self];
+    if ([[event characters] length]) {
+        
+        const unichar ch = [[event characters] characterAtIndex:0];
+        
+        if (ch == 0x001b || ch == 0x0020) {
+            if ([[self window] delegate]) 
+                [(FVPreviewer *)[[self window] delegate] cancel:self];
+            else
+                [_windowDelegate cancel:self];
+        }
         
     }
     else {
