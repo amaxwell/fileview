@@ -2683,7 +2683,12 @@ static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
     if ([aView isHiddenOrHasHiddenAncestor])
         return NO;
     
-    if ([aView tryToPerform:aSelector with:nil])
+    /*
+     Since WebView returns YES from tryToPerform:@selector(pageDown:), but actually does nothing,
+     we have to find an enclosing scrollview.  This sucks, but it'll at least work for anything
+     in FVPreviewer.
+     */
+    if ([aView enclosingScrollView] && [[aView enclosingScrollView] tryToPerform:aSelector with:nil])
         return YES;
     
     NSEnumerator *subviewEnum = [[aView subviews] objectEnumerator];
