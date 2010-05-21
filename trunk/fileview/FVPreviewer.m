@@ -477,6 +477,9 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
     
     if ([paths count] && [[NSFileManager defaultManager] isExecutableFileAtPath:@"/usr/bin/qlmanage"]) {
         
+        if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5)
+            NSLog(@"FileView error: Snow Leopard should not be using qlmanage");
+        
         NSMutableArray *args = paths;
         [args insertObject:@"-p" atIndex:0];
         NSParameterAssert(nil == qlTask);
