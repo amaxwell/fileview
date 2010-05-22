@@ -113,6 +113,30 @@ NSString * const FVSliderMouseExitedNotificationName = @"FVSliderMouseExitedNoti
     return self;
 }
 
+- (void)scrollWheel:(NSEvent *)theEvent
+{
+    const CGFloat dx = [theEvent deltaX];
+    const CGFloat dy = [theEvent deltaY];
+    const CGFloat length = MAX(NSWidth([self bounds]), NSHeight([self bounds]));
+    
+    // checked behavior against slider in QT Player 10; correct for horizontal slider
+    
+    if (ABS(dx) > ABS(dy)) {
+        double delta = - dx / length * ([self maxValue] - [self minValue]);
+        [self setDoubleValue:(delta + [self doubleValue])];
+        [self sendAction:[self action] to:[self target]];
+    }
+    else if (ABS(dy) > ABS(dx)) {
+        double delta = dy / length * ([self maxValue] - [self minValue]);
+        [self setDoubleValue:(delta + [self doubleValue])];
+        [self sendAction:[self action] to:[self target]];
+    }
+    else {
+        [super scrollWheel:theEvent];
+    }
+
+}
+
 - (void)drawRect:(NSRect)aRect
 {
     if (-1 != _trackingTag)
