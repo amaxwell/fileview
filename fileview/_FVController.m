@@ -149,9 +149,12 @@
 
 - (void)setIconURLs:(NSArray *)array
 {
+    // should only be used when bound
+    FVAPIParameterAssert(_isBound);
     if (_orderedURLs != array) {
         [_orderedURLs release];
-        _orderedURLs = [array copyWithZone:[self zone]];
+        // immutable (shallow) copy, since I want direct mutation to raise when using bindings
+        _orderedURLs = [[NSArray allocWithZone:[self zone]] initWithArray:array copyItems:NO];
     }    
 }
 
