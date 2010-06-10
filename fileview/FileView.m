@@ -929,9 +929,9 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [contentBinding->_observable removeObserver:self forKeyPath:contentBinding->_keyPath];
         [_contentBinding release];
         _contentBinding = nil;
-        [_controller setBound:NO];
-        
+
         [_controller setIconURLs:nil];
+        [_controller setBound:NO];
         // Calling -[super unbind:binding] after this may cause selection to be reset; this happens with the controller in the demo project, since it unbinds in the wrong order.  We should be resilient against that, so we unbind first.
         [self setSelectionIndexes:[NSIndexSet indexSet]];
     }
