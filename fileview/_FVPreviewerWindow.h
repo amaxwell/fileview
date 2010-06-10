@@ -56,9 +56,10 @@
 @interface _FVPreviewerWindow : NSPanel
 {
 @private
-    BOOL               _didClickWindow;
+    unsigned char      _clickCount;
     CFRunLoopSourceRef _mouseDownSource;
     CFMachPortRef      _mouseDownTap;
+    NSTimeInterval     _lastClickTime;
 }
 
 /** @internal Call as needed to return NO for NSWindow::canBecomeKeyWindow. */

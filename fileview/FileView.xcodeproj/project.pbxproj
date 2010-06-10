@@ -135,6 +135,7 @@
 		F9C3BCF10D6E000400BDC3FF /* FVColorMenuView.h in Headers */ = {isa = PBXBuildFile; fileRef = F9C3BCEF0D6E000400BDC3FF /* FVColorMenuView.h */; };
 		F9C3BCF20D6E000400BDC3FF /* FVColorMenuView.m in Sources */ = {isa = PBXBuildFile; fileRef = F9C3BCF00D6E000400BDC3FF /* FVColorMenuView.m */; };
 		F9C3BD020D6E005800BDC3FF /* FVColorMenuView.nib in Resources */ = {isa = PBXBuildFile; fileRef = F9C3BD010D6E005800BDC3FF /* FVColorMenuView.nib */; };
+		F9C6304111C0A2B200043475 /* IOKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F9C6304011C0A2B200043475 /* IOKit.framework */; };
 		F9C664280E04205100ED3EC1 /* FVCoreTextIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9C664260E04205100ED3EC1 /* FVCoreTextIcon.h */; };
 		F9C664290E04205100ED3EC1 /* FVCoreTextIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F9C664270E04205100ED3EC1 /* FVCoreTextIcon.m */; };
 		F9CADB8E0D6203C700B1EADE /* FVMIMEIcon.h in Headers */ = {isa = PBXBuildFile; fileRef = F9CADB8C0D6203C700B1EADE /* FVMIMEIcon.h */; };
@@ -326,6 +327,7 @@
 		F9C3BCEF0D6E000400BDC3FF /* FVColorMenuView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVColorMenuView.h; sourceTree = "<group>"; };
 		F9C3BCF00D6E000400BDC3FF /* FVColorMenuView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVColorMenuView.m; sourceTree = "<group>"; };
 		F9C3BD010D6E005800BDC3FF /* FVColorMenuView.nib */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; path = FVColorMenuView.nib; sourceTree = "<group>"; };
+		F9C6304011C0A2B200043475 /* IOKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOKit.framework; path = /System/Library/Frameworks/IOKit.framework; sourceTree = "<absolute>"; };
 		F9C664260E04205100ED3EC1 /* FVCoreTextIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCoreTextIcon.h; sourceTree = "<group>"; };
 		F9C664270E04205100ED3EC1 /* FVCoreTextIcon.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVCoreTextIcon.m; sourceTree = "<group>"; };
 		F9CADB8C0D6203C700B1EADE /* FVMIMEIcon.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVMIMEIcon.h; sourceTree = "<group>"; };
@@ -368,6 +370,7 @@
 				F94692340CA5710500AC2772 /* WebKit.framework in Frameworks */,
 				F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */,
 				F92CBB400D806B7C0009E371 /* Accelerate.framework in Frameworks */,
+				F9C6304111C0A2B200043475 /* IOKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -423,6 +426,7 @@
 		0867D69AFE84028FC02AAC07 /* External Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				F9C6304011C0A2B200043475 /* IOKit.framework */,
 				F92CBB3F0D806B7C0009E371 /* Accelerate.framework */,
 				F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */,
 				F980F0920CCC3C2E0067C1DF /* libz.dylib */,

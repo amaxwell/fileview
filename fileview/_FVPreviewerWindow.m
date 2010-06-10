@@ -38,18 +38,34 @@
 
 #import "_FVPreviewerWindow.h"
 #import "FVUtilities.h"
+#import <IOKit/hidsystem/event_status_driver.h>
 
 @implementation _FVPreviewerWindow
 
 static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon)
 {
     _FVPreviewerWindow *self = refcon;
-    if (NO == self->_didClickWindow && CGRectContainsPoint(NSRectToCGRect([self frame]), CGEventGetUnflippedLocation(event))) {
-
-        self->_didClickWindow = YES;
+    
+    if (CGRectContainsPoint(NSRectToCGRect([self frame]), CGEventGetUnflippedLocation(event))) {
         
-        // this allows selection to work immediately
-        [self makeKeyAndOrderFront:nil];
+        // See header for GetDblTime.  Getting kCGMouseEventClickState didn't work.
+        NXEventHandle handle = NXOpenEventStatus();
+        double clickTime = NXClickTime(handle);
+        NXCloseEventStatus(handle);
+
+        NSTimeInterval currentTime = [NSDate timeIntervalSinceReferenceDate];
+        if (1 == self->_clickCount && (currentTime - self->_lastClickTime) <= clickTime) {
+            fprintf(stderr, "double click event\n");
+
+        }
+        else if (0 == self->_clickCount) {
+                        
+            // this allows selection to work immediately
+            [self makeKeyAndOrderFront:nil];
+        }
+        self->_lastClickTime = currentTime;
+        self->_clickCount += 1;
+
     }
     return event;
 }
@@ -60,6 +76,9 @@ static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType 
         assert(NULL == _mouseDownTap);
         ProcessSerialNumber psn;
         GetProcessForPID(getpid(), &psn);
+        
+        _lastClickTime = 0;
+        _clickCount = 0;
         
         _mouseDownTap = CGEventTapCreateForPSN(&psn, kCGHeadInsertEventTap, kCGEventTapOptionListenOnly, kCGEventLeftMouseDown|kCGEventRightMouseDown|kCGEventOtherMouseDown, __FVPreviewWindowMouseDown, self);
         _mouseDownSource = CFMachPortCreateRunLoopSource(CFAllocatorGetDefault(), _mouseDownTap, 0);
@@ -85,7 +104,7 @@ static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType 
 - (void)resetKeyStatus;
 {
     // keep listening; window's content has just changed
-    _didClickWindow = NO;
+    _clickCount = 0;
 }
 
 - (void)close
@@ -101,7 +120,7 @@ static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType 
     [super dealloc];
 }
 
-- (BOOL)canBecomeKeyWindow { return _didClickWindow; }
+- (BOOL)canBecomeKeyWindow { return _clickCount; }
 
 - (BOOL)makeFirstResponder:(NSResponder *)aResponder 
 { 
