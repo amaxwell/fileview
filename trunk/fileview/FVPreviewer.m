@@ -242,8 +242,15 @@
     qlTask = nil;    
 }
 
+- (void)setCurrentURL:(NSURL *)aURL
+{
+    [currentURL autorelease];
+    currentURL = [aURL copy];
+}
+
 - (void)stopPreviewing;
 {
+    [self setCurrentURL:nil];
     [self _killTask];
 
     if (windowLoaded && [[self window] isVisible]) {
@@ -599,6 +606,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 - (void)previewURL:(NSURL *)absoluteURL forIconInRect:(NSRect)screenRect
 {
     FVAPIParameterAssert(nil != absoluteURL);
+    [self setCurrentURL:absoluteURL];
 
     // set up a rect in the middle of the main screen for a default value from which to animate
     if (NSEqualRects(screenRect, NSZeroRect)) {
@@ -643,6 +651,13 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         [[[self window] contentView] enterFullScreenMode:[[self window] screen] withOptions:nil];
         [[fullScreenButton cell] setBackgroundStyle:NSBackgroundStyleLight];
     }
+}
+
+- (void)doubleClickedPreviewWindow
+{
+    NSParameterAssert([[self window] isVisible]);
+    NSParameterAssert(currentURL);
+    [[NSWorkspace sharedWorkspace] openURL:currentURL];
 }
 
 // esc is typically bound to complete: instead of cancel: in a textview

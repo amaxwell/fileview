@@ -54,8 +54,15 @@ static CGEventRef __FVPreviewWindowMouseDown(CGEventTapProxy proxy, CGEventType 
         NXCloseEventStatus(handle);
 
         NSTimeInterval currentTime = [NSDate timeIntervalSinceReferenceDate];
+        /*
+         If the first two clicks represent a double-click, treat it as a request to open
+         the file.  Otherwise, assume that this event and all subsequent events are for
+         text selection.
+         */
         if (1 == self->_clickCount && (currentTime - self->_lastClickTime) <= clickTime) {
-            fprintf(stderr, "double click event\n");
+
+            NSCParameterAssert([[self delegate] respondsToSelector:@selector(doubleClickedPreviewWindow)]);
+            [[self delegate] performSelector:@selector(doubleClickedPreviewWindow)];
 
         }
         else if (0 == self->_clickCount) {
