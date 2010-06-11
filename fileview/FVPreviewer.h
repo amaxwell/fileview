@@ -64,6 +64,7 @@
     NSRect                     previousIconFrame;
     BOOL                       windowLoaded;
     NSTask                     *qlTask;
+    NSURL                      *currentURL;
 }
 
 /** Shared instance.
