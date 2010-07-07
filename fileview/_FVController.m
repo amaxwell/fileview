@@ -282,17 +282,16 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
         while (cnt--) {
             id aURL = [orderedURLs objectAtIndex:cnt];
             FVIcon *icon = [orderedIcons objectAtIndex:cnt];
-            /*
-             Check to see if the icon has cached resources; if not, there's no point in wasting time
-             on stat(2), since it's either invisible or invariant.  The one exception is FVFinderIcon,
-             but changes there would require changing the application for a file or type, or changing
-             the type of the file itself.  The latter will be picked up as a name change, and we have
-             no chance of detecting the former anyway.
-             */
-            if (aURL != nsnull && [aURL isFileURL] && [icon canReleaseResources]) {
+            if (aURL != nsnull && [aURL isFileURL]) {
                 _FVControllerFileKey *newKey = [_FVControllerFileKey newWithURL:aURL];
                 _FVControllerFileKey *oldKey = [_modificationSet member:newKey];
-                if (oldKey && __equal_timespecs(&newKey->_mtimespec, &oldKey->_mtimespec) == false) {
+                /*
+                 Check to see if the icon has cached resources calling recache.  This is of marginal
+                 benefit, since recache should be cheap in that case, but avoids redisplay.  We can't
+                 use it to avoid the stat() call, since otherwise the modification set doesn't get
+                 populated with initial values.
+                 */
+                if (oldKey && __equal_timespecs(&newKey->_mtimespec, &oldKey->_mtimespec) == false && [icon canReleaseResources]) {
                     [[orderedIcons objectAtIndex:cnt] recache];
                     [_modificationSet removeObject:oldKey];
                     redisplay = true;
@@ -319,11 +318,9 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
     [pool release];
 }
 
-// ??? may want to call this when reloading
 - (void)_recacheIconsInBackgroundIfNeeded
 {
-    // don't bother polling the filesystem for URLs in a hidden view
-    if ([_orderedURLs count] && [_view isHidden] == NO) {
+    if ([_orderedURLs count]) {
         NSArray *orderedIcons = [[NSArray alloc] initWithArray:_orderedIcons copyItems:NO];
         NSArray *orderedURLs = [[NSArray alloc] initWithArray:_orderedURLs copyItems:NO];
         NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:orderedIcons, @"orderedIcons", orderedURLs, @"orderedURLs", nil];
@@ -380,6 +377,9 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
         if (_orderedSubtitles)
             insertObjectAtIndex(_orderedSubtitles, insertSel, subtitleAtIndex(_dataSource, subtitleSel, _view, i), i);
     }  
+    
+    // need to make sure the initial state is captured
+    [self _recacheIconsInBackgroundIfNeeded];
 }
 
 - (void)getDisplayName:(NSString **)name andLabel:(NSUInteger *)label forURL:(NSURL *)aURL;
@@ -499,7 +499,9 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
         [_iconCache removeObjectForKey:aURL];
     }
     
-    [self _recacheIconsInBackgroundIfNeeded];
+    // avoid polling the filesystem for hidden views
+    if ([_view isHidden] == NO)
+        [self _recacheIconsInBackgroundIfNeeded];
 }
 
 #pragma mark Download support
