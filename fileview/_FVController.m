@@ -46,6 +46,9 @@
 #import <WebKit/WebKit.h>
 #import <FileView/FVFinderLabel.h>
 
+#import <sys/stat.h>
+#import <sys/time.h>
+
 // check the icon cache every minute and get rid of stale icons
 #define ZOMBIE_TIMER_INTERVAL 60.0
 
@@ -61,6 +64,16 @@
 - (id)initWithURL:(NSURL *)aURL;
 @end
 
+@interface _FVControllerFileKey : FVObject
+{
+@public;
+    NSURL           *_fileURL;
+    NSUInteger       _hash;
+    struct timespec  _mtimespec;
+}
++ (id)newWithURL:(NSURL *)aURL;
+- (id)initWithURL:(NSURL *)aURL;
+@end
 
 @implementation _FVController
 
@@ -117,6 +130,9 @@
         // timer to update the view when a download's length is indeterminate
         _progressTimer = NULL;
         
+        // set of _FVFileKey instances
+        _modificationSet = [NSMutableSet new];
+        _modificationLock = [NSLock new];
     }
 
     // make sure all ivars are set up before calling this
@@ -139,6 +155,8 @@
     [_operationQueue terminate];
     [_operationQueue release];
     [_downloads release];
+    [_modificationSet release];
+    [_modificationLock release];
     [super dealloc];
 }
 
@@ -181,6 +199,12 @@
     // convenient time to do this, although the timer would also handle it
     [_iconCache removeAllObjects];
     [_zombieIconCache removeAllObjects];
+    
+    // not critical; just avoid blocking here...
+    if ([_modificationLock tryLock]) {
+        [_modificationSet removeAllObjects];
+        [_modificationLock unlock];
+    }
 
     // mainly to clean out the arrays
     [self reload];
@@ -230,6 +254,67 @@
 
 // only used by -reload; always returns a value independent of cached state
 - (NSUInteger)_numberOfIcons { return _isBound ? [_orderedURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
+
+static inline bool __equal_timespecs(const struct timespec *ts1, const struct timespec *ts2)
+{
+    return ts1->tv_nsec == ts2->tv_nsec && ts1->tv_sec == ts2->tv_sec;
+}
+
+- (void)_recacheIconsWithInfo:(NSDictionary *)info
+{
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    // if there's ever any contention, don't block
+    if ([_modificationLock tryLock]) {
+        NSArray *orderedIcons = [info objectForKey:@"orderedIcons"];
+        NSArray *orderedURLs = [info objectForKey:@"orderedURLs"];
+        NSParameterAssert([orderedIcons count] == [orderedURLs count]);
+        
+        NSUInteger cnt = [orderedURLs count];
+        NSNull *nsnull = [NSNull null];
+        while (cnt--) {
+            id aURL = [orderedURLs objectAtIndex:cnt];
+            FVIcon *icon = [orderedIcons objectAtIndex:cnt];
+            /*
+             Check to see if the icon has cached resources; if not, there's no point in wasting time
+             on stat(2), since it's either invisible or invariant.  The one exception is FVFinderIcon,
+             but changes there would require changing the application for a file or type, or changing
+             the type of the file itself.  The latter will be picked up as a name change, and we have
+             no chance of detecting the former anyway.
+             */
+            if (aURL != nsnull && [aURL isFileURL] && [icon canReleaseResources]) {
+                _FVControllerFileKey *newKey = [_FVControllerFileKey newWithURL:aURL];
+                _FVControllerFileKey *oldKey = [_modificationSet member:newKey];
+                if (oldKey && __equal_timespecs(&newKey->_mtimespec, &oldKey->_mtimespec) == false) {
+                    [[orderedIcons objectAtIndex:cnt] recache];
+                    [_modificationSet removeObject:oldKey];
+                    fprintf(stderr, "%s was modified; recaching\n", [[[aURL path] lastPathComponent] UTF8String]);
+                }
+                [_modificationSet addObject:newKey];
+                [newKey release];
+            }
+        }
+        [_modificationLock unlock];
+    }
+    else {
+        // keep an eye out for this, but it should never happen
+        FVLog(@"FileView: called _recacheIconsIfNeeded: while another call was in progress.");
+    }
+    [pool release];
+}
+
+// ??? may want to call this when reloading
+- (void)_recacheIconsInBackgroundIfNeeded
+{
+    // don't bother polling the filesystem for URLs in a hidden view
+    if ([_orderedURLs count] && [_view isHidden] == NO) {
+        NSArray *orderedIcons = [[NSArray alloc] initWithArray:_orderedIcons copyItems:NO];
+        NSArray *orderedURLs = [[NSArray alloc] initWithArray:_orderedURLs copyItems:NO];
+        NSDictionary *info = [NSDictionary dictionaryWithObjectsAndKeys:orderedIcons, @"orderedIcons", orderedURLs, @"orderedURLs", nil];
+        [orderedIcons release];
+        [orderedURLs release];
+        [NSThread detachNewThreadSelector:@selector(_recacheIconsWithInfo:) toTarget:self withObject:info];
+    }
+}
 
 - (void)reload;
 {
@@ -396,6 +481,8 @@
         [_zombieIconCache setObject:[_iconCache objectForKey:aURL] forKey:aURL];
         [_iconCache removeObjectForKey:aURL];
     }
+    
+    [self _recacheIconsInBackgroundIfNeeded];
 }
 
 #pragma mark Download support
@@ -513,6 +600,80 @@
     [_name release];
     [super dealloc];
 }
+
+@end
+
+@implementation _FVControllerFileKey
+
++ (id)newWithURL:(NSURL *)aURL
+{
+    return [[self allocWithZone:[self zone]] initWithURL:aURL];
+}
+
+/*
+ Has to be path-based, since we can't guarantee that device/inode will remain
+ the same after a file is modified.  This is unfortunate, since path-based
+ comparisons are inherently slow.
+ */
+
+- (id)initWithURL:(NSURL *)aURL
+{
+    NSParameterAssert([aURL isFileURL]);
+    self = [super init];
+    if (self) {
+                    
+        uint8_t stackBuf[PATH_MAX];
+        uint8_t *fsPath = stackBuf;
+        
+        CFStringRef absolutePath = CFURLCopyFileSystemPath((CFURLRef)aURL, kCFURLPOSIXPathStyle);
+        NSUInteger maxLen = CFStringGetMaximumSizeOfFileSystemRepresentation(absolutePath);
+        if (maxLen > sizeof(stackBuf)) fsPath = NSZoneMalloc(NSDefaultMallocZone(), maxLen);
+        CFStringGetFileSystemRepresentation(absolutePath, (char *)fsPath, maxLen);
+        
+        struct stat sb;
+        int err = stat((char *)fsPath, &sb);
+        
+        if (noErr == err)
+            _mtimespec = sb.st_mtimespec;
+        
+        if (fsPath != stackBuf) NSZoneFree(NSDefaultMallocZone(), fsPath);
+        if (absolutePath) CFRelease(absolutePath);
+            
+        _fileURL = [aURL retain];
+        
+        // NSURL hashing performance sucks prior to 10.6
+        _hash = [aURL hash];
+        
+    }
+    return self;
+}
+
+- (void)dealloc
+{
+    [_fileURL release];
+    [super dealloc];
+}
+
+- (NSString *)description { return [NSString stringWithFormat:@"%@: %@", [super description], [_fileURL absoluteString]]; }
+
+- (id)copyWithZone:(NSZone *)aZone
+{
+    return NSShouldRetainWithZone(self, aZone) ? [self retain] : [[[self class] allocWithZone:aZone] initWithURL:_fileURL];
+}
+
+- (BOOL)isEqual:(_FVControllerFileKey *)other
+{
+    if ([other isKindOfClass:[self class]] == NO)
+        return NO;
+    
+    /*
+     This ignores the NSURL bug in comparing decomposed characters incorrectly, 
+     but that's unlikely to be a problem here, and it's slower to work around.
+     */
+     return [other->_fileURL isEqual:_fileURL];
+}
+
+- (NSUInteger)hash { return _hash; }
 
 @end
 

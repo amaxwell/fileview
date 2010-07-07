@@ -56,6 +56,8 @@
     
     NSMutableArray         *_downloads;
     CFRunLoopTimerRef       _progressTimer;
+    NSMutableSet           *_modificationSet;
+    NSLock                 *_modificationLock;
 }
 
 - (id)initWithView:(FileView *)view;
