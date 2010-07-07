@@ -48,6 +48,7 @@
 
 #import <sys/stat.h>
 #import <sys/time.h>
+#import <pthread.h>
 
 // check the icon cache every minute and get rid of stale icons
 #define ZOMBIE_TIMER_INTERVAL 60.0
@@ -260,6 +261,12 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
     return ts1->tv_nsec == ts2->tv_nsec && ts1->tv_sec == ts2->tv_sec;
 }
 
+- (void)_setViewNeedsDisplay
+{
+    NSAssert(pthread_main_np() != 0, @"main thread required");
+    [_view setNeedsDisplay:YES];
+}
+
 - (void)_recacheIconsWithInfo:(NSDictionary *)info
 {
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
@@ -271,6 +278,7 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
         
         NSUInteger cnt = [orderedURLs count];
         NSNull *nsnull = [NSNull null];
+        bool redisplay = false;
         while (cnt--) {
             id aURL = [orderedURLs objectAtIndex:cnt];
             FVIcon *icon = [orderedIcons objectAtIndex:cnt];
@@ -287,12 +295,22 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
                 if (oldKey && __equal_timespecs(&newKey->_mtimespec, &oldKey->_mtimespec) == false) {
                     [[orderedIcons objectAtIndex:cnt] recache];
                     [_modificationSet removeObject:oldKey];
+                    redisplay = true;
                 }
                 [_modificationSet addObject:newKey];
                 [newKey release];
             }
         }
         [_modificationLock unlock];
+        
+        /*
+         When the view calls -recache on an icon, it has to reload the controller as well.
+         In this case, we know that the URL itself is the same, but the underlying data
+         has changed.  Consequently, setNeedsDisplay:YES should be sufficient.
+         */
+        if (redisplay)
+            [self performSelectorOnMainThread:@selector(_setViewNeedsDisplay) withObject:nil waitUntilDone:NO];
+        
     }
     else {
         // keep an eye out for this, but it should never happen
