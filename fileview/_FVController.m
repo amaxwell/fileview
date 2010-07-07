@@ -287,7 +287,6 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
                 if (oldKey && __equal_timespecs(&newKey->_mtimespec, &oldKey->_mtimespec) == false) {
                     [[orderedIcons objectAtIndex:cnt] recache];
                     [_modificationSet removeObject:oldKey];
-                    fprintf(stderr, "%s was modified; recaching\n", [[[aURL path] lastPathComponent] UTF8String]);
                 }
                 [_modificationSet addObject:newKey];
                 [newKey release];
