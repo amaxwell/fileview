@@ -721,10 +721,16 @@ static uint32_t SuperFastHash (const char * data, int len) {
 
         int err;
         
+        /*
+         getattrlist values are always 4-byte aligned, so we have to force that
+         in order to avoid crashing on x86_64.
+         */
+#pragma pack(push, 4)
         struct _mod_time_buf {
             uint32_t        len;
             struct timespec ts;
         } mod_time_buf;
+#pragma pack(pop)
         
         /*
          Try to use getattrlist() first, since we can explicitly request the desired
