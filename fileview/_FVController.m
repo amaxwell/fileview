@@ -49,6 +49,8 @@
 #import <sys/stat.h>
 #import <sys/time.h>
 #import <pthread.h>
+#include <sys/attr.h>
+#include <unistd.h>
 
 // check the icon cache every minute and get rid of stale icons
 #define ZOMBIE_TIMER_INTERVAL 60.0
@@ -68,7 +70,7 @@
 @interface _FVControllerFileKey : FVObject
 {
 @public;
-    NSURL           *_fileURL;
+    char            *_filePath;
     NSUInteger       _hash;
     struct timespec  _mtimespec;
 }
@@ -272,6 +274,7 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     // if there's ever any contention, don't block
     if ([_modificationLock tryLock]) {
+        CFAbsoluteTime t1 = CFAbsoluteTimeGetCurrent();
         NSArray *orderedIcons = [info objectForKey:@"orderedIcons"];
         NSArray *orderedURLs = [info objectForKey:@"orderedURLs"];
         NSParameterAssert([orderedIcons count] == [orderedURLs count]);
@@ -300,6 +303,7 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
                 [newKey release];
             }
         }
+        fprintf(stderr, "_FVController %p took %.3f seconds to check mod times\n", self, CFAbsoluteTimeGetCurrent() - t1);
         [_modificationLock unlock];
         
         /*
@@ -624,6 +628,73 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
 
 @implementation _FVControllerFileKey
 
+/* 
+ NOTE: the following applies only to the SuperFastHash function and the
+ macros it uses.
+ 
+ By Paul Hsieh (C) 2004, 2005.  Covered under the Paul Hsieh derivative 
+ license. See: 
+ http://www.azillionmonkeys.com/qed/weblicense.html for license details.
+ 
+ http://www.azillionmonkeys.com/qed/hash.html 
+ */
+
+#undef get16bits
+#if (defined(__GNUC__) && defined(__i386__)) || defined(__WATCOMC__) \
+|| defined(_MSC_VER) || defined (__BORLANDC__) || defined (__TURBOC__)
+#define get16bits(d) (*((const uint16_t *) (d)))
+#endif
+
+#if !defined (get16bits)
+#define get16bits(d) ((((uint32_t)(((const uint8_t *)(d))[1])) << 8)\
++(uint32_t)(((const uint8_t *)(d))[0]) )
+#endif
+
+static uint32_t SuperFastHash (const char * data, int len) {
+    uint32_t hash = 0, tmp;
+    int rem;
+    
+	if (len <= 0 || data == NULL) return 0;
+    
+	rem = len & 3;
+	len >>= 2;
+    
+	/* Main loop */
+	for (;len > 0; len--) {
+		hash  += get16bits (data);
+		tmp    = (get16bits (data+2) << 11) ^ hash;
+		hash   = (hash << 16) ^ tmp;
+		data  += 2*sizeof (uint16_t);
+		hash  += hash >> 11;
+	}
+    
+	/* Handle end cases */
+	switch (rem) {
+		case 3:	hash += get16bits (data);
+            hash ^= hash << 16;
+            hash ^= data[sizeof (uint16_t)] << 18;
+            hash += hash >> 11;
+            break;
+		case 2:	hash += get16bits (data);
+            hash ^= hash << 11;
+            hash += hash >> 17;
+            break;
+		case 1: hash += *data;
+            hash ^= hash << 10;
+            hash += hash >> 1;
+	}
+    
+	/* Force "avalanching" of final 127 bits */
+	hash ^= hash << 3;
+	hash += hash >> 5;
+	hash ^= hash << 4;
+	hash += hash >> 17;
+	hash ^= hash << 25;
+	hash += hash >> 6;
+    
+	return hash;
+}
+
 + (id)newWithURL:(NSURL *)aURL
 {
     return [[self allocWithZone:[self zone]] initWithURL:aURL];
@@ -640,28 +711,43 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
     NSParameterAssert([aURL isFileURL]);
     self = [super init];
     if (self) {
-                    
-        uint8_t stackBuf[PATH_MAX];
-        uint8_t *fsPath = stackBuf;
         
         CFStringRef absolutePath = CFURLCopyFileSystemPath((CFURLRef)aURL, kCFURLPOSIXPathStyle);
         NSUInteger maxLen = CFStringGetMaximumSizeOfFileSystemRepresentation(absolutePath);
-        if (maxLen > sizeof(stackBuf)) fsPath = NSZoneMalloc(NSDefaultMallocZone(), maxLen);
-        CFStringGetFileSystemRepresentation(absolutePath, (char *)fsPath, maxLen);
+        _filePath = NSZoneMalloc(NSDefaultMallocZone(), maxLen);
+        CFStringGetFileSystemRepresentation(absolutePath, _filePath, maxLen);        
         
-        struct stat sb;
-        int err = stat((char *)fsPath, &sb);
+        _hash = SuperFastHash(_filePath, strlen(_filePath));
+
+        int err;
         
-        if (noErr == err)
-            _mtimespec = sb.st_mtimespec;
+        struct _mod_time_buf {
+            uint32_t        len;
+            struct timespec ts;
+        } mod_time_buf;
         
-        if (fsPath != stackBuf) NSZoneFree(NSDefaultMallocZone(), fsPath);
-        if (absolutePath) CFRelease(absolutePath);
+        /*
+         Try to use getattrlist() first, since we can explicitly request the desired
+         attributes, instead of getting them all from stat().  Fall back to stat() in
+         case getattrlist() isn't supported, though.
+         */
+        struct attrlist alist;
+        memset(&alist, 0, sizeof(alist));
+        alist.bitmapcount = ATTR_BIT_MAP_COUNT;
+        alist.commonattr = ATTR_CMN_MODTIME;
+        err = getattrlist(_filePath, &alist, &mod_time_buf, sizeof(mod_time_buf), 0);
+        if (noErr == err) {
+            assert(mod_time_buf.len == sizeof(mod_time_buf));
+            _mtimespec = mod_time_buf.ts;
+        }
+        else if (ENOTSUP == err) {
             
-        _fileURL = [aURL retain];
-        
-        // NSURL hashing performance sucks prior to 10.6
-        _hash = [aURL hash];
+            struct stat sb;
+            err = stat(_filePath, &sb);
+            
+            if (noErr == err)
+                _mtimespec = sb.st_mtimespec;
+        }
         
     }
     return self;
@@ -669,27 +755,23 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
 
 - (void)dealloc
 {
-    [_fileURL release];
+    NSZoneFree(NSDefaultMallocZone(), _filePath);
     [super dealloc];
 }
 
-- (NSString *)description { return [NSString stringWithFormat:@"%@: %@", [super description], [_fileURL absoluteString]]; }
+- (NSString *)description { return [NSString stringWithFormat:@"%@: %s", [super description], _filePath]; }
 
 - (id)copyWithZone:(NSZone *)aZone
 {
-    return NSShouldRetainWithZone(self, aZone) ? [self retain] : [[[self class] allocWithZone:aZone] initWithURL:_fileURL];
+    return [self retain];
 }
 
 - (BOOL)isEqual:(_FVControllerFileKey *)other
 {
     if ([other isKindOfClass:[self class]] == NO)
         return NO;
-    
-    /*
-     This ignores the NSURL bug in comparing decomposed characters incorrectly, 
-     but that's unlikely to be a problem here, and it's slower to work around.
-     */
-     return [other->_fileURL isEqual:_fileURL];
+
+    return strcmp(_filePath, other->_filePath) == 0;
 }
 
 - (NSUInteger)hash { return _hash; }
