@@ -229,7 +229,7 @@
     return [_orderedIcons objectsAtIndexes:indexes]; 
 }
 
-#pragma mark -
+#pragma mark Binding/datasource wrappers
 
 /*
  Wrap datasource/bindings and return [FVIcon missingFileURL] when the datasource or bound array 
@@ -258,6 +258,8 @@
 // only used by -reload; always returns a value independent of cached state
 - (NSUInteger)_numberOfIcons { return _isBound ? [_orderedURLs count] : [_dataSource numberOfIconsInFileView:_view]; }
 
+#pragma mark -
+
 static inline bool __equal_timespecs(const struct timespec *ts1, const struct timespec *ts2)
 {
     return ts1->tv_nsec == ts2->tv_nsec && ts1->tv_sec == ts2->tv_sec;
@@ -274,7 +276,7 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
     NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     // if there's ever any contention, don't block
     if ([_modificationLock tryLock]) {
-        CFAbsoluteTime t1 = CFAbsoluteTimeGetCurrent();
+
         NSArray *orderedIcons = [info objectForKey:@"orderedIcons"];
         NSArray *orderedURLs = [info objectForKey:@"orderedURLs"];
         NSParameterAssert([orderedIcons count] == [orderedURLs count]);
@@ -303,7 +305,7 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
                 [newKey release];
             }
         }
-        fprintf(stderr, "_FVController %p took %.3f seconds to check mod times\n", self, CFAbsoluteTimeGetCurrent() - t1);
+
         [_modificationLock unlock];
         
         /*
@@ -316,7 +318,7 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
         
     }
     else {
-        // keep an eye out for this, but it should never happen
+        // keep an eye out for this; it gets hit with the test program during view setup
         FVLog(@"FileView: called _recacheIconsIfNeeded: while another call was in progress.");
     }
     [pool release];
