@@ -400,7 +400,6 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
     
     // text is drawn, so we're done with this
     [FVTextIcon pushTextStorage:textStorage];
-    textStorage = nil;
     
     // restore the previous context
     [NSGraphicsContext restoreGraphicsState];
