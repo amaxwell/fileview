@@ -3277,7 +3277,8 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     if ([FVPreviewer useQuickLookForURL:aURL] == NO || Nil == QLPreviewPanelClass) {
         iconRect = [self convertRect:iconRect toView:nil];
         iconRect.origin = [[self window] convertBaseToScreen:iconRect.origin];
-        if (_fvFlags.controllingPreviewPanel) {
+        // note: controllingPreviewPanel is only true if QLPreviewPanelClass exists, but clang doesn't know that
+        if (_fvFlags.controllingPreviewPanel && Nil != QLPreviewPanelClass) {
             iconRect = [[QLPreviewPanelClass sharedPreviewPanel] frame];
             [[QLPreviewPanelClass sharedPreviewPanel] performSelector:@selector(orderOut:) withObject:nil afterDelay:0.0];
         }
