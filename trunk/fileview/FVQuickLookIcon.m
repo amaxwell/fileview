@@ -132,8 +132,8 @@ static BOOL FVQLIconDisabled = NO;
 
 static inline bool __FVQLShouldDrawFullImageWithSize(NSSize desiredSize, NSSize currentSize)
 {
-    NSUInteger targetMax = MAX(desiredSize.width, desiredSize.height);
-    NSUInteger currentMax = MAX(currentSize.height, currentSize.width);
+    NSInteger targetMax = MAX(desiredSize.width, desiredSize.height);
+    NSInteger currentMax = MAX(currentSize.height, currentSize.width);
     return (ABS(targetMax - currentMax) > 0.2 * targetMax);
 }
 
