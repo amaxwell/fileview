@@ -718,7 +718,8 @@ static uint32_t SuperFastHash (const char * data, int len) {
         NSUInteger maxLen = CFStringGetMaximumSizeOfFileSystemRepresentation(absolutePath);
         _filePath = NSZoneMalloc(NSDefaultMallocZone(), maxLen);
         CFStringGetFileSystemRepresentation(absolutePath, _filePath, maxLen);        
-        
+        CFRelease(absolutePath);
+
         _hash = SuperFastHash(_filePath, strlen(_filePath));
 
         int err;
