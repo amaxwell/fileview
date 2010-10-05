@@ -1950,9 +1950,16 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 }
 
 - (void)dragImage:(NSImage *)anImage at:(NSPoint)viewLocation offset:(NSSize)unused event:(NSEvent *)event pasteboard:(NSPasteboard *)pboard source:(id)sourceObj slideBack:(BOOL)slideFlag;
-{            
-    NSScrollView *scrollView = [self enclosingScrollView] ? [self enclosingScrollView] : (id)self;
-    NSRect boundsRect = scrollView ? [scrollView convertRect:[scrollView documentVisibleRect] fromView:self] : [self bounds];
+{
+    id scrollView = [self enclosingScrollView];
+    NSRect boundsRect;
+    if (nil == scrollView) {
+        scrollView = self;
+        boundsRect = [self bounds];
+    }
+    else {
+        boundsRect = [scrollView convertRect:[scrollView documentVisibleRect] fromView:self];
+    }
     
     NSPoint dragPoint = [scrollView bounds].origin;
     dragPoint.y += NSHeight([scrollView bounds]);
