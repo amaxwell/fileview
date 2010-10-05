@@ -318,8 +318,10 @@ static inline bool __equal_timespecs(const struct timespec *ts1, const struct ti
         
     }
     else {
+#if DEBUG
         // keep an eye out for this; it gets hit with the test program during view setup
-        FVLog(@"FileView: called _recacheIconsIfNeeded: while another call was in progress.");
+        FVLog(@"FileView: called %@ while another call was in progress.", NSStringFromSelector(_cmd));
+#endif
     }
     [pool release];
 }
