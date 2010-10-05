@@ -52,7 +52,7 @@
 /** @internal @brief Get a mapped data provider. 
  
  Retaining this object is not required, since the internal cache keeps a valid reference to it until you call removeProviderReferenceForURL: to dispose of it. */
-+ (CGDataProviderRef)newDataProviderForURL:(NSURL *)aURL;
++ (CGDataProviderRef)newDataProviderForURL:(NSURL *)aURL CF_RETURNS_NOT_RETAINED;
 
 /** @internal @brief Dispose of a mapped data provider. 
  
