@@ -37,6 +37,7 @@
  */
 
 #import "FVThread.h"
+#import "FVObject.h"
 #import "FVUtilities.h"
 #import <libkern/OSAtomic.h>
 #import <pthread.h>
@@ -53,7 +54,7 @@ enum {
     FVThreadDie     = 4
 };
 
-@interface _FVThread : NSObject
+@interface _FVThread : FVObject
 {
 @private
     CFAbsoluteTime   _lastPerformTime;
@@ -110,8 +111,7 @@ static volatile int32_t _threadCount = 0;
     // make sure Cocoa is multithreaded, since we're using pthreads directly
     [NSThread detachNewThreadSelector:@selector(self) toTarget:self withObject:nil];
 
-    // nonretaining mutable array
-    _threadPool = (NSMutableArray *)CFArrayCreateMutable(CFAllocatorGetDefault(), 0, NULL);
+    _threadPool = [NSMutableArray new];
     
     // Pass in args on command line: -FVThreadPoolCapacity 0 to disable pooling
     NSNumber *capacity = [[NSUserDefaults standardUserDefaults] objectForKey:@"FVThreadPoolCapacity"];
@@ -122,16 +122,16 @@ static volatile int32_t _threadCount = 0;
 }
 
 /*
- The rules are simple: to use the pool, you need to obtain an _FVThread using +newThreadUsingPool.  When you're done, call +recycleThread: to return it to the queue.  There is no need to retain or release the _FVThread instance; it's retain count is never decremented after +alloc, and is also retained by its NSThread.  Hence we can use a nonretaining array and avoid refcounting overhead.
+ The rules are simple: to use the pool, you need to obtain an _FVThread using +thread.  
+ When you're done, call +recycleThread: to return it to the queue.
  */
 
-+ (_FVThread *)newThreadUsingPool;
++ (_FVThread *)thread;
 {
     OSSpinLockLock(&_lock);
     _FVThread *thread = nil;
     if ([_threadPool count]) {
-        thread = [_threadPool lastObject];
-        // no ownership transfer here
+        thread = [[_threadPool lastObject] retain];
         [_threadPool removeLastObject];
     }
     OSSpinLockUnlock(&_lock);
@@ -139,7 +139,7 @@ static volatile int32_t _threadCount = 0;
         thread = [_FVThread new];
         OSAtomicIncrement32Barrier(&_threadCount);
     }
-    return thread;
+    return [thread autorelease];
 }
 
 // no ownership transfer here
@@ -148,7 +148,6 @@ static volatile int32_t _threadCount = 0;
     NSParameterAssert(nil != thread);
     OSSpinLockLock(&_lock);
     NSAssert1([_threadPool containsObject:thread] == NO, @"thread %@ is already in the pool", thread);
-    // no ownership transfer here
     [_threadPool addObject:thread];
     OSSpinLockUnlock(&_lock);
 }
@@ -169,7 +168,6 @@ static volatile int32_t _threadCount = 0;
         if (CFAbsoluteTimeGetCurrent() - [thread lastPerformTime] > TIME_TO_DIE) {
             [thread die];
             [_threadPool removeObjectAtIndex:cnt];
-            [thread release];
             OSAtomicDecrement32Barrier(&_threadCount);
         }
     }
@@ -184,7 +182,7 @@ static volatile int32_t _threadCount = 0;
     if (_threadPoolCapacity == _threadCount)
         [NSThread detachNewThreadSelector:selector toTarget:target withObject:argument];
     else
-        [[self newThreadUsingPool] performSelector:selector withTarget:target argument:argument];
+        [[self thread] performSelector:selector withTarget:target argument:argument];
 }
 
 static void *__FVThread_main(void *obj);
