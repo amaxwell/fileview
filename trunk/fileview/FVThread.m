@@ -90,7 +90,7 @@ enum {
 #define THREAD_POOL_MIN 0
 
 static NSMutableArray  *_threadPool = nil;
-static OSSpinLock       _lock = OS_SPINLOCK_INIT;
+static pthread_mutex_t  _lock = PTHREAD_MUTEX_INITIALIZER;
 static int32_t          _threadPoolCapacity = THREAD_POOL_MAX;
 static volatile int32_t _threadCount = 0;
 
@@ -128,13 +128,13 @@ static volatile int32_t _threadCount = 0;
 
 + (_FVThread *)thread;
 {
-    OSSpinLockLock(&_lock);
+    pthread_mutex_lock(&_lock);
     _FVThread *thread = nil;
     if ([_threadPool count]) {
         thread = [[_threadPool lastObject] retain];
         [_threadPool removeLastObject];
     }
-    OSSpinLockUnlock(&_lock);
+    pthread_mutex_unlock(&_lock);
     if (nil == thread) {
         thread = [_FVThread new];
         OSAtomicIncrement32Barrier(&_threadCount);
@@ -146,10 +146,10 @@ static volatile int32_t _threadCount = 0;
 + (void)recycleThread:(_FVThread *)thread;
 {
     NSParameterAssert(nil != thread);
-    OSSpinLockLock(&_lock);
+    pthread_mutex_lock(&_lock);
     NSAssert1([_threadPool containsObject:thread] == NO, @"thread %@ is already in the pool", thread);
     [_threadPool addObject:thread];
-    OSSpinLockUnlock(&_lock);
+    pthread_mutex_unlock(&_lock);
 }
 
 + (void)reapThreads
@@ -158,7 +158,7 @@ static volatile int32_t _threadCount = 0;
     if (_threadCount <= THREAD_POOL_MIN)
         return;
     
-    OSSpinLockLock(&_lock);
+    pthread_mutex_lock(&_lock);
     NSUInteger cnt = [_threadPool count];
 #if DEBUG_REAPER
     FVLog(@"%d threads should fear the reaper", cnt);
@@ -174,7 +174,7 @@ static volatile int32_t _threadCount = 0;
 #if DEBUG_REAPER
     FVLog(@"%d threads will survive", [_threadPool count]);
 #endif    
-    OSSpinLockUnlock(&_lock);
+    pthread_mutex_unlock(&_lock);
 }
 
 + (void)detachNewThreadSelector:(SEL)selector toTarget:(id)target withObject:(id)argument;
