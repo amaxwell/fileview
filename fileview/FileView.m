@@ -2342,12 +2342,12 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     }    
 }
 
-static NSRect _rectWithCorners(NSPoint aPoint, NSPoint bPoint) {
+static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
     NSRect rect;
     rect.origin.x = MIN(aPoint.x, bPoint.x);
     rect.origin.y = MIN(aPoint.y, bPoint.y);
-    rect.size.width = fmax(3.0, fmax(aPoint.x, bPoint.x) - NSMinX(rect));
-    rect.size.height = fmax(3.0, fmax(aPoint.y, bPoint.y) - NSMinY(rect));    
+    rect.size.width = fmax(3.0, fmax(aPoint.x, bPoint.x) - rect.origin.x);
+    rect.size.height = fmax(3.0, fmax(aPoint.y, bPoint.y) - rect.origin.y);    
     return rect;
 }
 
