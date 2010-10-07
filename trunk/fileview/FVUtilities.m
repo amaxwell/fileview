@@ -208,29 +208,37 @@ NSArray *FVURLSFromPasteboard(NSPasteboard *pboard)
             
             // !!! I'm assuming that the URL bytes are UTF-8, but that should be checked...
             
-            // UTIs determined with PasteboardPeeker
-            
-            if (UTTypeConformsTo(flavor, kUTTypeFileURL)) {
+            /*
+             UTIs determined with PasteboardPeeker
+             Assert NULL URL on each branch; this will always be true since the pasteboard can only contain
+             one flavor per type.  Using UTTypeConforms instead of UTTypeEqual could lead to a memory
+             leak if there were multiple flavors conforming to kUTTypeURL (other than kUTTypeFileURL).
+             The assertion silences a clang warning.
+            */
+            if (UTTypeEqual(flavor, kUTTypeFileURL)) {
                 
                 err = PasteboardCopyItemFlavorData(carbonPboard, itemID, flavor, &data);
                 if (noErr == err && NULL != data) {
+                    FVAPIParameterAssert(NULL == fileURL);
                     fileURL = CFURLCreateWithBytes(NULL, CFDataGetBytePtr(data), CFDataGetLength(data), kCFStringEncodingUTF8, NULL);
                     CFRelease(data);
                 }
                 
-            } else if (UTTypeConformsTo(flavor, kUTTypeURL)) {
+            } else if (UTTypeEqual(flavor, kUTTypeURL)) {
                 
                 err = PasteboardCopyItemFlavorData(carbonPboard, itemID, flavor, &data);
                 if (noErr == err && NULL != data) {
+                    FVAPIParameterAssert(NULL == destURL);
                     destURL = CFURLCreateWithBytes(NULL, CFDataGetBytePtr(data), CFDataGetLength(data), kCFStringEncodingUTF8, NULL);
                     CFRelease(data);
                 }
                 
-            } else if (UTTypeConformsTo(flavor, kUTTypeUTF8PlainText)) {
+            } else if (UTTypeEqual(flavor, kUTTypeUTF8PlainText)) {
                 
                 // this is a string that may be a URL; FireFox and other apps don't use any of the standard URL pasteboard types
                 err = PasteboardCopyItemFlavorData(carbonPboard, itemID, kUTTypeUTF8PlainText, &data);
                 if (noErr == err && NULL != data) {
+                    FVAPIParameterAssert(NULL == textURL);
                     textURL = CFURLCreateWithBytes(NULL, CFDataGetBytePtr(data), CFDataGetLength(data), kCFStringEncodingUTF8, NULL);
                     CFRelease(data);
                     
