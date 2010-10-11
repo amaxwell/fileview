@@ -106,21 +106,26 @@
     [self finished];
 }
 
-- (id)result;
-{    
+// pass-by-reference wrapper to avoid static analyzer false positives on ownership
+- (void)_getResult:(id *)result retainNSValue:(BOOL)retain
+{
     if ([self isCancelled])
         [NSException raise:NSInvalidArgumentException format:@"asked for return value from cancelled operation"];
-
+    
     id value = nil;
-
+    
     NSMethodSignature *sig = [_invocation methodSignature];
     const char *returnType = [sig methodReturnType];
     
     if (strcmp(returnType, @encode(void)) == 0)
         [NSException raise:NSInvalidArgumentException format:@"asked for return value from a void method"];
-            
+    
     /* 
-     Tested with -[FileView dataSource] and -[FileView bounds], so it at least works with id and NSRect return types.  I'm not terribly sanguine that it works in all cases, so it might be best just to use -invocation and extract the return value manually.  That's certainly a requirement if you use something nasty like -[(BOOL)obj getPtr:(void **)] in the invocation and are interested in the value returned by reference.
+     Tested with -[FileView dataSource] and -[FileView bounds], so it at least works with id and NSRect 
+     return types.  I'm not terribly sanguine that it works in all cases, so it might be best just to 
+     use -invocation and extract the return value manually.  That's certainly a requirement if you use 
+     something nasty like -[(BOOL)obj getPtr:(void **)] in the invocation and are interested in the 
+     value returned by reference.
      */
     if ([self isFinished]) {
         
@@ -131,16 +136,38 @@
             [_invocation getReturnValue:&value];
         }
         else {
-         
+            
             OSSpinLockLock(&_lock);
             if (NULL == _retdata) {
                 _retdata = NSZoneMalloc([self zone], [sig methodReturnLength] * sizeof(char));
                 [_invocation getReturnValue:&_retdata];
             }
             OSSpinLockUnlock(&_lock);
-            value = [NSValue valueWithBytes:&_retdata objCType:returnType];
+            value = [[NSValue alloc] initWithBytes:&_retdata objCType:returnType];
+            if (false == retain)
+                value = [value autorelease];
         }
     }
+    
+    *result = value;
+    
+}
+
+- (id)result;
+{    
+    id value = nil;
+    [self _getResult:&value retainNSValue:NO];
+    return value;
+}
+
+- (id)retainedResult
+{
+    /*
+     Caller has set up invocation to retain the result by e.g., calling a -copy method,
+     so we'll retain the NSValue for symmetry.
+     */
+    id value = nil;
+    [self _getResult:&value retainNSValue:YES];
     return value;
 }
 

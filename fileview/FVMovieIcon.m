@@ -113,7 +113,7 @@
     while (NO == [op isFinished])
         CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, TRUE);
     
-    CFDataRef data = (CFDataRef)[op result];
+    CFDataRef data = (CFDataRef)[op retainedResult];
     // result isn't owned by the operation, but the containing invocation is
     [op release];
 

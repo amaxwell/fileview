@@ -78,4 +78,12 @@
  @return The return value of the invocation.  If this is not an object, it will be wrapped in an NSValue. */
 - (id)result;
 
+/** @brief Wrapper for result 
+ 
+ This method has the appropriate decorator on it to silence clang warnings when the return value from an invocation is retained.  It does not ensure ownership by itself, except in the case of an autoboxed NSValue.
+ 
+ @return Same as FVInvocationOperation::result, but can be used to return values from retain or copy operations.
+ */
+- (id)retainedResult NS_RETURNS_RETAINED;
+
 @end
