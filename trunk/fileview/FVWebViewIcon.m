@@ -311,8 +311,15 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
     FVAPIParameterAssert([sender isEqual:_webView]);
     
-    // if a frame fails to load and the webview isn't loading anything else, bail out
-    if (NO == [_webView fv_isLoading]) {
+    /*
+     If a frame fails to load and the webview isn't loading anything else, bail out.
+     ??? Not sure anymore why I chose that condition; maybe in case of partial failures?
+     
+     In addition, if a fallback icon has been created in decidePolicyForMIMEType:,
+     we want to cancel loading here as a signal to draw that.  Otherwise, we may continue
+     loading other frames, then draw the webview.
+     */
+    if (NO == [_webView fv_isLoading] || nil != _fallbackIcon) {
         [self _releaseWebView];
         
         // condition should always be LOADING, but -releaseResources may have the lock
@@ -451,10 +458,14 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     FVAPIAssert1(pthread_main_np() != 0, @"*** threading violation *** %s requires main thread", __func__);
     FVAPIParameterAssert([sender isEqual:_webView]);
     
-    // !!! Better to just load text/html and ignore everything else?  The point of implementing this method is to ignore PDF.  It doesn't show up in the thumbnail and it's slow to load, so there's no point in loading it.  Plugins are disabled, so stuff like Flash should be ignored anyway, and WebKit doesn't try to display PostScript AFAIK.
+    /*
+     !!! Better to just load text/html and ignore everything else?  The point of implementing this method is to ignore PDF.  
+     It doesn't show up in the thumbnail and it's slow to load, so there's no point in loading it.  Plugins are disabled, 
+     so stuff like Flash should be ignored anyway, and WebKit doesn't try to display PostScript AFAIK.
     
-    // Documentation says the default implementation checks "If request is not a directory", which is...odd.
-    // See http://trac.webkit.org/projects/webkit/browser/trunk/WebKit/mac/DefaultDelegates/WebDefaultPolicyDelegate.m
+     Documentation says the default implementation checks "If request is not a directory", which is...odd.
+     See http://trac.webkit.org/projects/webkit/browser/trunk/WebKit/mac/DefaultDelegates/WebDefaultPolicyDelegate.m
+     */
     
     CFStringRef theUTI = type == nil ? NULL : UTTypeCreatePreferredIdentifierForTag(kUTTagClassMIMEType, (CFStringRef)type, NULL);
     
