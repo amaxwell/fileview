@@ -100,6 +100,7 @@
     [arrayController insertObject:[NSNull null] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://www.macintouch.com/"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://bibdesk.sf.net/"] atArrangedObjectIndex:insertIndex++];
+    // direct link to PDF file
     [arrayController insertObject:[NSURL URLWithString:@"http://www-chaos.engr.utk.edu/pap/crg-aiche2000daw-paper.pdf"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://dx.doi.org/10.1023/A:1018361121952"] atArrangedObjectIndex:insertIndex++];
     [arrayController insertObject:[NSURL URLWithString:@"http://searchenginewatch.com/_static/example1.html"] atArrangedObjectIndex:insertIndex++];
@@ -116,6 +117,11 @@
     
     // nonexistent domain
     [arrayController insertObject:[NSURL URLWithString:@"http://bibdesk.sourceforge.tld/"] atArrangedObjectIndex:insertIndex++];
+    
+    // redirects to PDF file
+    [arrayController insertObject:[NSURL URLWithString:@"http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=191466"] atArrangedObjectIndex:insertIndex++];
+    
+#pragma unused(insertIndex)
 
     [_fileView bind:NSContentBinding toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
     [_fileView bind:NSSelectionIndexesBinding toObject:arrayController withKeyPath:NSSelectionIndexesBinding options:nil];
