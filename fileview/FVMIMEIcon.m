@@ -128,7 +128,7 @@ static FVMIMEIcon *defaultPlaceholderIcon = nil;
         while (NO == [operation isFinished])
             CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, YES);
         
-        icon = [operation result];
+        icon = [operation retainedResult];
         if (icon) {
             [_iconTableLock lock];
             [_iconTable setObject:icon forKey:type];
