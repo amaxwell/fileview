@@ -67,6 +67,10 @@ static int8_t _maxWebViews = 0;
 static int8_t _numberOfWebViews = 0;
 static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconWebViewAvailableNotificationName";
 
+// avoid doing network operations for subsequent render attempts of known MIME icons
+static NSMutableDictionary *_mimeIcons = nil;
+static NSLock *_mimeIconLock = nil;
+
 #define IDLE    0
 #define LOADING 1
 #define LOADED  2
@@ -91,6 +95,11 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     else {
         // negative values
         _maxWebViews = 0;
+    }
+    
+    if (nil == _mimeIcons) {
+        _mimeIcons = [NSMutableDictionary new];
+        _mimeIconLock = [NSLock new];
     }
 }
 
@@ -486,6 +495,12 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
         if ([_condLock tryLockWhenCondition:LOADING]) {
             [_fallbackIcon release];
             _fallbackIcon = [[FVMIMEIcon allocWithZone:[self zone]] initWithMIMEType:type];
+            // shouldn't yet be in the table
+            if (_fallbackIcon) {
+                [_mimeIconLock lock];
+                [_mimeIcons setObject:_fallbackIcon forKey:_cacheKey];
+                [_mimeIconLock unlock];
+            }
             [self unlock];
         }
         // this triggers webView:didFailProvisionalLoadWithError:forFrame:
@@ -564,6 +579,25 @@ static NSString * const FVWebIconWebViewAvailableNotificationName = @"FVWebIconW
     [[self class] _startRenderingForKey:_cacheKey];
 
     [_condLock lockWhenCondition:IDLE];
+    
+    /*
+     !!! Early return after a quick check here, since these don't result in a cached image.
+     In the best case, URL loading would cache the results, and this check is unnecessary.
+     However, it's lightweight, and definitely avoids network traffic and main thread callout,
+     when the same program has multiple views or otherwise ends up creating the same icons 
+     repeatedly.
+     */
+    [_mimeIconLock lock];
+    FVIcon *mimeIcon = [_mimeIcons objectForKey:_cacheKey];
+    if (mimeIcon) {
+        _fallbackIcon = [mimeIcon retain];
+        [_mimeIconLock unlock];
+        [_condLock unlockWithCondition:IDLE];
+        return;
+    }
+    
+    // unlock on either branch of the previous conditional
+    [_mimeIconLock unlock];
     
     if ([NSThread instancesRespondToSelector:@selector(setName:)] && pthread_main_np() == 0)
         [[NSThread currentThread] setName:[_httpURL absoluteString]];
