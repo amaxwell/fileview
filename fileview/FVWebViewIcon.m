@@ -593,6 +593,7 @@ static NSLock *_mimeIconLock = nil;
         _fallbackIcon = [mimeIcon retain];
         [_mimeIconLock unlock];
         [_condLock unlockWithCondition:IDLE];
+        [[self class] _stopRenderingForKey:_cacheKey];
         return;
     }
     
