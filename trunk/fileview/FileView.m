@@ -984,7 +984,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
 - (NSArray *)optionDescriptionsForBinding:(NSString *)binding;
 {
-#warning fixme
     NSArray *options;
     
     if ([binding isEqualToString:NSSelectionIndexesBinding]) {
@@ -1044,7 +1043,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     else {
         options = [super optionDescriptionsForBinding:binding];
     }
-    FVLog(@"binding = %@, options = %@", binding, options);
     return options;
 }
 
