@@ -189,7 +189,7 @@
 
 - (void)animationDidStop:(CAPropertyAnimation *)anim finished:(BOOL)flag;
 {
-    if (flag && [[self window] alphaValue] < 0.01) {
+    if (flag && closeAfterAnimation) {
         [[self window] close];
     }
     else {
@@ -222,6 +222,7 @@
         [[[self window] contentView] setWantsLayer:YES];
         [[self window] display];
 #endif
+        closeAfterAnimation = YES;
         [NSAnimationContext beginGrouping];
         [[self windowAnimator] setAlphaValue:0.0];
         // shrink back to the icon frame
@@ -582,13 +583,16 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
 #endif
                 [contentView selectLastTabViewItem:nil];
 
+                closeAfterAnimation = NO;
                 [NSAnimationContext beginGrouping];
                 [[self windowAnimator] setFrame:newWindowFrame display:YES];
                 [[self windowAnimator] setAlphaValue:1.0];
                 [NSAnimationContext endGrouping];
+                
             }
             else {
                 // saved frame was set to zero rect (not previously in defaults database) and user will adjust
+                closeAfterAnimation = NO;
                 [[self windowAnimator] setAlphaValue:1.0];
             }
         }
