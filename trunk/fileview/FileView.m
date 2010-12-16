@@ -246,6 +246,7 @@ static char _FVContentBindingToControllerObserverContext;
     _fvFlags.isRescaling = NO;
     _fvFlags.scheduledLiveResize = NO;
     _fvFlags.controllingPreviewPanel = NO;
+    _fvFlags.controllingSharedPreviewer = NO;
     _selectedIndexes = [[NSMutableIndexSet alloc] init];
     _lastClickedIndex = NSNotFound;
     _rubberBandRect = NSZeroRect;
@@ -771,13 +772,15 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         }
         
         // Content or ordering of selection (may) have changed, so reload any previews
-        if ([[FVPreviewer sharedPreviewer] isPreviewing] || _fvFlags.controllingPreviewPanel) {
+        // Only modify the previewer if this view is controlling it, though!
+        if (_fvFlags.controllingSharedPreviewer || _fvFlags.controllingPreviewPanel) {
             
             // reload might result in an empty view...
             if ([_selectedIndexes count] == 0) {
                 
                 if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
                     [[FVPreviewer sharedPreviewer] stopPreviewing];
+                    _fvFlags.controllingSharedPreviewer = NO;
                 }
                 else if (_fvFlags.controllingPreviewPanel) {
                     [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
@@ -2918,6 +2921,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
 {
     if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
         [[FVPreviewer sharedPreviewer] stopPreviewing];
+        _fvFlags.controllingSharedPreviewer = NO;
     }
     else if (_fvFlags.controllingPreviewPanel) {
         [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
@@ -3254,14 +3258,18 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 - (void)_previewURLs:(NSArray *)iconURLs
 {
     if (_fvFlags.controllingPreviewPanel) {
-        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+        if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
+            _fvFlags.controllingSharedPreviewer = NO;
+        }
         [[QLPreviewPanelClass sharedPreviewPanel] reloadData];
         [[QLPreviewPanelClass sharedPreviewPanel] refreshCurrentPreviewItem];
     }
     else if (QLPreviewPanelClass) {
-        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+        if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
+            _fvFlags.controllingSharedPreviewer = NO;
+        }
         [[QLPreviewPanelClass sharedPreviewPanel] makeKeyAndOrderFront:nil];        
     }
     else {
@@ -3281,17 +3289,22 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
             [[QLPreviewPanelClass sharedPreviewPanel] performSelector:@selector(orderOut:) withObject:nil afterDelay:0.0];
         }
         [[FVPreviewer sharedPreviewer] setWebViewContextMenuDelegate:[self delegate]];
-        [[FVPreviewer sharedPreviewer] previewURL:aURL forIconInRect:iconRect];        
+        [[FVPreviewer sharedPreviewer] previewURL:aURL forIconInRect:iconRect];    
+        _fvFlags.controllingSharedPreviewer = YES;
     }
     else if (_fvFlags.controllingPreviewPanel) {
-        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+        if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
+            _fvFlags.controllingSharedPreviewer = NO;
+        }
         [[QLPreviewPanelClass sharedPreviewPanel] reloadData];
         [[QLPreviewPanelClass sharedPreviewPanel] refreshCurrentPreviewItem];
     }
     else {
-        if ([[FVPreviewer sharedPreviewer] isPreviewing])
+        if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
+            _fvFlags.controllingSharedPreviewer = NO;
+        }
         [[QLPreviewPanelClass sharedPreviewPanel] makeKeyAndOrderFront:nil]; 
     }
 }
