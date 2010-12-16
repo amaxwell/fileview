@@ -94,7 +94,8 @@ enum {
         unsigned int isAnimatingArrowAlpha:1;
         unsigned int dropOperation:2;
         unsigned int controllingPreviewPanel:1;
-        unsigned int reserved:21;
+        unsigned int controllingSharedPreviewer:1;
+        unsigned int reserved:20;
     } _fvFlags;
     NSRect                  _dropRectForHighlight;
     double                  _maxScale;
