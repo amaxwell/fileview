@@ -65,6 +65,7 @@
     BOOL                       windowLoaded;
     NSTask                     *qlTask;
     NSURL                      *currentURL;
+    BOOL                        closeAfterAnimation;
 }
 
 /** Shared instance.
