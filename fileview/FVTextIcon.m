@@ -174,7 +174,12 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 #endif
 }
 
-// This should be very reliable, but in practice it's only as reliable as the UTI declaration.  For instance, OmniGraffle declares .graffle files as public.composite-content and public.xml in its Info.plist.  Since we see that it's public.xml (which is in this list), we open it as text, and it will actually open with NSAttributedString...and display as binary garbage.
+/*
+ This should be very reliable, but in practice it's only as reliable as the UTI declaration.  
+ For instance, OmniGraffle declares .graffle files as public.composite-content and public.xml 
+ in its Info.plist.  Since we see that it's public.xml (which is in this list), we open it as 
+ text, and it will actually open with NSAttributedString...and display as binary garbage.
+ */
 + (BOOL)canInitWithUTI:(NSString *)aUTI
 {
     static NSArray *types = nil;
@@ -204,6 +209,9 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
      while it's trying to create an icon.  Way to use the runloop, Apple.  See the
      _fvFlags.reloadingController bit in FileView for the workaround, since I don't really
      want to lose this check.
+     
+     Excluding HTML from the +canInitWithUTI: test is not sufficient to avoid this problem,
+     since +canInitWithURL: is called for extensionless files.
      */
     NSAttributedString *attributedString = [[NSAttributedString allocWithZone:[self zone]] initWithURL:aURL documentAttributes:NULL];
     BOOL canInit = (nil != attributedString);
