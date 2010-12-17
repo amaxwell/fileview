@@ -44,8 +44,6 @@
 #import "_FVPreviewerWindow.h"
 #import "FVTextIcon.h" // for NSAttributedString initialization check
 
-#define USE_LAYER_BACKING 0
-
 @implementation FVPreviewer
 
 + (FVPreviewer *)sharedPreviewer;
@@ -163,16 +161,6 @@
         [fullScreenButton setImage:[NSImage imageNamed:NSImageNameEnterFullScreenTemplate]];
         [fullScreenButton setAlternateImage:[NSImage imageNamed:NSImageNameExitFullScreenTemplate]];
         [fullScreenButton setRefusesFirstResponder:YES];
-        
-        // only set delegate on alpha animation, since we only need the delegate callback once
-        CABasicAnimation *fadeAnimation = [CABasicAnimation animationWithKeyPath:@"alphaValue"];
-        [fadeAnimation setDelegate:self];
-        
-        NSMutableDictionary *animations = [NSMutableDictionary dictionary];
-        [animations addEntriesFromDictionary:[[self window] animations]];
-        [animations setObject:fadeAnimation forKey:@"alphaValue"];
-        
-        [[self window] setAnimations:animations];
     }
     else {
         [fullScreenButton removeFromSuperview];
@@ -186,56 +174,49 @@
     [self setWebViewContextMenuDelegate:nil];
 }
 
-- (NSWindow *)windowAnimator
+- (void)animationDidEnd:(NSAnimation*)animation;
 {
-    NSWindow *theWindow = [self window];
-    return [theWindow respondsToSelector:@selector(animator)] ? [theWindow animator] : theWindow;
-}
-
-- (void)animationDidStop:(CAPropertyAnimation *)anim finished:(BOOL)flag;
-{
-    if (flag && closeAfterAnimation) {
-        [[self window] close];
-    }
-    else {
+    if (NO == closeAfterAnimation) {
         [contentView selectFirstTabViewItem:nil];
         // highlight around button isn't drawn unless the window is key, which happens randomly unless we force it here
         [[self window] makeKeyAndOrderFront:nil];
         [[self window] makeFirstResponder:fullScreenButton];
     }
-#if USE_LAYER_BACKING
-    [[[self window] contentView] setWantsLayer:NO];
-#endif
 }
 
 - (BOOL)windowShouldClose:(id)sender
 {
     [[NSUserDefaults standardUserDefaults] setObject:NSStringFromRect([[self window] frame]) forKey:[self windowFrameAutosaveName]];
-    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4) {
-        // make sure it doesn't respond to keystrokes while fading out
-        [[self window] makeFirstResponder:nil];
-        // image is now possibly out of sync due to scrolling/resizing
-        NSView *currentView = [[contentView tabViewItemAtIndex:0] view];
-        NSBitmapImageRep *imageRep = [currentView bitmapImageRepForCachingDisplayInRect:[currentView bounds]];
-        [currentView cacheDisplayInRect:[currentView bounds] toBitmapImageRep:imageRep];
-        NSImage *image = [[NSImage alloc] initWithSize:[imageRep size]];
-        [image addRepresentation:imageRep];
-        [animationView setImage:image];
-        [image release];
-        [contentView selectLastTabViewItem:nil];
-#if USE_LAYER_BACKING
-        [[[self window] contentView] setWantsLayer:YES];
-        [[self window] display];
-#endif
-        closeAfterAnimation = YES;
-        [NSAnimationContext beginGrouping];
-        [[self windowAnimator] setAlphaValue:0.0];
-        // shrink back to the icon frame
-        if (NSIsEmptyRect(previousIconFrame) == NO)
-            [[self windowAnimator] setFrame:previousIconFrame display:YES];
-        [NSAnimationContext endGrouping];
-        return NO;
+
+    // make sure it doesn't respond to keystrokes while fading out
+    [[self window] makeFirstResponder:nil];
+    // image is now possibly out of sync due to scrolling/resizing
+    NSView *currentView = [[contentView tabViewItemAtIndex:0] view];
+    NSBitmapImageRep *imageRep = [currentView bitmapImageRepForCachingDisplayInRect:[currentView bounds]];
+    [currentView cacheDisplayInRect:[currentView bounds] toBitmapImageRep:imageRep];
+    NSImage *image = [[NSImage alloc] initWithSize:[imageRep size]];
+    [image addRepresentation:imageRep];
+    [animationView setImage:image];
+    [image release];
+    [contentView selectLastTabViewItem:nil];
+
+    closeAfterAnimation = YES;
+    // using NSAnimationEaseOut causes a double animation or something; it seems badly broken
+    NSViewAnimation *animation = [[NSViewAnimation alloc] initWithDuration:0.3 animationCurve:NSAnimationEaseInOut]; 
+    [animation setAnimationBlockingMode:NSAnimationBlocking];
+    [animation setFrameRate:30.0];
+    NSMutableDictionary *windowDict = [NSMutableDictionary dictionary];
+    [windowDict setObject:[self window] forKey:NSViewAnimationTargetKey];
+    if (NSIsEmptyRect(previousIconFrame) == NO) {
+        [windowDict setObject:[NSValue valueWithRect:[[self window] frame]] forKey:NSViewAnimationStartFrameKey];
+        [windowDict setObject:[NSValue valueWithRect:previousIconFrame] forKey:NSViewAnimationEndFrameKey];
     }
+    [windowDict setObject:NSViewAnimationFadeOutEffect forKey:NSViewAnimationEffectKey];
+    [animation setViewAnimations:[NSArray arrayWithObject:windowDict]];
+    [animation setDelegate:self];
+    [animation startAnimation];
+    [animation release];   
+
     return YES;
 }
 
@@ -560,54 +541,45 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
         }
 
         // don't reset the window frame if it's already on-screen
-        NSRect newWindowFrame = [theWindow isVisible] ? [theWindow frame] : [self savedFrame];
-        if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4) {
-            
-            [theWindow setAlphaValue:0.0];
-            [[self window] makeKeyAndOrderFront:nil];
+        NSRect newWindowFrame = [theWindow isVisible] ? [theWindow frame] : [self savedFrame];            
+        [theWindow setAlphaValue:0.0];
+        [[self window] makeKeyAndOrderFront:nil];
+        
+        // select the new view and set the window's frame in order to get the view's new frame
+        [contentView selectFirstTabViewItem:nil];
+        NSRect oldWindowFrame = [[self window] frame];
+        [[self window] setFrame:newWindowFrame display:YES];
+        
+        // cache the new view to an image
+        NSBitmapImageRep *imageRep = [newView bitmapImageRepForCachingDisplayInRect:[newView bounds]];
+        [newView cacheDisplayInRect:[newView bounds] toBitmapImageRep:imageRep];
+        [[self window] setFrame:oldWindowFrame display:NO];
+        NSImage *image = [[NSImage alloc] initWithSize:[imageRep size]];
+        [image addRepresentation:imageRep];
+        [animationView setImage:image];
+        [image release];
+        
+        [contentView selectLastTabViewItem:nil];
+        
+        // animate ~30 fps for 0.3 seconds
+        NSViewAnimation *animation = [[NSViewAnimation alloc] initWithDuration:0.3 animationCurve:NSAnimationEaseIn]; 
+        [animation setFrameRate:30.0];
+        [animation setAnimationBlockingMode:NSAnimationBlocking];
+        NSMutableDictionary *windowDict = [NSMutableDictionary dictionary];
+        [windowDict setObject:theWindow forKey:NSViewAnimationTargetKey];
+        [windowDict setObject:NSViewAnimationFadeInEffect forKey:NSViewAnimationEffectKey];
 
-            if (NO == NSEqualRects(newWindowFrame, NSZeroRect)) {
-                // select the new view and set the window's frame in order to get the view's new frame
-                [contentView selectFirstTabViewItem:nil];
-                NSRect oldWindowFrame = [[self window] frame];
-                [[self window] setFrame:newWindowFrame display:YES];
-                
-                // cache the new view to an image
-                NSBitmapImageRep *imageRep = [newView bitmapImageRepForCachingDisplayInRect:[newView bounds]];
-                [newView cacheDisplayInRect:[newView bounds] toBitmapImageRep:imageRep];
-                [[self window] setFrame:oldWindowFrame display:NO];
-                NSImage *image = [[NSImage alloc] initWithSize:[imageRep size]];
-                [image addRepresentation:imageRep];
-                [animationView setImage:image];
-                [image release];
-
-#if USE_LAYER_BACKING
-                // now select the animation view and start animating
-                [[[self window] contentView] setWantsLayer:YES];
-                [(NSView *)[[self window] contentView] display];
-#endif
-                [contentView selectLastTabViewItem:nil];
-
-                closeAfterAnimation = NO;
-                [NSAnimationContext beginGrouping];
-                [[self windowAnimator] setFrame:newWindowFrame display:YES];
-                [[self windowAnimator] setAlphaValue:1.0];
-                [NSAnimationContext endGrouping];
-                
-            }
-            else {
-                // saved frame was set to zero rect (not previously in defaults database) and user will adjust
-                closeAfterAnimation = NO;
-                [[self windowAnimator] setAlphaValue:1.0];
-            }
-            
+        // if we had a previously saved frame in the defaults database, set it as the target
+        if (NO == NSEqualRects(newWindowFrame, NSZeroRect)) {            
+            [windowDict setObject:[NSValue valueWithRect:[theWindow frame]] forKey:NSViewAnimationStartFrameKey];
+            [windowDict setObject:[NSValue valueWithRect:newWindowFrame] forKey:NSViewAnimationEndFrameKey]; 
         }
-        else {
-            [contentView selectFirstTabViewItem:nil];
-            if (NO == NSEqualRects(newWindowFrame, NSZeroRect))
-                [[self window] setFrame:newWindowFrame display:YES animate:YES];
-            [self showWindow:self];
-        }    
+        
+        [animation setViewAnimations:[NSArray arrayWithObject:windowDict]];
+        [animation setDelegate:self];
+        closeAfterAnimation = NO;
+        [animation startAnimation];
+        [animation release];  
         
         [(_FVPreviewerWindow *)[self window] resetKeyStatus];
     }

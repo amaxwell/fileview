@@ -49,7 +49,12 @@
  Note for 10.6: now that the Quick Look panel has a real API, qlmanage should only be used on 10.5.  Messing with the responder chain in FVPreviewer was too problematic to use it for control of the QLPreviewPanel, and the delegate/datasource implementation was much better suited to FileView itself.  Hence, FVPreviewer now has the role of a fallback viewer only.
  
  */
-@interface FVPreviewer : NSWindowController {
+
+#if MAC_OS_X_VERSION_10_6 && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6)
+@interface FVPreviewer : NSWindowController <NSAnimationDelegate> {
+#else
+@interface FVPreviewer : NSWindowController <NSAnimationDelegate> {
+#endif
 @private;
     IBOutlet NSTabView         *contentView;
     IBOutlet NSImageView       *animationView;
