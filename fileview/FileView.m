@@ -761,7 +761,49 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 {
     // scale changes don't cause any data reordering
     if (shouldReloadController) {
+        
+        /*
+         Loading can cause unintended side effects, such as view redrawing, if AppKit decides to run the
+         main thread's runloop.  Notably, this can happen through a call to +[FVTextIcon canInitWithURL:],
+         so the count and actual icons in the controller are inconsistent.  This flag is a workaround for
+         what I think is an egregious Apple bug:
+         
+         #3	0x0079cac0 in -[_FVController iconAtIndex:] at _FVController.m:217
+         #4	0x00758c48 in -[FileView _drawIconsInRange:rows:columns:] at FileView.m:1745
+         #5	0x00759dda in -[FileView drawRect:] at FileView.m:1896
+         #6	0x91fce82a in -[NSView _drawRect:clip:]
+         #7	0x91fcd4c8 in -[NSView _recursiveDisplayAllDirtyWithLockFocus:visRect:]
+         #8	0x91fcd7fd in -[NSView _recursiveDisplayAllDirtyWithLockFocus:visRect:]
+         #9	0x91fcb9e7 in -[NSView _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #10	0x91fcc95c in -[NSView _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #11	0x91fcc95c in -[NSView _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #12	0x91fcc95c in -[NSView _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #13	0x91fcc95c in -[NSView _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #14	0x91fcc95c in -[NSView _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #15	0x91fcb55b in -[NSThemeFrame _recursiveDisplayRectIfNeededIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:topView:]
+         #16	0x91fc7ea2 in -[NSView _displayRectIgnoringOpacity:isVisibleRect:rectIsVisibleRectForView:]
+         #17	0x91f28a57 in -[NSView displayIfNeeded]
+         #18	0x91ef1d40 in -[NSWindow displayIfNeeded]
+         #19	0x91f2328a in _handleWindowNeedsDisplay
+         #20	0x9515de02 in __CFRunLoopDoObservers
+         #21	0x95119d8d in __CFRunLoopRun
+         #22	0x95119464 in CFRunLoopRunSpecific
+         #23	0x95119291 in CFRunLoopRunInMode
+         #24	0x922e3238 in -[NSHTMLReader _loadUsingWebKit]
+         #25	0x922d791f in -[NSHTMLReader attributedString]
+         #26	0x92136d4d in _NSReadAttributedStringFromURLOrData
+         #27	0x9214bdd3 in -[NSAttributedString(NSAttributedStringKitAdditions) initWithURL:options:documentAttributes:error:]
+         #28	0x9217c2ca in -[NSAttributedString(NSAttributedStringKitAdditions) initWithURL:documentAttributes:]
+         #29	0x007777bf in +[FVTextIcon canInitWithURL:] at FVTextIcon.m:201
+         #30	0x00768016 in -[FVIcon initWithURL:] at FVIcon.m:226
+         #31	0x0079e23c in -[_FVController _cachedIconForURL:] at _FVController.m:469
+         #32	0x0079d967 in -[_FVController reload] at _FVController.m:380
+         #33	0x00750c16 in -[FileView _reloadIconsAndController:] at FileView.m:764
+         
+         */
+        _fvFlags.reloadingController = YES;
         [_controller reload];
+        _fvFlags.reloadingController = NO;
         
         // Follow NSTableView's example and clear selection outside the current range of indexes
         NSUInteger lastSelIndex = [_selectedIndexes lastIndex];
@@ -1871,6 +1913,13 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 
 - (void)drawRect:(NSRect)rect;
 {    
+    
+    // !!! early return
+    if (_fvFlags.reloadingController) {
+        FVLog(@"FileView: skipping an unsafe redraw request while reloading the controller.");
+        return;
+    }
+    
     BOOL isDrawingToScreen = [[NSGraphicsContext currentContext] isDrawingToScreen];
 
     if (isDrawingToScreen) {

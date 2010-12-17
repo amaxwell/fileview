@@ -95,7 +95,8 @@ enum {
         unsigned int dropOperation:2;
         unsigned int controllingPreviewPanel:1;
         unsigned int controllingSharedPreviewer:1;
-        unsigned int reserved:20;
+        unsigned int reloadingController:1;
+        unsigned int reserved:19;
     } _fvFlags;
     NSRect                  _dropRectForHighlight;
     double                  _maxScale;

@@ -198,6 +198,13 @@ static OSSpinLock _cacheLock = OS_SPINLOCK_INIT;
 // This is mainly useful to prove that the file cannot be opened; as in the case of OmniGraffle files (see comment above), it returns YES.
 + (BOOL)canInitWithURL:(NSURL *)aURL;
 {
+    /*
+     If on the main thread, NSHTMLReader will run the main thread's runloop in the default
+     mode.  This can have really bad side effects, such as forcing the FileView to redraw
+     while it's trying to create an icon.  Way to use the runloop, Apple.  See the
+     _fvFlags.reloadingController bit in FileView for the workaround, since I don't really
+     want to lose this check.
+     */
     NSAttributedString *attributedString = [[NSAttributedString allocWithZone:[self zone]] initWithURL:aURL documentAttributes:NULL];
     BOOL canInit = (nil != attributedString);
     [attributedString release];
