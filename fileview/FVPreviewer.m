@@ -42,6 +42,7 @@
 #import <WebKit/WebKit.h>
 #import <pthread.h>
 #import "_FVPreviewerWindow.h"
+#import "FVTextIcon.h" // for NSAttributedString initialization check
 
 #define USE_LAYER_BACKING 0
 
@@ -58,6 +59,10 @@
 
 + (BOOL)useQuickLookForURL:(NSURL *)aURL;
 {
+    /*
+     !!! The conditions here must be consistent with those in contentViewForURL:shouldUseQuickLook:
+     or else we'll end up using qlmanage unintentionally.
+     */
     
     // early return
     NSSet *webviewSchemes = [NSSet setWithObjects:@"http", @"https", @"ftp", nil];
@@ -91,7 +96,7 @@
     else if (UTTypeConformsTo(theUTI, kUTTypePDF) || UTTypeConformsTo(theUTI, FVSTR("com.adobe.postscript"))) {
         return NO;
     }
-    else if (UTTypeConformsTo(theUTI, FVSTR("public.composite-content")) || UTTypeConformsTo(theUTI, kUTTypeText)) {
+    else if ([FVTextIcon canInitWithUTI:(NSString *)theUTI]) {
         NSAttributedString *string = [[[NSAttributedString alloc] initWithURL:aURL documentAttributes:NULL] autorelease];
         return (string == nil);
     }
@@ -398,7 +403,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
             [movie release];
         }
     }
-    else if (UTTypeConformsTo(theUTI, FVSTR("public.composite-content")) || UTTypeConformsTo(theUTI, kUTTypeText)) {
+    else if ([FVTextIcon canInitWithUTI:(NSString *)theUTI]) {
         theView = textView;
         NSDictionary *attrs;
         NSAttributedString *string = [[NSAttributedString alloc] initWithURL:representedURL documentAttributes:&attrs];
@@ -595,6 +600,7 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
                 closeAfterAnimation = NO;
                 [[self windowAnimator] setAlphaValue:1.0];
             }
+            
         }
         else {
             [contentView selectFirstTabViewItem:nil];
