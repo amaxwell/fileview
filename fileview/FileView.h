@@ -93,7 +93,7 @@ enum {
         unsigned int hasArrows:1;
         unsigned int isAnimatingArrowAlpha:1;
         unsigned int dropOperation:2;
-        unsigned int controllingPreviewPanel:1;
+        unsigned int controllingQLPreviewPanel:1;
         unsigned int controllingSharedPreviewer:1;
         unsigned int reloadingController:1;
         unsigned int reserved:19;
