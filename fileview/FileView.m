@@ -822,7 +822,6 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
                 
                 if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
                     [[FVPreviewer sharedPreviewer] stopPreviewing];
-                    _fvFlags.controllingSharedPreviewer = NO;
                 }
                 else if (_fvFlags.controllingQLPreviewPanel) {
                     [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
@@ -1095,7 +1094,13 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 {
     [super viewWillMoveToSuperview:newSuperview];
     
-    // Mmalc's example unbinds here for a nil superview, and that's the only way I see at present to unbind without having the client do it explicitly, for instance in a windowWillClose:.  Perhaps it would be better for register for that in the view?   Old comment: this causes problems if you remove the view and add it back in later (and also can cause crashes as a side effect, if we're not careful with the datasource).
+    /*
+     Mmalc's example unbinds here for a nil superview, and that's the only way I see at present to unbind without having 
+     the client do it explicitly, for instance in a windowWillClose:.  Perhaps it would be better for register for that 
+     in the view?   
+     Old comment: this causes problems if you remove the view and add it back in later (and also can cause crashes as a 
+     side effect, if we're not careful with the datasource).
+     */
     if (nil == newSuperview) {
         
         if (_fvFlags.isObservingSelectionIndexes) {
@@ -1110,6 +1115,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         // break a retain cycle; binding is retaining this view
         [[_sliderWindow slider] unbind:@"value"];
         [[NSNotificationCenter defaultCenter] removeObserver:self name:FVSliderMouseExitedNotificationName object:nil];
+        [[NSNotificationCenter defaultCenter] removeObserver:self name:FVPreviewerWillCloseNotification object:nil];
     }
     else {
         
@@ -1125,7 +1131,11 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
             [[NSNotificationCenter defaultCenter] addObserver:self 
                                                      selector:@selector(handleSliderMouseExited:) 
                                                          name:FVSliderMouseExitedNotificationName 
-                                                       object:slider];      
+                                                       object:slider];    
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(handlePreviewerWillClose:)
+                                                     name:FVPreviewerWillCloseNotification
+                                                   object:nil];
     }
 }
 
@@ -2970,7 +2980,6 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
 {
     if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
         [[FVPreviewer sharedPreviewer] stopPreviewing];
-        _fvFlags.controllingSharedPreviewer = NO;
     }
     else if (_fvFlags.controllingQLPreviewPanel) {
         [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
@@ -3304,12 +3313,22 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 #pragma mark Quick Look support
 
+- (void)handlePreviewerWillClose:(NSNotification *)aNote
+{
+    /*
+     Necessary to reset in case of the window close button, which doesn't go through
+     our action methods.
+     
+     !!! Rework this to use QLPreviewPanel delegate methods and unify support.
+     */
+    _fvFlags.controllingSharedPreviewer = NO;
+}
+
 - (void)_previewURLs:(NSArray *)iconURLs
 {
     if (_fvFlags.controllingQLPreviewPanel) {
         if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
-            _fvFlags.controllingSharedPreviewer = NO;
         }
         [[QLPreviewPanelClass sharedPreviewPanel] reloadData];
         [[QLPreviewPanelClass sharedPreviewPanel] refreshCurrentPreviewItem];
@@ -3317,7 +3336,6 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     else if (QLPreviewPanelClass) {
         if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
-            _fvFlags.controllingSharedPreviewer = NO;
         }
         [[QLPreviewPanelClass sharedPreviewPanel] makeKeyAndOrderFront:nil];        
     }
@@ -3344,7 +3362,6 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     else if (_fvFlags.controllingQLPreviewPanel) {
         if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
-            _fvFlags.controllingSharedPreviewer = NO;
         }
         [[QLPreviewPanelClass sharedPreviewPanel] reloadData];
         [[QLPreviewPanelClass sharedPreviewPanel] refreshCurrentPreviewItem];
@@ -3352,7 +3369,6 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     else {
         if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
-            _fvFlags.controllingSharedPreviewer = NO;
         }
         [[QLPreviewPanelClass sharedPreviewPanel] makeKeyAndOrderFront:nil]; 
     }
