@@ -44,6 +44,8 @@
 #import "_FVPreviewerWindow.h"
 #import "FVTextIcon.h" // for NSAttributedString initialization check
 
+NSString * const FVPreviewerWillCloseNotification = @"FVPreviewerWillCloseNotification";
+
 @implementation FVPreviewer
 
 + (FVPreviewer *)sharedPreviewer;
@@ -172,6 +174,8 @@
 - (void)windowWillClose:(NSNotification *)notification
 {
     [self setWebViewContextMenuDelegate:nil];
+    // notify observers that they're no longer managing the previewer
+    [[NSNotificationCenter defaultCenter] postNotificationName:FVPreviewerWillCloseNotification object:self];
 }
 
 - (void)animationDidEnd:(NSAnimation*)animation;
