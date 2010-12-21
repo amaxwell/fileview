@@ -245,7 +245,7 @@ static char _FVContentBindingToControllerObserverContext;
     _fvFlags.dropOperation = FVDropNone;
     _fvFlags.isRescaling = NO;
     _fvFlags.scheduledLiveResize = NO;
-    _fvFlags.controllingPreviewPanel = NO;
+    _fvFlags.controllingQLPreviewPanel = NO;
     _fvFlags.controllingSharedPreviewer = NO;
     _selectedIndexes = [[NSMutableIndexSet alloc] init];
     _lastClickedIndex = NSNotFound;
@@ -815,7 +815,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         
         // Content or ordering of selection (may) have changed, so reload any previews
         // Only modify the previewer if this view is controlling it, though!
-        if (_fvFlags.controllingSharedPreviewer || _fvFlags.controllingPreviewPanel) {
+        if (_fvFlags.controllingSharedPreviewer || _fvFlags.controllingQLPreviewPanel) {
             
             // reload might result in an empty view...
             if ([_selectedIndexes count] == 0) {
@@ -824,7 +824,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
                     [[FVPreviewer sharedPreviewer] stopPreviewing];
                     _fvFlags.controllingSharedPreviewer = NO;
                 }
-                else if (_fvFlags.controllingPreviewPanel) {
+                else if (_fvFlags.controllingQLPreviewPanel) {
                     [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
                     [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
                     [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
@@ -894,7 +894,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
         [self setNeedsDisplay:YES];
         
         FVPreviewer *previewer = [FVPreviewer sharedPreviewer];
-        if (updatePreviewer && NSNotFound != [_selectedIndexes firstIndex] && ([previewer isPreviewing] || _fvFlags.controllingPreviewPanel)) {
+        if (updatePreviewer && NSNotFound != [_selectedIndexes firstIndex] && ([previewer isPreviewing] || _fvFlags.controllingQLPreviewPanel)) {
             if ([_selectedIndexes count] == 1) {
                 NSUInteger r, c;
                 [self _getGridRow:&r column:&c ofIndex:[_selectedIndexes firstIndex]];
@@ -2773,7 +2773,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
     NSWindow *window = nil;
     if ([[FVPreviewer sharedPreviewer] isPreviewing])
         window = [[FVPreviewer sharedPreviewer] window];
-    else if (_fvFlags.controllingPreviewPanel)
+    else if (_fvFlags.controllingQLPreviewPanel)
         window = [QLPreviewPanelClass sharedPreviewPanel];
     
     if ([self _tryToPerform:aSelector inViewAndDescendants:[window contentView]] == NO)
@@ -2972,7 +2972,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
         [[FVPreviewer sharedPreviewer] stopPreviewing];
         _fvFlags.controllingSharedPreviewer = NO;
     }
-    else if (_fvFlags.controllingPreviewPanel) {
+    else if (_fvFlags.controllingQLPreviewPanel) {
         [[QLPreviewPanelClass sharedPreviewPanel] orderOut:nil];
         [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
         [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
@@ -3306,7 +3306,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 - (void)_previewURLs:(NSArray *)iconURLs
 {
-    if (_fvFlags.controllingPreviewPanel) {
+    if (_fvFlags.controllingQLPreviewPanel) {
         if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
             _fvFlags.controllingSharedPreviewer = NO;
@@ -3332,8 +3332,8 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     if ([FVPreviewer useQuickLookForURL:aURL] == NO || Nil == QLPreviewPanelClass) {
         iconRect = [self convertRect:iconRect toView:nil];
         iconRect.origin = [[self window] convertBaseToScreen:iconRect.origin];
-        // note: controllingPreviewPanel is only true if QLPreviewPanelClass exists, but clang doesn't know that
-        if (_fvFlags.controllingPreviewPanel && Nil != QLPreviewPanelClass) {
+        // note: controllingQLPreviewPanel is only true if QLPreviewPanelClass exists, but clang doesn't know that
+        if (_fvFlags.controllingQLPreviewPanel && Nil != QLPreviewPanelClass) {
             iconRect = [[QLPreviewPanelClass sharedPreviewPanel] frame];
             [[QLPreviewPanelClass sharedPreviewPanel] performSelector:@selector(orderOut:) withObject:nil afterDelay:0.0];
         }
@@ -3341,7 +3341,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
         [[FVPreviewer sharedPreviewer] previewURL:aURL forIconInRect:iconRect];    
         _fvFlags.controllingSharedPreviewer = YES;
     }
-    else if (_fvFlags.controllingPreviewPanel) {
+    else if (_fvFlags.controllingQLPreviewPanel) {
         if ([[FVPreviewer sharedPreviewer] isPreviewing]) {
             [[FVPreviewer sharedPreviewer] stopPreviewing];
             _fvFlags.controllingSharedPreviewer = NO;
@@ -3382,7 +3382,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 - (void)beginPreviewPanelControl:(QLPreviewPanel *)panel;
 {
-    _fvFlags.controllingPreviewPanel = YES;
+    _fvFlags.controllingQLPreviewPanel = YES;
     [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:self];
     [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:self];
     [[QLPreviewPanelClass sharedPreviewPanel] reloadData];    
@@ -3390,7 +3390,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 - (void)endPreviewPanelControl:(QLPreviewPanel *)panel;
 {
-    _fvFlags.controllingPreviewPanel = NO;
+    _fvFlags.controllingQLPreviewPanel = NO;
     [[QLPreviewPanelClass sharedPreviewPanel] setDataSource:nil];
     [[QLPreviewPanelClass sharedPreviewPanel] setDelegate:nil];
 }
