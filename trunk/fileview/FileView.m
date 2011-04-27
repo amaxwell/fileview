@@ -988,6 +988,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     if (([binding isEqualToString:NSSelectionIndexesBinding] && nil != _selectionBinding) || ([binding isEqualToString:NSContentBinding] && nil != _contentBinding)) {
         NSMutableDictionary *bindingInfo = [NSMutableDictionary dictionary];
         _FVBinding *theBinding = [binding isEqualToString:NSSelectionIndexesBinding] ? _selectionBinding : _contentBinding;
+        NSParameterAssert(NULL != theBinding); // for static analyzer
         if (theBinding->_observable) [bindingInfo setObject:theBinding->_observable forKey:NSObservedObjectKey];
         if (theBinding->_keyPath) [bindingInfo setObject:theBinding->_keyPath forKey:NSObservedKeyPathKey];
         if (theBinding->_options) [bindingInfo setObject:theBinding->_options forKey:NSOptionsKey];
@@ -1019,7 +1020,7 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 {
     NSEnumerator *bindingEnum = [[self exposedBindings] objectEnumerator];
     NSString *binding;
-    while (binding = [bindingEnum nextObject]) {
+    while ((binding = [bindingEnum nextObject])) {
         
         if (nil != [self infoForBinding:binding])
             [self unbind:binding];
@@ -1929,7 +1930,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         FVLog(@"FileView: skipping an unsafe redraw request while reloading the controller.");
         return;
     }
-    
+        
     BOOL isDrawingToScreen = [[NSGraphicsContext currentContext] isDrawingToScreen];
 
     if (isDrawingToScreen) {
