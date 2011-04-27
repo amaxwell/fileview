@@ -206,7 +206,7 @@ static inline id *__FVPriorityQueueHeapEnd(FVPriorityQueue *self)
         }
         catch (std::bad_alloc&) {
             // !!! early return
-            NSLog(@"*** ERROR *** unable to allocate space for %d objects", iMax);
+            NSLog(@"*** ERROR *** unable to allocate space for %ld objects", (long)iMax);
             return;
         }
     }
