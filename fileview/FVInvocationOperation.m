@@ -145,7 +145,7 @@
             OSSpinLockUnlock(&_lock);
             value = [[NSValue alloc] initWithBytes:&_retdata objCType:returnType];
             if (false == retain)
-                value = [value autorelease];
+                [value autorelease];
         }
     }
     
