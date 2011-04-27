@@ -68,12 +68,6 @@
 
 /** @brief Get the return value.
  
- FVInvocationOperation can be used in a blocking mode if you poll the runloop until FVOperation::isFinished returns YES.  Use @a FVMainQueueRunLoopMode for the main thread queue, or @a NSDefaultRunLoopMode for most other queues:
- @code 
- [[FVOperationQueue mainQueue] addOperation:operation];
- while (NO == [operation isFinished])
-    [[NSRunLoop currentRunLoop] runMode:FVMainQueueRunLoopMode beforeDate:[NSDate dateWithTimeIntervalSinceNow:0.1]];
- @endcode
  @warning This has only undergone limited testing, but is known to work for object and NSRect types.  Test it yourself for others.
  @return The return value of the invocation.  If this is not an object, it will be wrapped in an NSValue. */
 - (id)result;
