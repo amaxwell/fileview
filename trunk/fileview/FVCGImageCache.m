@@ -123,7 +123,7 @@ static FVCGImageCache *_smallImageCache = nil;
 
 + (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 {
-    return [FVCacheFile newKeyForURL:aURL];
+    return (id <NSObject, NSCopying>)[FVCacheFile newKeyForURL:aURL];
 }
 
 + (CGImageRef)newThumbnailForKey:(id)aKey;
