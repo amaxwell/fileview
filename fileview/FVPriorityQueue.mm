@@ -258,7 +258,7 @@ static inline id *__FVPriorityQueueHeapEnd(FVPriorityQueue *self)
         toReturn = *(__FVPriorityQueueHeapEnd(self));
         
         // make sure we don't remove the last reference to this object
-        toReturn = [[toReturn retain] autorelease];
+        [[toReturn retain] autorelease];
         CFSetRemoveValue(_set, toReturn);
         
         if (0 == count)
@@ -370,7 +370,7 @@ void FVPriorityQueueApplyFunction(FVPriorityQueue *queue, FVPriorityQueueApplier
         obj = *(__FVPriorityQueueHeapStart(_queue) + _currentIndex);
         _currentIndex++;
         if (_count == _currentIndex)
-            obj = [[obj retain] autorelease];
+            [[obj retain] autorelease];
     }
     return obj;
 }
