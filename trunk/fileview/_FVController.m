@@ -175,7 +175,7 @@
     if (_orderedURLs != array) {
         [_orderedURLs release];
         // immutable (shallow) copy, since I want direct mutation to raise when using bindings
-        _orderedURLs = array ? [[NSArray allocWithZone:[self zone]] initWithArray:array copyItems:NO] : nil;
+        _orderedURLs = array ? (id)[[NSArray allocWithZone:[self zone]] initWithArray:array copyItems:NO] : nil;
     }    
 }
 
