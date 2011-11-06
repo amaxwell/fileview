@@ -100,7 +100,7 @@ static NSInteger FVCacheLogLevel = 0;
 
 + (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 {
-    return [_FVCacheKey newWithURL:aURL];
+    return (id <NSObject, NSCopying>)[_FVCacheKey newWithURL:aURL];
 }
 
 - (id)init
@@ -250,9 +250,10 @@ static NSInteger FVCacheLogLevel = 0;
     else if (scheme) {
         identifier = (CFStringRef)CFRetain(scheme);
     }
-    else {
+    
+    // no scheme or getting UTI failed
+    if (NULL == identifier)
         identifier = CFStringCreateWithCString(NULL, "anonymous", kCFStringEncodingASCII);
-    }
     
     _FVCacheEventRecord *rec = [_eventTable objectForKey:(id)identifier];
     if (nil != rec) {
@@ -310,7 +311,8 @@ static NSInteger FVCacheLogLevel = 0;
             strm.next_in = (Bytef *)[data bytes];
             strm.avail_in = location->_decompressedLength;
             
-            int flush, status = deflateInit2(&strm, Z_BEST_SPEED, Z_DEFLATED, 15, 9, Z_HUFFMAN_ONLY);
+            int flush, status;
+            (void) deflateInit2(&strm, Z_BEST_SPEED, Z_DEFLATED, 15, 9, Z_HUFFMAN_ONLY);
             
             ssize_t writeLength;
             
@@ -387,12 +389,15 @@ static NSInteger FVCacheLogLevel = 0;
             strm.zfree = (void (*)(void *, void *))NSZoneFree;
             strm.opaque = FVDefaultZone();
             
-            status = inflateInit(&strm);
+            (void) inflateInit(&strm);
             
             void *mapregion = NULL;
             const size_t mapLength = location->_compressedLength + location->_padLength;
+            // !!! early return
             if ((mapregion = mmap(0, mapLength, PROT_READ, MAP_SHARED, _fileDescriptor, location->_offset)) == MAP_FAILED) {
                 perror("mmap failed");
+                CFAllocatorDeallocate(FVAllocatorGetDefault(), bytes);
+                [location release];
                 return nil;
             }
             
