@@ -67,7 +67,8 @@ using namespace std;
 
 #if DEBUG
 #define ENABLE_STATS 0
-#define fv_zone_assert(condition) do { if(false == (condition)) { HALT; } } while(0)
+static void fv_zone_assert(bool x) CLANG_ANALYZER_NORETURN;
+static void fv_zone_assert(bool condition) { if(false == (condition)) { HALT; } }
 #else
 #define ENABLE_STATS 0
 #define fv_zone_assert(condition)
@@ -398,8 +399,8 @@ static void *fv_zone_malloc(malloc_zone_t *fvzone, size_t size)
 #endif
         alloc->free = false;
         ret = alloc->ptr;
+        if (_scribble) memset(ret, 0xaa, alloc->ptrSize);
     }
-    if (_scribble) memset(ret, 0xaa, alloc->ptrSize);
     return ret;    
 }
 
