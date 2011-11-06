@@ -752,6 +752,7 @@ static vImage_Error __FVCheckAndTrimRow(NSArray *regionRow, vImage_Buffer *desti
     return kvImageNoError;
 }
 
+static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSSize desiredSize) CF_RETURNS_RETAINED;
 static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSSize desiredSize)
 {
     NSCParameterAssert(image);
@@ -763,15 +764,17 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     if (NULL == srcBytes) {
         
         originalImageData = CGDataProviderCopyData(CGImageGetDataProvider(image));        
-        srcBytes = CFDataGetBytePtr(originalImageData);
         
         // !!! early return
-        if (NULL == srcBytes) {
+        if (NULL == originalImageData) {
 #if FV_LIMIT_TILEMEMORY_USAGE
             __FVCGImageDiscardAllocationSize(__FVCGImageGetDataSize(image));           
 #endif
             return NULL;
-        }        
+        }    
+        
+        srcBytes = CFDataGetBytePtr(originalImageData);
+
     }
         
     const bool isIndexedImage = (kCGColorSpaceModelIndexed == __FVGetColorSpaceModelOfColorSpace(CGImageGetColorSpace(image)));
@@ -899,7 +902,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         if (region.row != regionRowIndex) {
             // these FVImageBuffers have correct values for width/height, and represent a series of scanlines 
             accumulatedRows += imageBuffer->buffer->height;
-            ret = __FVCheckAndTrimRow(currentRegionRow, interleavedBuffer, accumulatedRows);
+            (void) __FVCheckAndTrimRow(currentRegionRow, interleavedBuffer, accumulatedRows);
             nextScanline = __FVAddRowOfARGB8888BuffersToImage(currentRegionRow, nextScanline, interleavedBuffer);
             regionRowIndex++;
             regionColumnIndex = 0;
