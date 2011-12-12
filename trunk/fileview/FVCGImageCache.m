@@ -121,10 +121,13 @@ static FVCGImageCache *_smallImageCache = nil;
 
 #pragma mark Class methods
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincompatible-pointer-types"
 + (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 {
     return (id <NSObject, NSCopying>)[FVCacheFile newKeyForURL:aURL];
 }
+#pragma clang diagnostic pop
 
 + (CGImageRef)newThumbnailForKey:(id)aKey;
 {

@@ -98,10 +98,13 @@ static NSInteger FVCacheLogLevel = 0;
     FVCacheLogLevel = [[NSUserDefaults standardUserDefaults] integerForKey:@"FVCacheLogLevel"];  
 }
 
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wincompatible-pointer-types"
 + (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
 {
     return (id <NSObject, NSCopying>)[_FVCacheKey newWithURL:aURL];
 }
+#pragma clang diagnostic pop
 
 - (id)init
 {
