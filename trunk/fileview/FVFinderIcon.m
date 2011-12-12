@@ -158,11 +158,22 @@
         
         if (NO == _drawsLinkBadge && noErr == err && targetUTI && UTTypeEqual(targetUTI, kUTTypeFolder) && (((FolderInfo *)&catInfo.finderInfo)->finderFlags & kHasCustomIcon) == 0) {            
             [super dealloc];
+/*
+ There's a stupid warning about self not being assigned to [super init] or [self init],
+ and the only way I can see to silence it is return early (and leak targetUTI, which
+ isn't reported as a leak!), or just disable analyzer.  Incredibly, it doesn't complain
+ about returning a garbage pointer here, which is what self would be after calling
+ -dealloc.  Who comes up with this crap, Apple, C++ programmers?
+ */
+#ifndef __clang_analyzer__
             self = [[FVGenericFolderIcon sharedIcon] retain];
+#endif
         }
         else if (NO == _drawsLinkBadge && isSavedSearch) {
             [super dealloc];
+#ifndef __clang_analyzer__
             self = [[FVSavedSearchIcon sharedIcon] retain];
+#endif
         }
         else {
             
