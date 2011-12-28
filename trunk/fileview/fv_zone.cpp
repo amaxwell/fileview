@@ -553,7 +553,7 @@ static void fv_zone_destroy(malloc_zone_t *fvzone)
     
     // remove from timed processing
     pthread_mutex_lock(&_allZonesLock);
-    if (_allZones->count(zone) == 0) {
+    if (NULL == _allZones || _allZones->count(zone) == 0) {
         malloc_printf("attempt to destroy invalid fvzone %s\n", malloc_get_zone_name(&zone->_basic_zone));
         HALT;
     }
@@ -928,7 +928,9 @@ static void *__fv_zone_collector_thread(void *unused)
         
         // see http://www.opengroup.org/onlinepubs/009695399/functions/pthread_cond_timedwait.html for notes on timed wait    
         ret = pthread_cond_timedwait(&_collectorCond, &_allZonesLock, &ts);
-        for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
+        if (NULL != _allZones) {
+            for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
+        }
 
 #if ENABLE_STATS
         (void)gettimeofday(&tv, NULL);
