@@ -84,7 +84,7 @@ FVCreateWeakTimerWithTimeInterval(CFAbsoluteTime interval, CFAbsoluteTime fireTi
 FV_PRIVATE_EXTERN void FVLogv(NSString *format, va_list argList);
 /** @internal @brief Logging function. 
  Log to stdout without the date/app/pid gunk that NSLog appends */
-FV_PRIVATE_EXTERN void FVLog(NSString *format, ...);
+FV_PRIVATE_EXTERN void FVLog(NSString *format, ...) NS_FORMAT_FUNCTION(1,2);
 
 /** @internal
  Checks the pasteboard for any URL data.  Converts an NSPasteboard to a Carbon PasteboardRef. 
