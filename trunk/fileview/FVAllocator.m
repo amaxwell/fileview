@@ -39,7 +39,7 @@
 #import "FVAllocator.h"
 #import "fv_zone.h"
 
-#define USE_SYSTEM_ZONE 0
+#define USE_SYSTEM_ZONE 1
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
@@ -87,6 +87,10 @@ static malloc_zone_t  *_allocatorZone = NULL;
 __attribute__ ((constructor))
 static void __initialize_allocator()
 {        
+#if USE_SYSTEM_ZONE
+    _allocatorZone = malloc_default_zone();
+    _allocator = CFAllocatorGetDefault();
+#else
     // create the initial zone
     _allocatorZone = fv_create_zone_named("FVAllocatorZone");
     
@@ -103,25 +107,12 @@ static void __initialize_allocator()
         __FVPreferredSize 
     };
     _allocator = CFAllocatorCreate(CFAllocatorGetDefault(), &context);
+#endif
 }
 
 #pragma mark API
 
-CFAllocatorRef FVAllocatorGetDefault() 
-{ 
-#if USE_SYSTEM_ZONE
-    return CFAllocatorGetDefault();
-#else
-    return _allocator; 
-#endif
-}
+CFAllocatorRef FVAllocatorGetDefault() {  return _allocator; }
 
-NSZone * FVDefaultZone()
-{
-#if USE_SYSTEM_ZONE
-    return (void *)malloc_default_zone();
-#else
-    // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
-    return (void *)_allocatorZone;
-#endif
-}
+// NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
+NSZone * FVDefaultZone() { return (void *)_allocatorZone; }
