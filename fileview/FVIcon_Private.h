@@ -6,7 +6,7 @@
  *
  */
 /*
- This software is Copyright (c) 2007-2011
+ This software is Copyright (c) 2007-2012
  Adam Maxwell. All rights reserved.
  
  Redistribution and use in source and binary forms, with or without
