@@ -39,7 +39,7 @@
 #import "FVAllocator.h"
 #import "fv_zone.h"
 
-#define USE_SYSTEM_ZONE 1
+#define USE_SYSTEM_ZONE 0
 
 static CFStringRef __FVAllocatorCopyDescription(const void *info)
 {
