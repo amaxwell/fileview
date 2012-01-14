@@ -807,65 +807,6 @@ static const struct malloc_introspection_t __fv_zone_introspect = {
 
 static bool __fv_alloc_size_compare(fv_allocation_t *val1, fv_allocation_t *val2) { return (val1->ptrSize < val2->ptrSize); }
 
-#pragma mark API
-
-malloc_zone_t *fv_create_zone_named(const char *name)
-{
-    // can't rely on initializers to do this early enough, since FVAllocator creates a zone in a __constructor__
-    pthread_mutex_lock(&_allZonesLock);
-    // TODO: is using new okay?
-    if (NULL == _allZones) _allZones = new set<fv_zone_t *>;
-    if (getenv("MallocScribble") != NULL) {
-        malloc_printf("will scribble memory allocations in zone %s\n", name);
-        _scribble = true;
-    }
-    pthread_mutex_unlock(&_allZonesLock);
-
-    // let calloc zero all fields
-    fv_zone_t *zone = (fv_zone_t *)malloc_zone_calloc(malloc_default_zone(), 1, sizeof(fv_zone_t));
-    
-    zone->_basic_zone.size = fv_zone_size;
-    zone->_basic_zone.malloc = fv_zone_malloc;
-    zone->_basic_zone.calloc = fv_zone_calloc;
-    zone->_basic_zone.valloc = fv_zone_valloc;
-    zone->_basic_zone.free = fv_zone_free;
-    zone->_basic_zone.realloc = fv_zone_realloc;
-    zone->_basic_zone.destroy = fv_zone_destroy;
-    zone->_basic_zone.batch_malloc = NULL;
-    zone->_basic_zone.batch_free = NULL;
-    zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
-    zone->_basic_zone.version = 0;  /* from scalable_malloc.c in Libc-498.1.1 */
-    
-#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
-    zone->_basic_zone.memalign = NULL;
-    zone->_basic_zone.free_definite_size = fv_zone_free_definite;
-#endif
-    
-    // explicitly initialize padding to NULL
-    zone->_reserved[0] = NULL;
-    zone->_reserved[1] = NULL;
-        
-    // http://www.cplusplus.com/reference/stl/set/set.html
-    // proof that C++ programmers have to be insane
-    bool (*compare_ptr)(ALLOC, ALLOC) = __fv_alloc_size_compare;
-    zone->_availableAllocations = new multiset<MSALLOC>(compare_ptr);
-    zone->_allocations = new vector<ALLOC>;
-    LOCK_INIT(zone);
-    
-    // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
-    malloc_zone_register((malloc_zone_t *)zone);
-    
-    // malloc_set_zone_name calls out to this zone, so call it after setup is complete
-    malloc_set_zone_name(&zone->_basic_zone, name);
-    
-    // register for timer
-    pthread_mutex_lock(&_allZonesLock);
-    _allZones->insert(zone);
-    pthread_mutex_unlock(&_allZonesLock);
-    
-    return (malloc_zone_t *)zone;
-}
-
 #pragma mark Setup and cleanup
 
 #if ENABLE_STATS
@@ -950,7 +891,6 @@ static void *__fv_zone_collector_thread(void *unused)
     return NULL;
 }
 
-__attribute__ ((constructor))
 static void __initialize_collector_thread()
 {    
     // create a thread to do periodic cleanup so memory usage doesn't get out of hand
@@ -962,6 +902,67 @@ static void __initialize_collector_thread()
     pthread_t thread;
     (void)pthread_create(&thread, &attr, __fv_zone_collector_thread, NULL);
     pthread_attr_destroy(&attr);    
+}
+
+#pragma mark API
+
+malloc_zone_t *fv_create_zone_named(const char *name)
+{
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __initialize_collector_thread);
+    // can't rely on initializers to do this early enough, since FVAllocator creates a zone in a __constructor__
+    pthread_mutex_lock(&_allZonesLock);
+    // TODO: is using new okay?
+    if (NULL == _allZones) _allZones = new set<fv_zone_t *>;
+    if (getenv("MallocScribble") != NULL) {
+        malloc_printf("will scribble memory allocations in zone %s\n", name);
+        _scribble = true;
+    }
+    pthread_mutex_unlock(&_allZonesLock);
+    
+    // let calloc zero all fields
+    fv_zone_t *zone = (fv_zone_t *)malloc_zone_calloc(malloc_default_zone(), 1, sizeof(fv_zone_t));
+    
+    zone->_basic_zone.size = fv_zone_size;
+    zone->_basic_zone.malloc = fv_zone_malloc;
+    zone->_basic_zone.calloc = fv_zone_calloc;
+    zone->_basic_zone.valloc = fv_zone_valloc;
+    zone->_basic_zone.free = fv_zone_free;
+    zone->_basic_zone.realloc = fv_zone_realloc;
+    zone->_basic_zone.destroy = fv_zone_destroy;
+    zone->_basic_zone.batch_malloc = NULL;
+    zone->_basic_zone.batch_free = NULL;
+    zone->_basic_zone.introspect = (struct malloc_introspection_t *)&__fv_zone_introspect;
+    zone->_basic_zone.version = 0;  /* from scalable_malloc.c in Libc-498.1.1 */
+    
+#if defined(MAC_OS_X_VERSION_10_6) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
+    zone->_basic_zone.memalign = NULL;
+    zone->_basic_zone.free_definite_size = fv_zone_free_definite;
+#endif
+    
+    // explicitly initialize padding to NULL
+    zone->_reserved[0] = NULL;
+    zone->_reserved[1] = NULL;
+    
+    // http://www.cplusplus.com/reference/stl/set/set.html
+    // proof that C++ programmers have to be insane
+    bool (*compare_ptr)(ALLOC, ALLOC) = __fv_alloc_size_compare;
+    zone->_availableAllocations = new multiset<MSALLOC>(compare_ptr);
+    zone->_allocations = new vector<ALLOC>;
+    LOCK_INIT(zone);
+    
+    // register so the system handles lookups correctly, or malloc_zone_from_ptr() breaks (along with free())
+    malloc_zone_register((malloc_zone_t *)zone);
+    
+    // malloc_set_zone_name calls out to this zone, so call it after setup is complete
+    malloc_set_zone_name(&zone->_basic_zone, name);
+    
+    // register for timer
+    pthread_mutex_lock(&_allZonesLock);
+    _allZones->insert(zone);
+    pthread_mutex_unlock(&_allZonesLock);
+    
+    return (malloc_zone_t *)zone;
 }
 
 #pragma mark statistics
