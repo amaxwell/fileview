@@ -1968,7 +1968,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 
         // only draw the dirty part, but we need to use the full view bounds as the gradient extent
         CGContextSaveGState(ctxt);
-        CGContextClipToRect(ctxt, rect);
+        CGContextClipToRect(ctxt, NSRectToCGRect(rect));
         const NSRect bounds = [self bounds];
         CGContextDrawLinearGradient(ctxt, gradient, CGPointMake(0, NSMaxY(bounds)), CGPointMake(0, NSMinY(bounds)), 0);
         CGContextRestoreGState(ctxt);
