@@ -155,17 +155,17 @@ static char _FVContentBindingToControllerObserverContext;
 }
 
 + (NSColor *)defaultBackgroundColor
-{
-    NSColor *color = nil;
-    
+{    
 #ifndef NSAppKitVersionNumber10_6
 #define NSAppKitVersionNumber10_6 1038
 #endif
     
     // !!! early return for 10.7 and later to deal with gradient colors
     if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6)
-        return color;
+        return nil;
     
+    NSColor *color = nil;
+
     // Magic source list color: http://lists.apple.com/archives/cocoa-dev/2008/Jun/msg02138.html
     if ([NSOutlineView instancesRespondToSelector:@selector(setSelectionHighlightStyle:)]) {
         NSOutlineView *outlineView = [[NSOutlineView alloc] initWithFrame:NSMakeRect(0,0,1,1)];
