@@ -158,6 +158,14 @@ static char _FVContentBindingToControllerObserverContext;
 {
     NSColor *color = nil;
     
+#ifndef NSAppKitVersionNumber10_6
+#define NSAppKitVersionNumber10_6 1038
+#endif
+    
+    // !!! early return for 10.7 and later to deal with gradient colors
+    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6)
+        return color;
+    
     // Magic source list color: http://lists.apple.com/archives/cocoa-dev/2008/Jun/msg02138.html
     if ([NSOutlineView instancesRespondToSelector:@selector(setSelectionHighlightStyle:)]) {
         NSOutlineView *outlineView = [[NSOutlineView alloc] initWithFrame:NSMakeRect(0,0,1,1)];
@@ -1922,6 +1930,54 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     }
 }
 
+- (void)_fillBackgroundColorOrGradientInRect:(NSRect)rect
+{
+    // any solid color background should override the gradient code
+    if ([self backgroundColor]) {
+        [[self backgroundColor] setFill];
+        NSRectFillUsingOperation(rect, NSCompositeCopy);
+    }
+    else {
+        /*
+         The NSTableView magic source list color no longer works properly on 10.7, either
+         because they changed it from a solid color to a gradient, or just changed the
+         drawing.  I couldn't see a reasonable way to subclass NSColor and draw a gradient
+         as Apple does, or to force the color to update properly, so we'll just cheat and
+         do it the easy way.  Using 10.5 and later API is okay, since 10.4 gets a solid
+         color anyway.
+         */
+        FVAPIAssert(floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6, @"gradient background is only available on 10.7 and later");
+        
+        // should be RGBA space, since we're drawing to the screen
+        CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+        const CGFloat locations[] = { 0, 1 };
+        CGGradientRef gradient;
+        
+        // color values from DigitalColor Meter on 10.7, using Generic RGB space
+        if ([[self window] isKeyWindow]) {
+            // ordered as lower/upper
+            const CGFloat components[8] = { 198.0 / 255.0, 207.0 / 255.0, 216.0 / 255.0, 1.0, 227.0 / 255.0, 232.0 / 255.0, 238.0 / 255.0, 1.0 };
+            gradient = CGGradientCreateWithColorComponents(cspace, components, locations, 2);
+        }
+        else {
+            // ordered as lower/upper
+            const CGFloat components[8] = { 230.0 / 255.0, 230.0 / 255.0, 230.0 / 255.0, 1.0, 246.0 / 255.0, 246.0 / 255.0, 246.0 / 255.0, 1.0 };
+            gradient = CGGradientCreateWithColorComponents(cspace, components, locations, 2);
+        }
+        CGContextRef ctxt = [[NSGraphicsContext currentContext] graphicsPort];
+
+        // only draw the dirty part, but we need to use the full view bounds as the gradient extent
+        CGContextSaveGState(ctxt);
+        CGContextClipToRect(ctxt, rect);
+        const NSRect bounds = [self bounds];
+        CGContextDrawLinearGradient(ctxt, gradient, CGPointMake(0, NSMaxY(bounds)), CGPointMake(0, NSMinY(bounds)), 0);
+        CGContextRestoreGState(ctxt);
+
+        CGGradientRelease(gradient);
+        CGColorSpaceRelease(cspace);
+    }
+}
+
 - (void)drawRect:(NSRect)rect;
 {    
     
@@ -1933,10 +1989,8 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         
     BOOL isDrawingToScreen = [[NSGraphicsContext currentContext] isDrawingToScreen];
 
-    if (isDrawingToScreen) {
-        [[self backgroundColor] setFill];
-        NSRectFillUsingOperation(rect, NSCompositeCopy);
-    }
+    if (isDrawingToScreen)
+        [self _fillBackgroundColorOrGradientInRect:rect];
         
     // Only iterate icons in the visible range, since we know the overall geometry
     NSRange rowRange, columnRange;
