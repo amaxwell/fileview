@@ -1954,7 +1954,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         CGGradientRef gradient;
         
         // color values from DigitalColor Meter on 10.7, using Generic RGB space
-        if ([[self window] isKeyWindow]) {
+        if ([[self window] isKeyWindow] || [[self window] isMainWindow]) {
             // ordered as lower/upper
             const CGFloat components[8] = { 198.0 / 255.0, 207.0 / 255.0, 216.0 / 255.0, 1.0, 227.0 / 255.0, 232.0 / 255.0, 238.0 / 255.0, 1.0 };
             gradient = CGGradientCreateWithColorComponents(cspace, components, locations, 2);
