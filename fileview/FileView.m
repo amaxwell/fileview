@@ -1932,6 +1932,24 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 
 - (void)_fillBackgroundColorOrGradientInRect:(NSRect)rect
 {
+    /*
+     If you reset color in a nib inspector on 10.7, a nil color is archived in the nib
+     and will take precendence over the +defaultBackgroundColor.  Likewise, if you
+     intentionally called setBackgroundColor:nil for some reason, you could end up
+     in the gradient code path on 10.6 and earlier.  We'll just dodge that problem
+     by declaring that a nil value means that you want the default color.  It doesn't
+     make sense to do anything more elaborate, since the nib inspector is gone in
+     Xcode 4 and later.
+     
+     The second condition is for nibs that have been previously set up on 10.6 and
+     earlier, so may have the source list color archived.  We don't want to use 
+     that on 10.7, so hack around it.
+     */
+    if (floor(NSAppKitVersionNumber) <= NSAppKitVersionNumber10_6 && [self backgroundColor] == nil)
+        [self setBackgroundColor:[[self class] defaultBackgroundColor]];
+    else if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6 && [[self backgroundColor] isKindOfClass:NSClassFromString(@"NSSourceListBackgroundColor")])
+        [self setBackgroundColor:nil];
+    
     // any solid color background should override the gradient code
     if ([self backgroundColor]) {
         [[self backgroundColor] setFill];
