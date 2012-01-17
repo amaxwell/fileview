@@ -1966,6 +1966,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
          */
         FVAPIAssert(floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6, @"gradient background is only available on 10.7 and later");
         
+        // otherwise we see a blocky transition, which fades on the redraw when scrolling stops
+        if ([[[self enclosingScrollView] contentView] copiesOnScroll])
+            [[[self enclosingScrollView] contentView] setCopiesOnScroll:NO];
+        
         // should be RGBA space, since we're drawing to the screen
         CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
         const CGFloat locations[] = { 0, 1 };
@@ -1984,10 +1988,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         }
         CGContextRef ctxt = [[NSGraphicsContext currentContext] graphicsPort];
 
-        // only draw the dirty part, but we need to use the full view bounds as the gradient extent
+        // only draw the dirty part, but we need to use the full visible bounds as the gradient extent
         CGContextSaveGState(ctxt);
         CGContextClipToRect(ctxt, NSRectToCGRect(rect));
-        const NSRect bounds = [self bounds];
+        const NSRect bounds = [self visibleRect];
         CGContextDrawLinearGradient(ctxt, gradient, CGPointMake(0, NSMaxY(bounds)), CGPointMake(0, NSMinY(bounds)), 0);
         CGContextRestoreGState(ctxt);
 
