@@ -1104,7 +1104,20 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
     // !!! re-add support for monochrome
     if (kCGColorSpaceModelRGB != colorModel && kCGColorSpaceModelIndexed != colorModel) {
 #if DEBUG
-        FVLog(@"%s: no vImage support for CGColorSpaceModel %d.  Using Quartz2D.", __func__, colorModel);
+        const char *modelNames[] = {
+            "kCGColorSpaceModelUnknown",
+            "kCGColorSpaceModelMonochrome",
+            "kCGColorSpaceModelRGB",
+            "kCGColorSpaceModelCMYK",
+            "kCGColorSpaceModelLab",
+            "kCGColorSpaceModelDeviceN",
+            "kCGColorSpaceModelIndexed",
+            "kCGColorSpaceModelPattern"
+        };
+        
+        const unsigned int cmidx = colorModel + 1;
+        const char *modelName = cmidx >= sizeof(modelNames) / sizeof(char *) ? "error: color space model not in enum" : modelNames[cmidx];
+        FVLog(@"%s: no vImage support for CGColorSpaceModel %s = %d.  Using Quartz2D.", __func__, modelName, colorModel);
 #endif
         return __FVCopyImageUsingCacheColorspace(image, desiredSize);
     }
