@@ -247,7 +247,15 @@ static CGImageRef __FVCreateThumbnailWithIcon(IconRef icon)
 
 static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
 {
-    return __FVCreateImageWithIcon(icon, FVMaxImageDimension, FVMaxImageDimension);
+    size_t dim = FVMaxImageDimension;
+    /*
+     Crash under _ISGetCGImageRefForISImageRef as of 10.7.3.  This seems to avoid the crash,
+     but I've no idea if it's a truly good workaround.  Apply to all 10.7.x systems for now.
+     rdar://problem/10809538 
+     */
+    if (floor(NSAppKitVersionNumber) >= 1138)
+        dim = 200;
+    return __FVCreateImageWithIcon(icon, dim, dim);
 }
 
 @implementation FVSingletonFinderIcon
