@@ -228,24 +228,36 @@
 
 #pragma mark Base singleton
 
-static CGImageRef __FVCreateImageWithIcon(IconRef icon, size_t width, size_t height)
+/*
+ The outContext pointer allows additional drawing on the image, but the returned
+ reference is 
+    a) not owned by the caller,
+    b) does not neccessarily mutate the CGImage
+ 
+ Only returns NULL if context creation fails, which shouldn't happen unless we run
+ out of address space.
+ */
+static CGImageRef __FVCreateImageWithIcon(IconRef icon, size_t width, size_t height, CGContextRef *outContext)
 {
     CGContextRef ctxt = [[FVBitmapContext bitmapContextWithSize:NSMakeSize(width, height)] graphicsPort];
+    // should never happen; might be better to abort here...
+    if (NULL == ctxt) return NULL;
     CGRect rect = CGRectZero;
     rect.size = CGSizeMake(width, height);
     CGContextClearRect(ctxt, rect);
     CGImageRef image = NULL;
-    if (noErr == PlotIconRefInContext(ctxt, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, icon))
-        image = CGBitmapContextCreateImage(ctxt);
+    if (icon) PlotIconRefInContext(ctxt, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, icon);
+    image = CGBitmapContextCreateImage(ctxt);
+    if (outContext) *outContext = ctxt;
     return image;
 }
 
-static CGImageRef __FVCreateThumbnailWithIcon(IconRef icon)
+static CGImageRef __FVCreateThumbnailWithIcon(IconRef icon, CGContextRef *outContext)
 {
-    return __FVCreateImageWithIcon(icon, FVMaxThumbnailDimension, FVMaxThumbnailDimension);
+    return __FVCreateImageWithIcon(icon, FVMaxThumbnailDimension, FVMaxThumbnailDimension, outContext);
 }
 
-static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
+static CGImageRef __FVCreateFullImageWithIcon(IconRef icon, CGContextRef *outContext)
 {
     size_t dim = FVMaxImageDimension;
     /*
@@ -255,7 +267,7 @@ static CGImageRef __FVCreateFullImageWithIcon(IconRef icon)
      */
     if (floor(NSAppKitVersionNumber) >= 1138)
         dim = 200;
-    return __FVCreateImageWithIcon(icon, dim, dim);
+    return __FVCreateImageWithIcon(icon, dim, dim, outContext);
 }
 
 @implementation FVSingletonFinderIcon
@@ -314,39 +326,28 @@ static void __FVMissingFinderIconInit() { _missingFinderIcon = [FVMissingFinderI
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kGenericDocumentIcon, &docIcon);
         if (err) docIcon = NULL;
 
-        CGContextRef context = [[FVBitmapContext bitmapContextWithSize:NSMakeSize(FVMaxThumbnailDimension, FVMaxThumbnailDimension)] graphicsPort];
+        CGContextRef context;
+        CGImageRef tempImage;
+        
+        tempImage = __FVCreateThumbnailWithIcon(docIcon, &context);
         CGRect rect = CGRectZero;
-        
-        rect.size = CGSizeMake(FVMaxThumbnailDimension, FVMaxThumbnailDimension);
-        CGContextClearRect(context, rect);
-        if (docIcon) PlotIconRefInContext(context, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, docIcon);
-
+        rect.size = CGSizeMake(CGBitmapContextGetWidth(context), CGBitmapContextGetWidth(context));
         rect = CGRectInset(rect, rect.size.width/4, rect.size.height/4);
-        if (questionIcon) PlotIconRefInContext(context, &rect, kAlignCenterBottom, kTransformNone, NULL, kIconServicesNoBadgeFlag, questionIcon);          
+        if (questionIcon) PlotIconRefInContext(context, &rect, kAlignCenterBottom, kTransformNone, NULL, kIconServicesNoBadgeFlag, questionIcon);
         
-        _thumbnail = CGBitmapContextCreateImage(context);        
-        
-        size_t dim = FVMaxImageDimension;
-        /*
-         Crash under _ISGetCGImageRefForISImageRef as of 10.7.3.  This seems to avoid the crash,
-         but I've no idea if it's a truly good workaround.  Apply to all 10.7.x systems for now.
-         rdar://problem/10809538 
-         */
-        if (floor(NSAppKitVersionNumber) >= 1138)
-            dim = 200;        
-        
-        context = [[FVBitmapContext bitmapContextWithSize:NSMakeSize(dim, dim)] graphicsPort];
+        // create another image with the current state of the context
+        _thumbnail = CGBitmapContextCreateImage(context);
+        CGImageRelease(tempImage);
+                
+        tempImage = __FVCreateFullImageWithIcon(docIcon, &context);
         rect = CGRectZero;
-        
-        rect.size = CGSizeMake(dim, dim);
-        CGContextClearRect(context, rect);
-        if (docIcon) PlotIconRefInContext(context, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, docIcon);
-        
+        rect.size = CGSizeMake(CGBitmapContextGetWidth(context), CGBitmapContextGetWidth(context));        
         rect = CGRectInset(rect, rect.size.width/4, rect.size.height/4);
-        if (questionIcon) PlotIconRefInContext(context, &rect, kAlignCenterBottom, kTransformNone, NULL, kIconServicesNoBadgeFlag, questionIcon);          
+        if (questionIcon) PlotIconRefInContext(context, &rect, kAlignCenterBottom, kTransformNone, NULL, kIconServicesNoBadgeFlag, questionIcon);      
         
-        _fullImage = CGBitmapContextCreateImage(context);        
-        
+        _fullImage = CGBitmapContextCreateImage(context);
+        CGImageRelease(tempImage);
+                
         if (questionIcon) ReleaseIconRef(questionIcon);
         if (docIcon) ReleaseIconRef(docIcon);
         
@@ -381,8 +382,8 @@ static void __FVHTTPURLIconInit() { _HTTPURLIcon = [FVHTTPURLIcon new]; }
         IconRef icon;
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kInternetLocationHTTPIcon, &icon);
         if (noErr == err) {
-            _thumbnail = __FVCreateThumbnailWithIcon(icon);
-            _fullImage = __FVCreateFullImageWithIcon(icon);
+            _thumbnail = __FVCreateThumbnailWithIcon(icon, NULL);
+            _fullImage = __FVCreateFullImageWithIcon(icon, NULL);
             ReleaseIconRef(icon);
         }
     }
@@ -416,8 +417,8 @@ static void __FVGenericURLIconInit() { _genericURLIcon = [FVGenericURLIcon new];
         IconRef icon;
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kGenericURLIcon, &icon);
         if (noErr == err) {
-            _thumbnail = __FVCreateThumbnailWithIcon(icon);
-            _fullImage = __FVCreateFullImageWithIcon(icon);
+            _thumbnail = __FVCreateThumbnailWithIcon(icon, NULL);
+            _fullImage = __FVCreateFullImageWithIcon(icon, NULL);
             ReleaseIconRef(icon);
         }
     }
@@ -451,8 +452,8 @@ static void __FVFTPURLIconInit() { _FTPURLIcon = [FVFTPURLIcon new]; }
         IconRef icon;
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kInternetLocationFTPIcon, &icon);
         if (noErr == err) {
-            _thumbnail = __FVCreateThumbnailWithIcon(icon);
-            _fullImage = __FVCreateFullImageWithIcon(icon);
+            _thumbnail = __FVCreateThumbnailWithIcon(icon, NULL);
+            _fullImage = __FVCreateFullImageWithIcon(icon, NULL);
             ReleaseIconRef(icon);
         }
     }
@@ -486,8 +487,8 @@ static void __FVMailURLIconInit() { _mailURLIcon = [FVMailURLIcon new]; }
         IconRef icon;
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kInternetLocationMailIcon, &icon);
         if (noErr == err) {
-            _thumbnail = __FVCreateThumbnailWithIcon(icon);
-            _fullImage = __FVCreateFullImageWithIcon(icon);
+            _thumbnail = __FVCreateThumbnailWithIcon(icon, NULL);
+            _fullImage = __FVCreateFullImageWithIcon(icon, NULL);
             ReleaseIconRef(icon);
         }
     }
@@ -521,8 +522,8 @@ static void __FVGenericFolderIconInit() { _genericFolderIcon = [FVGenericFolderI
         IconRef icon;
         err = GetIconRef(kOnSystemDisk, kSystemIconsCreator, kGenericFolderIcon, &icon);
         if (noErr == err) {
-            _thumbnail = __FVCreateThumbnailWithIcon(icon);
-            _fullImage = __FVCreateFullImageWithIcon(icon);
+            _thumbnail = __FVCreateThumbnailWithIcon(icon, NULL);
+            _fullImage = __FVCreateFullImageWithIcon(icon, NULL);
             ReleaseIconRef(icon);
         }
     }
@@ -556,8 +557,8 @@ static void __FVSavedSearchIconInit() { _savedSearchIcon = [FVSavedSearchIcon ne
         IconRef icon;
         err = GetIconRefFromTypeInfo(0, 0, FVSTR("savedSearch"), NULL, kIconServicesNormalUsageFlag, &icon);
         if (noErr == err) {
-            _thumbnail = __FVCreateThumbnailWithIcon(icon);
-            _fullImage = __FVCreateFullImageWithIcon(icon);
+            _thumbnail = __FVCreateThumbnailWithIcon(icon, NULL);
+            _fullImage = __FVCreateFullImageWithIcon(icon, NULL);
             ReleaseIconRef(icon);
         }
     }
