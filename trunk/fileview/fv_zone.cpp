@@ -47,6 +47,7 @@
 #import <sys/time.h>
 #import <math.h>
 #import <errno.h>
+#import <dispatch/dispatch.h>
 
 #import <set>
 #import <map>
@@ -136,9 +137,9 @@ static bool              _scribble = false;
 #define FV_COLLECT_THRESHOLD 104857600UL
 
 #if ENABLE_STATS
-#define FV_COLLECT_TIMEINTERVAL 60
+#define FV_COLLECT_TIMEINTERVAL 60ULL
 #else
-#define FV_COLLECT_TIMEINTERVAL 10
+#define FV_COLLECT_TIMEINTERVAL 10ULL
 #endif
 
 #define FV_ALLOC_FROM_POINTER(ptr) ((fv_allocation_t *)((uintptr_t)(ptr) - sizeof(fv_allocation_t)))
@@ -425,6 +426,8 @@ static void *fv_zone_valloc(malloc_zone_t *zone, size_t size)
     return ret;
 }
 
+static void __fv_zone_collect_all(void *scheduled);
+
 static void __fv_zone_free_allocation_locked(fv_zone_t *zone, fv_allocation_t *alloc)
 {
     if (_scribble) memset(alloc->ptr, 0x55, alloc->ptrSize);
@@ -445,8 +448,15 @@ static void __fv_zone_free_allocation_locked(fv_zone_t *zone, fv_allocation_t *a
     zone->_freeSize += alloc->allocSize;
     
     // signal for collection if needed (lock not required, no effect if not blocking on the condition)
-    if (zone->_freeSize > FV_COLLECT_THRESHOLD)
-        pthread_cond_signal(&_collectorCond);    
+    if (zone->_freeSize > FV_COLLECT_THRESHOLD) {
+        if (NULL == dispatch_async_f) {
+            pthread_cond_signal(&_collectorCond);
+        }
+        else {
+            dispatch_queue_t dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+            dispatch_async_f(dq, NULL, __fv_zone_collect_all);
+        }
+    }
 }
 
 static void fv_zone_free(malloc_zone_t *fvzone, void *ptr)
@@ -855,6 +865,40 @@ static void __fv_zone_collect_zone(fv_zone_t *zone)
 }
 
 // periodically check all zones against the per-zone high water mark for unused memory
+static void __fv_zone_collect_all(void *scheduled)
+{ 
+    (void) pthread_mutex_lock(&_allZonesLock);
+    if (NULL != _allZones) {
+        for_each(_allZones->begin(), _allZones->end(), __fv_zone_collect_zone);
+    }
+    (void) pthread_mutex_unlock(&_allZonesLock);
+    
+    // non-NULL pointer is sentinel that indicates we need to reschedule
+    if (scheduled) {
+        dispatch_time_t dt = dispatch_time(DISPATCH_TIME_NOW, FV_COLLECT_TIMEINTERVAL * NSEC_PER_SEC);
+        dispatch_queue_t dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+        // pass a non-NULL pointer to indicate that this is a timed cleanup; value is irrelevant
+        dispatch_after_f(dt, dq, &dt, __fv_zone_collect_all);        
+    }
+    
+#if ENABLE_STATS
+    struct timeval tv;
+    struct timespec ts;
+    
+    (void)gettimeofday(&tv, NULL);
+    TIMEVAL_TO_TIMESPEC(&tv, &ts);
+    
+    static double lastCollectSeconds = tv.tv_sec + double(tv.tv_usec) / 1000000;
+    static unsigned int collectionCount = 0;
+    
+    collectionCount++;
+    const double currentCollectSeconds = tv.tv_sec + double(tv.tv_usec) / 1000000;
+    fprintf(stderr, "%s collection %u, %.2f seconds since previous\n", NULL == scheduled ? "TIMED" : "FORCED", collectionCount, currentCollectSeconds - lastCollectSeconds);
+    lastCollectSeconds = currentCollectSeconds;
+#endif
+}
+
+// periodically check all zones against the per-zone high water mark for unused memory
 static void *__fv_zone_collector_thread(void *unused)
 {        
     int ret = pthread_mutex_lock(&_allZonesLock);
@@ -893,15 +937,23 @@ static void *__fv_zone_collector_thread(void *unused)
 
 static void __initialize_collector_thread()
 {    
-    // create a thread to do periodic cleanup so memory usage doesn't get out of hand
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    
-    // not required as an ivar at present
-    pthread_t thread;
-    (void)pthread_create(&thread, &attr, __fv_zone_collector_thread, NULL);
-    pthread_attr_destroy(&attr);    
+    if (NULL == dispatch_after_f) {
+        // create a thread to do periodic cleanup so memory usage doesn't get out of hand
+        pthread_attr_t attr;
+        pthread_attr_init(&attr);
+        pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+        
+        // not required as an ivar at present
+        pthread_t thread;
+        (void)pthread_create(&thread, &attr, __fv_zone_collector_thread, NULL);
+        pthread_attr_destroy(&attr);    
+    }
+    else {
+        dispatch_time_t dt = dispatch_time(DISPATCH_TIME_NOW, FV_COLLECT_TIMEINTERVAL * NSEC_PER_SEC);
+        dispatch_queue_t dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+        // pass a non-NULL pointer to indicate that this is a timed cleanup; value is irrelevant
+        dispatch_after_f(dt, dq, &dt, __fv_zone_collect_all);
+    }
 }
 
 #pragma mark API
