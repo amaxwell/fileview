@@ -873,14 +873,6 @@ static void __fv_zone_collect_all(void *scheduled)
     }
     (void) pthread_mutex_unlock(&_allZonesLock);
     
-    // non-NULL pointer is sentinel that indicates we need to reschedule
-    if (scheduled) {
-        dispatch_time_t dt = dispatch_time(DISPATCH_TIME_NOW, FV_COLLECT_TIMEINTERVAL * NSEC_PER_SEC);
-        dispatch_queue_t dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
-        // pass a non-NULL pointer to indicate that this is a timed cleanup; value is irrelevant
-        dispatch_after_f(dt, dq, &dt, __fv_zone_collect_all);        
-    }
-    
 #if ENABLE_STATS
     struct timeval tv;
     struct timespec ts;
@@ -937,7 +929,7 @@ static void *__fv_zone_collector_thread(void *unused)
 
 static void __initialize_collector_thread()
 {    
-    if (NULL == dispatch_after_f) {
+    if (NULL == dispatch_source_create) {
         // create a thread to do periodic cleanup so memory usage doesn't get out of hand
         pthread_attr_t attr;
         pthread_attr_init(&attr);
@@ -949,10 +941,12 @@ static void __initialize_collector_thread()
         pthread_attr_destroy(&attr);    
     }
     else {
-        dispatch_time_t dt = dispatch_time(DISPATCH_TIME_NOW, FV_COLLECT_TIMEINTERVAL * NSEC_PER_SEC);
         dispatch_queue_t dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
-        // pass a non-NULL pointer to indicate that this is a timed cleanup; value is irrelevant
-        dispatch_after_f(dt, dq, &dt, __fv_zone_collect_all);
+        dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dq);
+        dispatch_source_set_event_handler_f(timer, __fv_zone_collect_all);
+        dispatch_time_t start = dispatch_time(DISPATCH_TIME_NOW, FV_COLLECT_TIMEINTERVAL * NSEC_PER_SEC);
+        dispatch_source_set_timer(timer, start, FV_COLLECT_TIMEINTERVAL * NSEC_PER_SEC, NSEC_PER_SEC);
+        dispatch_resume(timer);
     }
 }
 
