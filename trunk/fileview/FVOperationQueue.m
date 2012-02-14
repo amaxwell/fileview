@@ -37,7 +37,8 @@
  */
 
 #import "FVOperationQueue.h"
-#import "FVConcreteOperationQueue.h"
+#import "FVMachOperationQueue.h"
+#import "FVGCDOperationQueue.h"
 #import "FVMainThreadOperationQueue.h"
 #import "FVMainThreadOperationDispatchQueue.h"
 
@@ -46,6 +47,7 @@
 static id _mainThreadQueue = nil;
 static FVOperationQueue *defaultPlaceholderQueue = nil;
 static Class FVOperationQueueClass = Nil;
+static Class FVConcreteQueueClass = Nil;
 
 + (FVOperationQueue *)mainQueue
 {
@@ -58,9 +60,11 @@ static Class FVOperationQueueClass = Nil;
     FVOperationQueueClass = self;
     defaultPlaceholderQueue = (FVOperationQueue *)NSAllocateObject(FVOperationQueueClass, 0, [self zone]);
 #if USE_DISPATCH_QUEUE
-    _mainThreadQueue = [FVMainThreadOperationDispatchQueue new];
+    _mainThreadQueue = floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5 ? [FVMainThreadOperationDispatchQueue new] : [FVMainThreadOperationQueue new];
+    FVConcreteQueueClass = floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5 ? [FVGCDOperationQueue self] : [FVMachOperationQueue self];
 #else
     _mainThreadQueue = [FVMainThreadOperationQueue new];
+    FVConcreteQueueClass = [FVMachOperationQueue self];
 #endif
 }
 
@@ -77,7 +81,7 @@ static Class FVOperationQueueClass = Nil;
 
 - (id)init
 {
-    return ([self class] == FVOperationQueueClass) ? [[FVConcreteOperationQueue allocWithZone:[self zone]] init] : [super init];
+    return ([self class] == FVOperationQueueClass) ? [[FVConcreteQueueClass allocWithZone:[self zone]] init] : [super init];
 }
 
 - (void)dealloc
