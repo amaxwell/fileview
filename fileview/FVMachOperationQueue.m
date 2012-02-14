@@ -1,5 +1,5 @@
 //
-//  FVConcreteOperationQueue.m
+//  FVMachOperationQueue.m
 //  FileView
 //
 //  Created by Adam Maxwell on 2/24/08.
@@ -36,7 +36,7 @@
  OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#import "FVConcreteOperationQueue.h"
+#import "FVMachOperationQueue.h"
 #import "FVOperation.h"
 #import "FVInvocationOperation.h"
 #import "FVPriorityQueue.h"
@@ -51,11 +51,7 @@
 #import <mach/mach.h>
 #import <mach/mach_port.h>
 
-#if USE_DISPATCH_QUEUE
-#import <dispatch/dispatch.h>
-#endif
-
-@implementation FVConcreteOperationQueue
+@implementation FVMachOperationQueue
 
 // NSConditionLock conditions
 enum {
@@ -73,13 +69,9 @@ static volatile int32_t _activeCPUs = 0;
 // Allow a maximum of 10 operations per active CPU core and a minimum of 2 per core; untuned.  Main idea here is to keep from killing performance by creating too many threads or operations, but memory/disk are also big factors that are unaccounted for here.
 + (NSUInteger)_availableOperationCount
 {
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
-    return NSUIntegerMax;
-#else
     int32_t maxConcurrentOperations = _activeCPUs * 10;
     int32_t minConcurrentOperations = 2;    
     return MAX((maxConcurrentOperations - ((_activeQueueCount - 1) * minConcurrentOperations)), minConcurrentOperations);
-#endif
 }
 
 + (void)_updateKernelInfo:(id)unused
@@ -100,7 +92,7 @@ static volatile int32_t _activeCPUs = 0;
 
 + (void)initialize
 {
-    FVINITIALIZE(FVConcreteOperationQueue);
+    FVINITIALIZE(FVMachOperationQueue);
     
     // update every 10 seconds to see if a processor has been disabled
     [NSTimer scheduledTimerWithTimeInterval:10.0 target:self selector:@selector(_updateKernelInfo:) userInfo:nil repeats:YES];
@@ -293,12 +285,12 @@ static void __FVPortFree(mach_port_t port) {
 
 static mach_port_t __FVGetQueuePort(void *info)
 {
-    return ((FVConcreteOperationQueue *)info)->_threadPort;
+    return ((FVMachOperationQueue *)info)->_threadPort;
 }
 
 static void * __FVQueueMachPerform(void *msg, CFIndex size, CFAllocatorRef allocator, void *info)
 {
-    [(FVConcreteOperationQueue *)info _startQueuedOperations];
+    [(FVMachOperationQueue *)info _startQueuedOperations];
     return NULL;
 }
 
