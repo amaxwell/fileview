@@ -41,16 +41,10 @@
 #import "FVPriorityQueue.h"
 #import "FVUtilities.h"
 
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
 #import <dispatch/dispatch.h>
-#endif
 #import <pthread.h>
 
 @implementation FVMainThreadOperationDispatchQueue
-
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
-
-#warning main thread queue is GCD
 
 + (void)initialize
 {
@@ -98,6 +92,14 @@
     pthread_mutex_unlock(&_queueLock);
 }
 
+static void __FVStartOperation(void * context)
+{
+    FVOperation *op = context;
+    if ([op isCancelled] == NO)
+        [op start];
+    [op release];
+}
+
 - (void)addOperation:(FVOperation *)operation;
 {
     bool execute = false;
@@ -109,12 +111,8 @@
     }
     pthread_mutex_unlock(&_queueLock); 
     
-    if (execute) {
-        dispatch_async(dispatch_get_main_queue(), ^{
-            if ([operation isCancelled] == NO)
-                [operation start];
-        });
-    }
+    if (execute) 
+        dispatch_async_f(dispatch_get_main_queue(), [operation retain], __FVStartOperation);
 }
 
 - (void)addOperations:(NSArray *)operations;
@@ -129,13 +127,16 @@
     if ([possibleOperations count]) {
         [possibleOperations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
         NSMutableArray *sortedOperations = [[NSMutableArray alloc] initWithArray:[possibleOperations allObjects]];
-        [sortedOperations enumerateObjectsWithOptions:NSEnumerationReverse usingBlock:^(id obj, NSUInteger idx, BOOL *stop){
-            dispatch_async(dispatch_get_main_queue(), ^{
-                if ([obj isCancelled] == NO)
-                    [obj start];
-            });
-            *stop = NO;
-        }];
+        [sortedOperations sortUsingSelector:@selector(compare:)];
+        NSUInteger idx;
+        for (idx = 0; idx < [sortedOperations count]; idx++) {
+            FVOperation *operation = [sortedOperations objectAtIndex:idx];
+#ifndef __clang_analyzer__
+            dispatch_async_f(dispatch_get_main_queue(), [operation retain], __FVStartOperation);
+#else
+#pragma unused(operation)
+#endif
+        }
         [sortedOperations release];
     }
     [possibleOperations release];
@@ -153,7 +154,5 @@
     [_currentOperations removeObject:anOperation];
     pthread_mutex_unlock(&_queueLock);
 }
-
-#endif
 
 @end

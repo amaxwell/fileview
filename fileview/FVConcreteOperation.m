@@ -41,9 +41,7 @@
 #import "FVThread.h"
 #import <libkern/OSAtomic.h>
 
-#if USE_DISPATCH_QUEUE
 #import <dispatch/dispatch.h>
-#endif
 
 struct FVOpFlags {
     volatile int32_t _cancelled;
@@ -96,6 +94,14 @@ struct FVOpFlags {
     } while (false == didSwap);
 }
 
+static void __FVStartOperation(void * context) __attribute__ ((used));
+static void __FVStartOperation(void * context)
+{
+    FVOperation *op = context;
+    [op main];
+    [op release];
+}
+
 - (void)start;
 {
     // [super start] performs some validation; we'd have to set _executing bit after that call for async, but before for sync, which is not possible.  Hence, reimplement the whole thing here.
@@ -106,7 +112,7 @@ struct FVOpFlags {
     
     OSAtomicIncrement32Barrier(&(_flags->_executing));
     if ([self isConcurrent]) {
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MIN_REQUIRED > MAC_OS_X_VERSION_10_5)
+#if USE_DISPATCH_QUEUE
         dispatch_queue_t dq;
         switch ([self queuePriority]) {
             case FVOperationQueuePriorityVeryLow:
@@ -118,12 +124,14 @@ struct FVOpFlags {
                 dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
                 break;
             default:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
                 break;
         }
-        dispatch_async(dq, ^{
-            [self main];
-        });
+ #ifndef __clang_analyzer__
+        dispatch_async_f(dq, [self retain], __FVStartOperation);
+ #else
+        #pragma unused(dq)
+ #endif
 #else
         [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
 #endif        

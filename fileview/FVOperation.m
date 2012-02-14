@@ -40,9 +40,7 @@
 #import "FVOperationQueue.h"
 #import "FVThread.h"
 
-#if MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5
 #import <dispatch/dispatch.h>
-#endif
 
 @implementation FVOperation
 
@@ -106,6 +104,14 @@ static Class FVOperationClass = Nil;
     return NSOrderedSame;
 }
 
+static void __FVStartOperation(void * context) __attribute__ ((used));
+static void __FVStartOperation(void * context)
+{
+    FVOperation *op = context;
+    [op main];
+    [op release];
+}
+
 - (void)start;
 {
     if ([self isCancelled])
@@ -114,7 +120,7 @@ static Class FVOperationClass = Nil;
         [NSException raise:NSInternalInconsistencyException format:@"attempt to start a previously executed operation"];
     
     if ([self isConcurrent]) {
-#if USE_DISPATCH_QUEUE && (MAC_OS_X_VERSION_MAX_ALLOWED > MAC_OS_X_VERSION_10_5)
+#if USE_DISPATCH_QUEUE
         dispatch_queue_t dq;
         switch ([self queuePriority]) {
             case FVOperationQueuePriorityVeryLow:
@@ -126,12 +132,14 @@ static Class FVOperationClass = Nil;
                 dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
                 break;
             default:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
                 break;
         }
-        dispatch_async(dq, ^{
-            [self main];
-        });
+ #ifndef __clang_analyzer__
+        dispatch_async_f(dq, [self retain], __FVStartOperation);
+ #else
+        #pragma unused(dq)
+ #endif
 #else
         [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
 #endif     

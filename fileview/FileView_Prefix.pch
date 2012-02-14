@@ -78,14 +78,9 @@ _FVAPIAssertBody((condition), @"Invalid parameter not satisfying: %s", #conditio
 
 #ifndef MAC_OS_X_VERSION_10_6
     #define USE_DISPATCH_QUEUE 0
-#elif MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_6
+#elif MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
     #define USE_DISPATCH_QUEUE 1
     #warning Using dispatch queue
-#else
-    #define USE_DISPATCH_QUEUE 0
-    #if USE_DISPATCH_QUEUE
-        #warning Using dispatch queue on 10.5
-    #endif
 #endif
 
 #if defined(__ppc__) || defined(__ppc64__)
