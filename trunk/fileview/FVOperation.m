@@ -112,6 +112,15 @@ static void __FVStartOperation(void * context)
     [op release];
 }
 
+static bool __FVOperationUseGCD()
+{
+#if USE_DISPATCH_QUEUE
+    return (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5);
+#else
+    return false;
+#endif
+}
+
 - (void)start;
 {
     if ([self isCancelled])
@@ -120,29 +129,30 @@ static void __FVStartOperation(void * context)
         [NSException raise:NSInternalInconsistencyException format:@"attempt to start a previously executed operation"];
     
     if ([self isConcurrent]) {
-#if USE_DISPATCH_QUEUE
-        dispatch_queue_t dq;
-        switch ([self queuePriority]) {
-            case FVOperationQueuePriorityVeryLow:
-            case FVOperationQueuePriorityLow:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
-                break;
-            case FVOperationQueuePriorityVeryHigh:
-            case FVOperationQueuePriorityHigh:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
-                break;
-            default:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-                break;
+        if (__FVOperationUseGCD()) {
+            dispatch_queue_t dq;
+            switch ([self queuePriority]) {
+                case FVOperationQueuePriorityVeryLow:
+                case FVOperationQueuePriorityLow:
+                    dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+                    break;
+                case FVOperationQueuePriorityVeryHigh:
+                case FVOperationQueuePriorityHigh:
+                    dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
+                    break;
+                default:
+                    dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+                    break;
+            }
+            #ifndef __clang_analyzer__
+            dispatch_async_f(dq, [self retain], __FVStartOperation);
+            #else
+            #pragma unused(dq)
+            #endif            
         }
- #ifndef __clang_analyzer__
-        dispatch_async_f(dq, [self retain], __FVStartOperation);
- #else
-        #pragma unused(dq)
- #endif
-#else
-        [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
-#endif     
+        else {
+            [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
+        }        
     }
     else {
         [self main];
@@ -151,7 +161,11 @@ static void __FVStartOperation(void * context)
 
 - (void)finished
 {
-    // Make sure the queue releases its reference to this operation.  This always happens if it's cancelled by the queue, but someone else could call -cancel, in which case this might be left in the queue's activeOperations bag.
+    /*
+     Make sure the queue releases its reference to this operation.  This 
+     always happens if it's cancelled by the queue, but someone else could 
+     call -cancel, in which case this might be left in the queue's activeOperations bag.
+     */
     [[self queue] finishedOperation:self];
 }
 

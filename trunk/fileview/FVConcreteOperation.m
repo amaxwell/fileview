@@ -102,9 +102,22 @@ static void __FVStartOperation(void * context)
     [op release];
 }
 
+static bool __FVConcreteOperationUseGCD()
+{
+#if USE_DISPATCH_QUEUE
+    return (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_5);
+#else
+    return false;
+#endif
+}
+
 - (void)start;
 {
-    // [super start] performs some validation; we'd have to set _executing bit after that call for async, but before for sync, which is not possible.  Hence, reimplement the whole thing here.
+    /*
+     -[FVOperation start] performs some validation; we'd have to set the _executing bit
+     after that call for async, but before for sync, which is not possible.  
+     Hence, we just reimplement the whole thing here.
+     */
     if ([self isCancelled])
         [NSException raise:NSInternalInconsistencyException format:@"attempt to execute a cancelled operation"];
     if ([self isExecuting] || [self isFinished])
@@ -112,29 +125,30 @@ static void __FVStartOperation(void * context)
     
     OSAtomicIncrement32Barrier(&(_flags->_executing));
     if ([self isConcurrent]) {
-#if USE_DISPATCH_QUEUE
-        dispatch_queue_t dq;
-        switch ([self queuePriority]) {
-            case FVOperationQueuePriorityVeryLow:
-            case FVOperationQueuePriorityLow:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
-                break;
-            case FVOperationQueuePriorityVeryHigh:
-            case FVOperationQueuePriorityHigh:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
-                break;
-            default:
-                dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
-                break;
+        if (__FVConcreteOperationUseGCD()) {
+            dispatch_queue_t dq;
+            switch ([self queuePriority]) {
+                case FVOperationQueuePriorityVeryLow:
+                case FVOperationQueuePriorityLow:
+                    dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_LOW, 0);
+                    break;
+                case FVOperationQueuePriorityVeryHigh:
+                case FVOperationQueuePriorityHigh:
+                    dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0);                
+                    break;
+                default:
+                    dq = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+                    break;
+            }
+            #ifndef __clang_analyzer__
+            dispatch_async_f(dq, [self retain], __FVStartOperation);
+            #else
+            #pragma unused(dq)
+            #endif            
         }
- #ifndef __clang_analyzer__
-        dispatch_async_f(dq, [self retain], __FVStartOperation);
- #else
-        #pragma unused(dq)
- #endif
-#else
-        [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
-#endif        
+        else {
+            [FVThread detachNewThreadSelector:@selector(main) toTarget:self withObject:nil];
+        }        
     }
     else {
         [self main];
