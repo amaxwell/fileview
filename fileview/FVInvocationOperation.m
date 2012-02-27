@@ -84,6 +84,12 @@
     [super dealloc];
 }
 
+- (NSString *)description
+{
+    NSString *invocationDescription = [NSString stringWithFormat:@"<NSInvocation: %p> = {\n\t\t target = %@,\n\t\t selector = %@,\n\t\t signature = %@\n\t }", _invocation, [_invocation target], NSStringFromSelector([_invocation selector]), [_invocation methodSignature]];
+    return [NSString stringWithFormat:@"<%@: %p> = {\n\t cancelled = %d,\n\t priority = %d,\n\t invocation = %@\n }\n", [self class], self, [self isCancelled], [self queuePriority], invocationDescription];
+}
+
 - (BOOL)isEqual:(FVInvocationOperation *)other
 {
     return [other isMemberOfClass:[self class]] && [other->_invocation isEqual:_invocation];
