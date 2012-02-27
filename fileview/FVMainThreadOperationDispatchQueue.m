@@ -115,6 +115,20 @@ static void __FVStartOperation(void * context)
         dispatch_async_f(dispatch_get_main_queue(), [operation retain], __FVStartOperation);
 }
 
+static void __FVPriorityStart(const void *value, void *context)
+{
+    FVOperation *operation = value;
+#ifndef __clang_analyzer__
+    dispatch_async_f(dispatch_get_main_queue(), [operation retain], __FVStartOperation);
+#else
+#pragma unused(operation)
+#endif
+}
+
+/*
+ This code path is unused so far, so it's not actually been tested, at least
+ in recent history.
+ */
 - (void)addOperations:(NSArray *)operations;
 {
     NSMutableSet *possibleOperations = [[NSMutableSet alloc] initWithArray:operations];
@@ -126,18 +140,10 @@ static void __FVStartOperation(void * context)
 
     if ([possibleOperations count]) {
         [possibleOperations makeObjectsPerformSelector:@selector(setQueue:) withObject:self];
-        NSMutableArray *sortedOperations = [[NSMutableArray alloc] initWithArray:[possibleOperations allObjects]];
-        [sortedOperations sortUsingSelector:@selector(compare:)];
-        NSUInteger idx;
-        for (idx = 0; idx < [sortedOperations count]; idx++) {
-            FVOperation *operation = [sortedOperations objectAtIndex:idx];
-#ifndef __clang_analyzer__
-            dispatch_async_f(dispatch_get_main_queue(), [operation retain], __FVStartOperation);
-#else
-#pragma unused(operation)
-#endif
-        }
-        [sortedOperations release];
+        FVPriorityQueue *queue = [FVPriorityQueue new];
+        [queue pushMultiple:[possibleOperations allObjects]];
+        FVPriorityQueueApplyFunction(queue, __FVPriorityStart, NULL);
+        [queue release];
     }
     [possibleOperations release];
 }
