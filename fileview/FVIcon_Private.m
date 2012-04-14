@@ -159,7 +159,7 @@ static CFDictionaryRef _queuedKeysByClass = NULL;
     if (drawBadge) {
         // replace the URL with the resolved URL in case it was an alias
         Boolean isFolder, wasAliased;
-        err = FSResolveAliasFileWithMountFlags(&fileRef, TRUE, &isFolder, &wasAliased, kARMNoUI);
+        err = FSResolveAliasFileWithMountFlags(&fileRef, TRUE, &isFolder, &wasAliased, kResolveAliasFileNoUI);
         
         // wasAliased is false for symlinks, but use the resolved alias anyway
         if (noErr == err)
