@@ -188,7 +188,7 @@ static inline id _placeholderForZone(NSZone *aZone)
     // aliases and symlinks are kUTTypeResolvable, so the alias manager should handle either of them
     if (NULL != theUTI && UTTypeConformsTo(theUTI, kUTTypeResolvable)) {
         Boolean isFolder, wasAliased;
-        err = FSResolveAliasFileWithMountFlags(&fileRef, TRUE, &isFolder, &wasAliased, kARMNoUI);
+        err = FSResolveAliasFileWithMountFlags(&fileRef, TRUE, &isFolder, &wasAliased, kResolveAliasFileNoUI);
         // don't change the UTI if it couldn't be resolved; in that case, we should just show a finder icon
         if (noErr == err) {
             CFRelease(theUTI);
