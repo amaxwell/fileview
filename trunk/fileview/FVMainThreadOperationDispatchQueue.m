@@ -117,7 +117,7 @@ static void __FVStartOperation(void * context)
 
 static void __FVPriorityStart(const void *value, void *context)
 {
-    FVOperation *operation = value;
+    FVOperation *operation = (id)value;
 #ifndef __clang_analyzer__
     dispatch_async_f(dispatch_get_main_queue(), [operation retain], __FVStartOperation);
 #else
