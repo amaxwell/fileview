@@ -729,13 +729,20 @@ static uint32_t SuperFastHash (const char * data, int len) {
         /*
          getattrlist values are always 4-byte aligned, so we have to force that
          in order to avoid crashing on x86_64.
+         
+         NB: #pragma pack(push, 4) worked with gcc, but fails with with llvm
+         in Xcode 4.3.
+         
+         http://code.google.com/p/fileview/issues/detail?id=4
+         
          */
-#pragma pack(push, 4)
         struct _mod_time_buf {
             uint32_t        len;
             struct timespec ts;
-        } mod_time_buf;
-#pragma pack(pop)
+        } __attribute__((aligned(4), packed));
+        typedef struct _mod_time_buf mod_time_buf;
+        
+        mod_time_buf mtb;
         
         /*
          Try to use getattrlist() first, since we can explicitly request the desired
@@ -746,10 +753,10 @@ static uint32_t SuperFastHash (const char * data, int len) {
         memset(&alist, 0, sizeof(alist));
         alist.bitmapcount = ATTR_BIT_MAP_COUNT;
         alist.commonattr = ATTR_CMN_MODTIME;
-        err = getattrlist(_filePath, &alist, &mod_time_buf, sizeof(mod_time_buf), 0);
+        err = getattrlist(_filePath, &alist, &mtb, sizeof(mod_time_buf), 0);
         if (noErr == err) {
-            assert(mod_time_buf.len == sizeof(mod_time_buf));
-            _mtimespec = mod_time_buf.ts;
+            assert(mtb.len == sizeof(mod_time_buf));
+            _mtimespec = mtb.ts;
         }
         else if (ENOTSUP == err) {
             
