@@ -121,6 +121,8 @@
     // redirects to PDF file
     [arrayController insertObject:[NSURL URLWithString:@"http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=191466"] atArrangedObjectIndex:insertIndex++];
     
+    [arrayController insertObject:[NSURL URLWithString:@"http://link.aps.org/doi/10.1103/PhysRevA.33.1141"] atArrangedObjectIndex:insertIndex++];
+    
 #pragma unused(insertIndex)
 
     [_fileView bind:NSContentBinding toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
