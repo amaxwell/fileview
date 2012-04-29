@@ -86,7 +86,7 @@ static NSLock *_mimeIconLock = nil;
         _maxWebViews = 5;
     }
     else if ([maxViews intValue] > 50) {
-        FVLog(@"Limiting number of webviews to 50 (FVWebIconMaximumNumberOfWebViews = %d)", maxViews);
+        FVLog(@"Limiting number of webviews to 50 (FVWebIconMaximumNumberOfWebViews = %@)", maxViews);
         _maxWebViews = 50;
     }
     else if ([maxViews intValue] >= 0) {
