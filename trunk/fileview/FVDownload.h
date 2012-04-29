@@ -40,7 +40,7 @@
 
 @class FVProgressIndicatorCell;
 
-@interface FVDownload : NSObject
+@interface FVDownload : NSObject <NSURLDownloadDelegate>
 {
 @private;
     NSURL                   *_downloadURL;

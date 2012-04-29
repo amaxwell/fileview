@@ -82,7 +82,7 @@
             _bitmapData = CFDataCreateWithBytesNoCopy(CFGetAllocator(self), bitmapPtr, bitmapPtrSize, kCFAllocatorNull);
         }
         
-        NSAssert3((size_t)CFDataGetLength(_bitmapData) == _bytesPerRow * _height, @"strange data length %d for %@ (should be >= %lu)", CFDataGetLength(_bitmapData), _image, (unsigned long)(_bytesPerRow * _height));
+        NSAssert3((size_t)CFDataGetLength(_bitmapData) == _bytesPerRow * _height, @"strange data length %ld for %@ (should be >= %lu)", CFDataGetLength(_bitmapData), _image, (unsigned long)(_bytesPerRow * _height));
     }
     return self;
 }

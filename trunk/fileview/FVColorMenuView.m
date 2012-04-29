@@ -332,7 +332,7 @@ static NSRect __FVSquareRectCenteredInRect(const NSRect iconRect)
         cell = [self cellAtRow:_boxedRow column:_boxedColumn];
     
     // Finder uses curly quotes around the name, and displays nothing for the X item
-    return 0 == [cell tag] ? @"" : [NSString stringWithFormat:@"%C%@%C", 0x201C, [FVFinderLabel localizedNameForLabel:[cell tag]], 0x201D];
+    return 0 == [cell tag] ? @"" : [NSString stringWithFormat:@"%C%@%C", (unichar)0x201C, [FVFinderLabel localizedNameForLabel:[cell tag]], (unichar)0x201D];
 }
 
 @end
