@@ -154,7 +154,7 @@
 
 - (NSString *)fileView:(FileView *)aFileView subtitleAtIndex:(NSUInteger)anIndex;
 {
-    return [NSString stringWithFormat:@"Subtitle %d", anIndex];
+    return [NSString stringWithFormat:@"Subtitle %ld", anIndex];
 }
 
 // implement editing methods so we don't get an exception when clicking the "editable" checkbox
