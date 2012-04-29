@@ -580,6 +580,7 @@ static NSURL * __FVCreatePDFURLForPDFBundleURL(NSURL *aURL)
         aURL = __FVCreatePDFURLForPDFBundleURL([self _fileURL]);
         if (aURL) {
             [self _setFileURL:aURL];
+            [aURL release];
         } else {
             [super dealloc];
             self = nil;
