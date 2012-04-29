@@ -140,8 +140,6 @@ static NSInteger FVCacheLogLevel = 0;
 
             // Unlink the file immediately so we don't leave turds when the program crashes.
             unlink(tempName);
-            free(tempName);
-            tempName = NULL;
 
             if (FVCacheLogLevel > 0)
                 _eventTable = [NSMutableDictionary new];     
@@ -156,6 +154,9 @@ static NSInteger FVCacheLogLevel = 0;
             [super dealloc];
             self = nil;
         }
+        free(tempName);
+        tempName = NULL;
+
         
     }
     return self;
@@ -333,7 +334,7 @@ static NSInteger FVCacheLogLevel = 0;
                     
                     writeLength = ZLIB_BUFFER_SIZE - strm.avail_out;
                     if (write(_fileDescriptor, _deflateBuffer, writeLength) != writeLength)
-                        FVLog(@"failed to write all data (%d bytes)", writeLength);
+                        FVLog(@"failed to write all data (%ld bytes)", writeLength);
                     
                     location->_compressedLength += writeLength;
                     
@@ -436,7 +437,7 @@ static NSInteger FVCacheLogLevel = 0;
             data = (id)CFDataCreateWithBytesNoCopy(FVAllocatorGetDefault(), (const uint8_t *)bytes, location->_decompressedLength, FVAllocatorGetDefault());
         }
         else {
-            FVLog(@"Unable to malloc %d bytes in -[FVCacheFile copyDataForKey:] with key %@", location->_decompressedLength, aKey);
+            FVLog(@"Unable to malloc %ld bytes in -[FVCacheFile copyDataForKey:] with key %@", location->_decompressedLength, aKey);
         }
 
         NSParameterAssert([data length] == location->_decompressedLength);
@@ -549,7 +550,7 @@ static NSInteger FVCacheLogLevel = 0;
     CFRelease(_identifier);
     [super dealloc];
 }
-- (NSString *)description { return [NSString stringWithFormat:@"%.2f kilobytes in %d files", _kbytes, _count]; }
+- (NSString *)description { return [NSString stringWithFormat:@"%.2f kilobytes in %ld files", _kbytes, _count]; }
 - (NSUInteger)hash { return CFHash(_identifier); }
 - (BOOL)isEqual:(id)other { return CFStringCompare(_identifier, ((_FVCacheEventRecord *)other)->_identifier, 0) == kCFCompareEqualTo; }
 @end
