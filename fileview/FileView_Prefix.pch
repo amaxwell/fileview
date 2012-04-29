@@ -34,6 +34,16 @@
 #endif
 #endif
 
+#if ! defined(__PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS) || ! defined(__PRAGMA_POP_NO_EXTRA_ARG_WARNINGS)
+#define __PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS
+#define __PRAGMA_POP_NO_EXTRA_ARG_WARNINGS
+#endif
+
+#ifndef MAC_OS_X_VERSION_10_7
+    @protocol NSURLDownloadDelegate <NSObject>
+    @end
+#endif
+
 // C99 math; handles types transparently
 #import <tgmath.h>
 
@@ -57,19 +67,29 @@ do { if(!(condition)) { [NSException raise:NSInvalidArgumentException format:(de
 
 // use NSAssert internally for debugging; these asserts are to enforce public API usage for framework clients
 #define FVAPIAssert(condition, desc) \
-_FVAPIAssertBody((condition), desc, 0, 0, 0)
+    __PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS \
+    _FVAPIAssertBody((condition), desc, 0, 0, 0) \
+    __PRAGMA_POP_NO_EXTRA_ARG_WARNINGS
 
 #define FVAPIAssert1(condition, desc, arg1) \
-_FVAPIAssertBody((condition), (desc), (arg1), 0, 0)
+    __PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS \
+    _FVAPIAssertBody((condition), (desc), (arg1), 0, 0) \
+    __PRAGMA_POP_NO_EXTRA_ARG_WARNINGS
 
 #define FVAPIAssert2(condition, desc, arg1, arg2) \
-_FVAPIAssertBody((condition), (desc), (arg1), (arg2), 0)
+    __PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS \
+    _FVAPIAssertBody((condition), (desc), (arg1), (arg2), 0) \
+    __PRAGMA_POP_NO_EXTRA_ARG_WARNINGS
 
 #define FVAPIAssert3(condition, desc, arg1, arg2, arg3) \
-_FVAPIAssertBody((condition), (desc), (arg1), (arg2), (arg3))
+    __PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS \
+    _FVAPIAssertBody((condition), (desc), (arg1), (arg2), (arg3)) \
+    __PRAGMA_POP_NO_EXTRA_ARG_WARNINGS
 
 #define FVAPIParameterAssert(condition)			\
-_FVAPIAssertBody((condition), @"Invalid parameter not satisfying: %s", #condition, 0, 0)
+    __PRAGMA_PUSH_NO_EXTRA_ARG_WARNINGS \
+    _FVAPIAssertBody((condition), @"Invalid parameter not satisfying: %s", #condition, 0, 0) \
+    __PRAGMA_POP_NO_EXTRA_ARG_WARNINGS
 
 /* workaround for gcc warning about CFSTR usage when using strict aliasing */
 #define FVSTR(cStr) ((CFStringRef)@cStr)
