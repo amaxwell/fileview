@@ -191,7 +191,7 @@ static inline bool __FVBitmapInfoIsIncompatible(CGImageRef image)
 
 static void __FVGetPermuteMapToARGB(CGBitmapInfo bitmapInfo, uint8_t permuteMap[4])
 {
-    NSUInteger order = bitmapInfo & kCGBitmapByteOrderMask;
+    CGBitmapInfo order = bitmapInfo & kCGBitmapByteOrderMask;
     CGImageAlphaInfo alphaInfo = (CGImageAlphaInfo)(bitmapInfo & kCGBitmapAlphaInfoMask);
     
     /*
@@ -379,7 +379,7 @@ static vImage_Error __FVConvertRGB888ImageRegionToPlanar8_buffers(CGImageRef ima
         const uint8_t *srcRow = srcBytes + rowBytes * (region.y + rowIndex) + region.x * bytesPerSample;
 #if DEBUG
         if ((rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w) > __FVCGImageGetDataSize(image)) {
-            FVLog(@"image size = %d, tried to copy %d bytes", __FVCGImageGetDataSize(image), rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w);
+            FVLog(@"image size = %ld, tried to copy %ld bytes", __FVCGImageGetDataSize(image), rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w);
             HALT;
         }
 #endif
@@ -444,7 +444,7 @@ static vImage_Error __FVConvertARGB8888ImageRegionToPlanar8_buffers(CGImageRef i
         const uint8_t *srcRow = srcBytes + rowBytes * (region.y + rowIndex) + region.x * bytesPerSample;
 #if DEBUG
         if ((rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w) > __FVCGImageGetDataSize(image)) {
-            FVLog(@"image size = %d, tried to copy %d bytes", __FVCGImageGetDataSize(image), rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w);
+            FVLog(@"image size = %ld, tried to copy %ld bytes", __FVCGImageGetDataSize(image), rowBytes * (region.y + rowIndex) + region.x * bytesPerSample + bytesPerSample * region.w);
             HALT;
         }
 #endif
@@ -936,7 +936,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
             NSCParameterAssert(scaledWidth);
             NSCParameterAssert(region.h);
             ret = vImageHorizontalShear_Planar8(planarA[i]->buffer, planarB[i]->buffer, 0, 0, offset, 0, filter, 0, SHEAR_OPTIONS);
-            if (kvImageNoError != ret) FVLog(@"vImageHorizontalShear_Planar8 failed with error %d", ret);
+            if (kvImageNoError != ret) FVLog(@"vImageHorizontalShear_Planar8 failed with error %ld", ret);
         }
         
         // do vertical shear for all channels, with B as source and A as destination
@@ -950,14 +950,14 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
             NSCParameterAssert(planarB[i]->buffer->width);
             NSCParameterAssert(scaledHeight);
             ret = vImageVerticalShear_Planar8(planarB[i]->buffer, planarA[i]->buffer, 0, 0, offset, 0, filter, 0, SHEAR_OPTIONS);
-            if (kvImageNoError != ret) FVLog(@"vImageVerticalShear_Planar8 failed with error %d", ret);
+            if (kvImageNoError != ret) FVLog(@"vImageVerticalShear_Planar8 failed with error %ld", ret);
         }
         
         // premultiply alpha in place if it wasn't previously premultiplied (A is now the source)
         if (alphaInfo != kCGImageAlphaPremultipliedFirst && alphaInfo != kCGImageAlphaPremultipliedLast) {
             for (i = 1; i < 4 && kvImageNoError == ret; i++)
                 ret = vImagePremultiplyData_Planar8(planarA[i]->buffer, planarA[0]->buffer, planarA[i]->buffer, DEFAULT_OPTIONS);
-            if (kvImageNoError != ret) FVLog(@"vImagePremultiplyData_Planar8 failed with error %d", ret);
+            if (kvImageNoError != ret) FVLog(@"vImagePremultiplyData_Planar8 failed with error %ld", ret);
         }    
         
         // now convert to a mesh format, using the appropriate column buffer as destination
@@ -966,7 +966,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         imageBuffer->buffer->width = planarA[0]->buffer->width;
         imageBuffer->buffer->height = planarA[0]->buffer->height;
         ret = __FVConvertPlanar8To8888Host(planarTilesA, imageBuffer->buffer);
-        if (kvImageNoError != ret) FVLog(@"__FVConvertPlanar8To8888Host failed with error %d", ret);        
+        if (kvImageNoError != ret) FVLog(@"__FVConvertPlanar8To8888Host failed with error %ld", ret);
         
         regionColumnIndex++;
         
@@ -1034,7 +1034,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     [interleavedImageBuffer release];
     
     if (kvImageNoError != ret)
-        FVLog(@"%s: error %d scaling image to %ld x %ld pixels", __func__, ret, ssize_t(desiredSize.width), ssize_t(desiredSize.height));
+        FVLog(@"%s: error %ld scaling image to %ld x %ld pixels", __func__, ret, ssize_t(desiredSize.width), ssize_t(desiredSize.height));
     
     return image; 
 }

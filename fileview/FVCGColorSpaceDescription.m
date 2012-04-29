@@ -101,7 +101,7 @@ static inline bool __FVCGCanSaveIndexedSpaces(void)
             colorSpace = CGColorSpaceCreateDeviceCMYK();
             break;
         default:
-            FVLog(@"Unable to create color space with %d components", components);
+            FVLog(@"Unable to create color space with %zd components", components);
     }
     return colorSpace;
 }

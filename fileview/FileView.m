@@ -3268,7 +3268,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
 {
     // Sender tag corresponds to the Finder label integer
     NSInteger label = [sender tag];
-    FVAPIAssert1(label >=0 && label <= 7, @"invalid label %d (must be between 0 and 7)", label);
+    FVAPIAssert1(label >=0 && label <= 7, @"invalid label %ld (must be between 0 and 7)", label);
     
     NSArray *selectedURLs = [self _selectedURLs];
     NSUInteger i, iMax = [selectedURLs count];
