@@ -240,6 +240,7 @@
 static CGImageRef __FVCreateImageWithIcon(IconRef icon, size_t width, size_t height, CGContextRef *outContext)
 {
     CGContextRef ctxt = [[FVBitmapContext bitmapContextWithSize:NSMakeSize(width, height)] graphicsPort];
+    if (outContext) *outContext = ctxt;
     // should never happen; might be better to abort here...
     if (NULL == ctxt) return NULL;
     CGRect rect = CGRectZero;
@@ -248,7 +249,6 @@ static CGImageRef __FVCreateImageWithIcon(IconRef icon, size_t width, size_t hei
     CGImageRef image = NULL;
     if (icon) PlotIconRefInContext(ctxt, &rect, kAlignAbsoluteCenter, kTransformNone, NULL, kIconServicesNoBadgeFlag, icon);
     image = CGBitmapContextCreateImage(ctxt);
-    if (outContext) *outContext = ctxt;
     return image;
 }
 
