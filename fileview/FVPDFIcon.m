@@ -64,12 +64,12 @@ static void __FVPageLayerInit()
     CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
     _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
     context = CGLayerGetContext(_pageLayer);
-    CGFloat components[4] = { 1, 1 };
     CGColorRef color = NULL;
     if (NULL != &kCGColorWhite && NULL != CGColorGetConstantColor) {
         color = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
     }
     else {
+        CGFloat components[4] = { 1, 1 };
         CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericGray);
         color = CGColorCreate(cspace, components);
         CGColorSpaceRelease(cspace);
