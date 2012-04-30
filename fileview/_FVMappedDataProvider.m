@@ -60,9 +60,13 @@ static volatile int32_t _mappedDataSizeKB = 0;
 
 static const void *__FVGetMappedRegion(void *info);
 static void __FVReleaseMappedRegion(void *info);
-const CGDataProviderDirectAccessCallbacks _FVMappedDataProviderCallBacks = { __FVGetMappedRegion, NULL, NULL, __FVReleaseMappedRegion };
+#if (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
 // 10.5 and later
 const CGDataProviderDirectCallbacks _FVMappedDataProviderDirectCallBacks = { 0, __FVGetMappedRegion, NULL, NULL, __FVReleaseMappedRegion };
+#else
+// missing in 10.8 SDK
+const CGDataProviderDirectAccessCallbacks _FVMappedDataProviderCallBacks = { __FVGetMappedRegion, NULL, NULL, __FVReleaseMappedRegion };
+#endif
 
 static CFMutableDictionaryRef _dataProviders = NULL;
 static pthread_mutex_t _providerLock = PTHREAD_MUTEX_INITIALIZER;
