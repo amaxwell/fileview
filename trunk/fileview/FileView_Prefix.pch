@@ -100,7 +100,6 @@ do { if(!(condition)) { [NSException raise:NSInvalidArgumentException format:(de
     #define USE_DISPATCH_QUEUE 0
 #elif MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6
     #define USE_DISPATCH_QUEUE 1
-    #warning Using dispatch queue
 #endif
 
 #if defined(__ppc__) || defined(__ppc64__)
