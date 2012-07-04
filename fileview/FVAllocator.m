@@ -37,6 +37,7 @@
  */
 
 #import "FVAllocator.h"
+#import <pthread.h>
 #import "fv_zone.h"
 
 #define USE_SYSTEM_ZONE 0
@@ -84,8 +85,7 @@ static CFIndex __FVPreferredSize(CFIndex size, CFOptionFlags hint, void *info)
 static CFAllocatorRef  _allocator = NULL;
 static malloc_zone_t  *_allocatorZone = NULL;
 
-__attribute__ ((constructor))
-static void __initialize_allocator()
+static void __fv_allocator_initialize()
 {        
 #if USE_SYSTEM_ZONE
     _allocatorZone = malloc_default_zone();
@@ -110,9 +110,19 @@ static void __initialize_allocator()
 #endif
 }
 
+static pthread_once_t once = PTHREAD_ONCE_INIT;
+
 #pragma mark API
 
-CFAllocatorRef FVAllocatorGetDefault() {  return _allocator; }
+CFAllocatorRef FVAllocatorGetDefault() 
+{  
+    (void) pthread_once(&once, __fv_allocator_initialize);
+    return _allocator; 
+}
 
 // NSZone is the same as malloc_zone_t: http://lists.apple.com/archives/objc-language/2008/Feb/msg00033.html
-NSZone * FVDefaultZone() { return (void *)_allocatorZone; }
+NSZone * FVDefaultZone() 
+{ 
+    (void) pthread_once(&once, __fv_allocator_initialize);
+    return (void *)_allocatorZone; 
+}
