@@ -954,8 +954,6 @@ static void __initialize_collector_thread()
 
 malloc_zone_t *fv_create_zone_named(const char *name)
 {
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    (void) pthread_once(&once, __initialize_collector_thread);
     // can't rely on initializers to do this early enough, since FVAllocator creates a zone in a __constructor__
     pthread_mutex_lock(&_allZonesLock);
     // TODO: is using new okay?
@@ -1007,6 +1005,10 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     pthread_mutex_lock(&_allZonesLock);
     _allZones->insert(zone);
     pthread_mutex_unlock(&_allZonesLock);
+    
+    // now that we have at least one zone fully set up, start the collector
+    static pthread_once_t once = PTHREAD_ONCE_INIT;
+    (void) pthread_once(&once, __initialize_collector_thread);
     
     return (malloc_zone_t *)zone;
 }
