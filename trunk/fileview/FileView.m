@@ -854,7 +854,14 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     [self setNeedsDisplay:YES];
     
     /* 
-     Any time the number of icons or scale changes, cursor rects are garbage and need to be reset.  The approved way to do this is by calling invalidateCursorRectsForView:, and the docs say to never invoke -[NSView resetCursorRects] manually.  Unfortunately, tracking rects are still active even though the window isn't key, and we show buttons for non-key windows.  As a consequence, if the number of icons just changed from (say) 3 to 1 in a non-key view, it can receive mouseEntered: events for the now-missing icons.  Possibly we don't need to reset cursor rects since they only change for the key window, but we'll reset everything manually just in case.  Allow NSWindow to handle it if the window is key.
+     Any time the number of icons or scale changes, cursor rects are garbage and need to be reset.  
+     The approved way to do this is by calling invalidateCursorRectsForView:, and the docs say to 
+     never invoke -[NSView resetCursorRects] manually.  Unfortunately, tracking rects are still 
+     active even though the window isn't key, and we show buttons for non-key windows.  
+     As a consequence, if the number of icons just changed from (say) 3 to 1 in a non-key view, 
+     it can receive mouseEntered: events for the now-missing icons.  Possibly we don't need to 
+     reset cursor rects since they only change for the key window, but we'll reset everything 
+     manually just in case.  Allow NSWindow to handle it if the window is key.
      */
     NSWindow *window = [self window];
     [window invalidateCursorRectsForView:self];
@@ -984,7 +991,11 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
 
         [_controller setIconURLs:nil];
         [_controller setBound:NO];
-        // Calling -[super unbind:binding] after this may cause selection to be reset; this happens with the controller in the demo project, since it unbinds in the wrong order.  We should be resilient against that, so we unbind first.
+        /*
+         Calling -[super unbind:binding] after this may cause selection to be reset; 
+         this happens with the controller in the demo project, since it unbinds in 
+         the wrong order.  We should be resilient against that, so we unbind first.
+         */
         [self setSelectionIndexes:[NSIndexSet indexSet]];
     }
     [self reloadIcons];
@@ -1185,7 +1196,10 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     // Reset padding to the default value, so we get correct baseline for numberOfColumns and other padding-dependent values
     _padding = [self _defaultPaddingForScale:[self iconScale]];
     
-    // Required frame using default padding.  The only time we don't use NSWidth(minFrame) is when we have a single column of icons, and the scale is such that icons are clipped horizontally (i.e. we have a horizontal scroller).
+    /*
+     Required frame using default padding.  The only time we don't use NSWidth(minFrame) is when we 
+     have a single column of icons, and the scale is such that icons are clipped horizontally (i.e. we have a horizontal scroller).
+     */
     frame.size.width = MAX([self _columnWidth] * [self _numberOfColumnsInFrame:minFrame] + 2 * MARGIN_BASE, NSWidth(minFrame));
     frame.size.height = MAX([self _rowHeight] * [self numberOfRows] + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
 
@@ -1199,7 +1213,11 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     // may not be enough columns to fill a single row; this causes a single icon to be centered across the view
     if (1 == nrows) ncolumns = ni;
     
-    // Note: side margins are f(padding), so frameWidth = 2 * (padding / 2 + MARGIN_BASE) + width_icon * ncolumns + padding * (ncolumns - 1).  Top and bottom margins are constant, so the accessors are used.
+    /*
+     Note: side margins are f(padding), so 
+       frameWidth = 2 * (padding / 2 + MARGIN_BASE) + width_icon * ncolumns + padding * (ncolumns - 1).  
+     Top and bottom margins are constant, so the accessors are used.
+     */
     CGFloat horizontalPadding = (NSWidth(frame) - 2 * MARGIN_BASE - _iconSize.width * ncolumns) / ((CGFloat)ncolumns);
     
     if (horizontalPadding < MINIMUM_PADDING) {
@@ -1223,7 +1241,13 @@ static void _removeTrackingRectTagFromView(const void *key, const void *value, v
     if (NSEqualRects(frame, [self frame]) == NO) {
         [self setFrame:frame];  
         
-        // Occasionally the scrollview with autohiding scrollers shows a horizontal scroller unnecessarily; it goes away as soon as the view is scrolled, with no change to the frame or padding.  Sending -[scrollView tile] doesn't seem to fix it, nor does setNeedsDisplay:YES; it seems to be an edge case with setting the frame when the last row of icon subtitles are near the bottom of the view.  Using reflectScrollClipView: seems to work reliably, and should at least be harmless.
+        /*
+         Occasionally the scrollview with autohiding scrollers shows a horizontal scroller unnecessarily; 
+         it goes away as soon as the view is scrolled, with no change to the frame or padding.  
+         Sending -[scrollView tile] doesn't seem to fix it, nor does setNeedsDisplay:YES; it seems to be 
+         an edge case with setting the frame when the last row of icon subtitles are near the bottom of 
+         the view.  Using reflectScrollClipView: seems to work reliably, and should at least be harmless.
+         */
         [[self enclosingScrollView] reflectScrolledClipView:cv];
     }
 }  
@@ -1635,7 +1659,13 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     return ([self visibleRect].origin.y - _lastOrigin.y) / (CFAbsoluteTimeGetCurrent() - _timeOfLastOrigin);
 }
 
-// This method is conservative.  It doesn't test icon rects for intersection in the rect argument, but simply estimates the maximum range of rows and columns required for complete drawing in the given rect.  Hence, it can't be used for determining rubber band selection indexes or anything requiring a precise range (this is why it's private), but it's guaranteed to be fast.
+/*
+ This method is conservative.  It doesn't test icon rects for intersection in the rect 
+ argument, but simply estimates the maximum range of rows and columns required for 
+ complete drawing in the given rect.  Hence, it can't be used for determining rubber 
+ band selection indexes or anything requiring a precise range (this is why it's private), 
+ but it's guaranteed to be fast.
+ */
 - (void)_getRangeOfRows:(NSRange *)rowRange columns:(NSRange *)columnRange inRect:(NSRect)aRect;
 {
     NSUInteger rmin, rmax, cmin, cmax;
@@ -1668,7 +1698,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 {
     NSMutableIndexSet *visibleIndexes = [NSMutableIndexSet indexSetWithIndexesInRange:indexRange];
 
-    // this method is now called with only the icons being drawn, not necessarily everything that's visible; we need to compute visibility to avoid calling -releaseResources on the wrong icons
+    /*
+     this method is now called with only the icons being drawn, not necessarily everything 
+     that's visible; we need to compute visibility to avoid calling -releaseResources on the wrong icons
+     */
     NSRange visRows, visCols;
     [self _getRangeOfRows:&visRows columns:&visCols inRect:[self visibleRect]];
     NSUInteger iMin, iMax = [_controller numberOfIcons];
@@ -1690,7 +1723,15 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     NSArray *iconsToRender = [_controller iconsAtIndexes:visibleIndexes];
     [_controller enqueueRenderOperationForIcons:iconsToRender checkSize:_iconSize];
         
-    // Call this only for icons that we're not going to display "soon."  The problem with this approach is that if you only have a single icon displayed at a time (say in a master-detail view), FVIcon cache resources will continue to be used up since each one is cached and then never touched again (if it doesn't show up in this loop, that is).  We handle this by using a timer that culls icons which are no longer present in the datasource.  I suppose this is only a symptom of the larger problem of a view maintaining a cache of model objects...but expecting a client to be aware of our caching strategy and icon management is a bit much.  
+    /*
+     Call this only for icons that we're not going to display "soon."  The problem with this 
+     approach is that if you only have a single icon displayed at a time (say in a master-detail view), 
+     FVIcon cache resources will continue to be used up since each one is cached and then never 
+     touched again (if it doesn't show up in this loop, that is).  We handle this by using a timer 
+     that culls icons which are no longer present in the datasource.  I suppose this is only a 
+     symptom of the larger problem of a view maintaining a cache of model objects...but expecting 
+     a client to be aware of our caching strategy and icon management is a bit much.  
+     */
     
     // Don't release resources while scrolling; caller has already checked -inLiveResize and _isRescaling for us
 
@@ -1715,7 +1756,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         }
 
         if ([unusedIndexes count]) {
-            // Since the same FVIcon instance is returned for duplicate URLs, the same icon instance may receive -renderOffscreen and -releaseResources in the same pass if it represents a visible icon and a hidden icon.
+            /*
+             Since the same FVIcon instance is returned for duplicate URLs, the same icon 
+             instance may receive -renderOffscreen and -releaseResources in the same pass 
+             if it represents a visible icon and a hidden icon.
+             */
             NSSet *renderSet = [[NSSet alloc] initWithArray:iconsToRender];
             NSMutableArray *unusedIcons = [[_controller iconsAtIndexes:unusedIndexes] mutableCopy];
             NSUInteger i = [unusedIcons count];
@@ -1829,7 +1874,12 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     CGContextScaleCTM(cgContext, 1, -1);
                     imageRect.origin.y = 0;
                     
-                    // Note: don't use integral rects here to avoid res independence issues (on Tiger, centerScanRect: just makes an integral rect).  The icons may create an integral bitmap context, but it'll still be drawn into this rect with correct scaling.
+                    /*
+                     Note: don't use integral rects here to avoid res independence issues 
+                     (on Tiger, centerScanRect: just makes an integral rect).  The icons may 
+                     create an integral bitmap context, but it'll still be drawn into this rect 
+                     with correct scaling.
+                     */
                     imageRect = [self centerScanRect:imageRect];
                     
                     if (NO == isDrawingToScreen && [image needsRenderForSize:_iconSize])
@@ -2077,7 +2127,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 
 - (NSDragOperation)draggingSourceOperationMaskForLocal:(BOOL)isLocal
 {
-    // Adding NSDragOperationLink for non-local drags gives us behavior similar to the NSDocument proxy icon, allowing the receiving app to decide what is appropriate; hence, in Finder it now defaults to alias, and you can use option to force a copy.
+    /*
+     Adding NSDragOperationLink for non-local drags gives us behavior similar to the 
+     NSDocument proxy icon, allowing the receiving app to decide what is appropriate; 
+     hence, in Finder it now defaults to alias, and you can use option to force a copy.
+     */
     NSDragOperation mask = NSDragOperationCopy | NSDragOperationLink;
     if (isLocal)
         mask |= NSDragOperationMove;
@@ -2142,7 +2196,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     [_leftArrow setEnabled:curPage != 1];
     [_rightArrow setEnabled:curPage != [anIcon pageCount]];
     NSUInteger r, c;
-    // _getGridRow should always succeed.  Drawing entire icon since a mouseover can occur between the time the icon is loaded and drawn, so only the part of the icon below the buttons is drawn (at least, I think that's what happens...)
+    /*
+     _getGridRow should always succeed.  Drawing entire icon since a mouseover can occur 
+     between the time the icon is loaded and drawn, so only the part of the icon below 
+     the buttons is drawn (at least, I think that's what happens...)
+     */
     if ([self _getGridRow:&r column:&c atPoint:_leftArrowFrame.origin])
         [self _setNeedsDisplayForIconInRow:r column:c];
 }
@@ -2268,7 +2326,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     const NSTrackingRectTag tag = [event trackingNumber];
     NSInteger anIndex;
     
-    // Finder doesn't show buttons unless it's the front app.  If Finder is the front app, it shows them for any window, regardless of main/key state, so we'll do the same.
+    /*
+     Finder doesn't show buttons unless it's the front app.  If Finder is the front app, 
+     it shows them for any window, regardless of main/key state, so we'll do the same.
+     */
     if ([NSApp isActive]) {
         if (FVCFDictionaryGetIntegerIfPresent(_trackingRectMap, (const void *)tag, &anIndex))
             [self _showArrowsForIconAtIndex:anIndex];
@@ -2292,7 +2353,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     [super mouseEntered:event];
 }
 
-// we can't do this in mouseExited: since it's received as soon as the mouse enters the slider's window (and checking the mouse location just postpones the problems)
+/*
+ We can't do this in mouseExited: since it's received as soon as the mouse enters the 
+ slider's window (and checking the mouse location just postpones the problems).
+ */
 - (void)handleSliderMouseExited:(NSNotification *)aNote
 {
     if ([[[self window] childWindows] containsObject:_sliderWindow]) {
@@ -2397,7 +2461,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     // mark this icon for highlight if necessary
     else if ([self _getGridRow:&r column:&c atPoint:p]) {
         
-        // remember _indexForGridRow:column: returns NSNotFound if you're in an empty slot of an existing row/column, but that's a deselect event so we still need to remove all selection indexes and mark for redisplay
+        /*
+         Remember _indexForGridRow:column: returns NSNotFound if you're in an empty slot of an 
+         existing row/column, but that's a deselect event so we still need to remove all 
+         selection indexes and mark for redisplay.
+         */
         i = [self _indexForGridRow:r column:c];
 
         if ([_selectedIndexes containsIndex:i] == NO) {
@@ -2417,7 +2485,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                     [self didChangeValueForKey:NSSelectionIndexesBinding];
                 }
                 else if ((flags & NSShiftKeyMask) != 0) {
-                    // Shift-click extends by a region; this is equivalent to iPhoto's grid view.  Finder treats shift-click like cmd-click in icon view, but we have a fixed layout, so this behavior is convenient and will be predictable.
+                    /*
+                     Shift-click extends by a region; this is equivalent to iPhoto's grid view.  Finder treats 
+                     shift-click like cmd-click in icon view, but we have a fixed layout, so this behavior is 
+                     convenient and will be predictable.
+                     */
                     
                     // at this point, we know that [_selectedIndexes count] > 0
                     NSParameterAssert([_selectedIndexes count]);
@@ -2436,7 +2508,11 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
                         [self didChangeValueForKey:NSSelectionIndexesBinding];
                     }
                     else if (NSNotFound != _lastClickedIndex) {
-                        // This handles the case of clicking in a deselected region between two selected regions.  We want to extend from the last click to the current one, instead of randomly picking an end to start from.
+                        /*
+                         This handles the case of clicking in a deselected region between two selected regions.  
+                         We want to extend from the last click to the current one, instead of randomly picking 
+                         an end to start from.
+                         */
                         [self willChangeValueForKey:NSSelectionIndexesBinding];
                         if (_lastClickedIndex > i)
                             [_selectedIndexes addIndexesInRange:NSMakeRange(i, _lastClickedIndex - i)];
@@ -3514,6 +3590,19 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 
 @end
 
+#ifndef MAC_OS_X_VERSION_10_7
+enum {
+    NSScrollerStyleLegacy       = 0,
+    NSScrollerStyleOverlay      = 1
+};
+typedef NSInteger NSScrollerStyle;
+
+@interface NSScroller(Lion)
++ (CGFloat)scrollerWidthForControlSize:(NSControlSize)controlSize scrollerStyle:(NSScrollerStyle)scrollerStyle;
++ (NSScrollerStyle)preferredScrollerStyle;
+@end
+#endif
+
 @implementation FVColumnView
 
 - (NSArray *)exposedBindings;
@@ -3575,6 +3664,20 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
     if ([scrollView hasVerticalScroller] == NO)
         return NO;
     
+    /*
+     Not really sure if this is the best behavior, but it works pretty well with the Lion
+     overlay scrollers.  The main idea is to avoid insetting the view frame by the width
+     of the scroller, as NSScroller no longer draws its background in the overlay case.
+     
+     There can be some clipping of content when the scroller switches to its fatter width,
+     but that's very minimal, and seems to only affect the multicolumn view.  Switching
+     layout based on the overlay scroller's presence or absence would likely be even worse,
+     so this is probably as good as we can do for now, particularly with the need for
+     backwards compatibility.
+     */
+    if ([NSScroller respondsToSelector:@selector(preferredScrollerStyle)])
+        return [NSScroller preferredScrollerStyle] == NSScrollerStyleLegacy;
+    
     NSSize contentSize = [scrollView contentSize];
     NSSize contentSizeWithScroller = [NSScrollView contentSizeForFrameSize:[scrollView frame].size
                                                      hasHorizontalScroller:NO
@@ -3620,11 +3723,17 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
     NSRect frame = NSZeroRect;
     frame.size.width = NSWidth(minFrame);
     frame.size.height = MAX([self _rowHeight] * [self numberOfRows] + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
-    
+
+    NSScroller *verticalScroller = [[self enclosingScrollView] verticalScroller];
+
     // see if the vertical scroller will show its ugly face and muck up the layout...
     if ([self willUnhideVerticalScrollerWithFrame:frame]) {
         
-        CGFloat scrollerWidth = [NSScroller scrollerWidthForControlSize:[[[self enclosingScrollView] verticalScroller] controlSize]];
+        CGFloat scrollerWidth;
+        if ([NSScroller respondsToSelector:@selector(scrollerWidthForControlSize:scrollerStyle:)])
+            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize] scrollerStyle:[NSScroller preferredScrollerStyle]];
+        else
+            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize]];
                     
         // shrink by the scroller width and recompute icon size
         length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin] - scrollerWidth;    
@@ -3644,7 +3753,12 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
 
     }
     else if (__FVScrollViewHasVerticalScroller([self enclosingScrollView])) {
-        CGFloat scrollerWidth = [NSScroller scrollerWidthForControlSize:[[[self enclosingScrollView] verticalScroller] controlSize]];
+        
+        CGFloat scrollerWidth;
+        if ([NSScroller respondsToSelector:@selector(scrollerWidthForControlSize:scrollerStyle:)])
+            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize] scrollerStyle:[NSScroller preferredScrollerStyle]];
+        else
+            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize]];
         
         // shrink by the scroller width and recompute icon size
         length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin] - scrollerWidth;    
@@ -3673,7 +3787,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
     NSRect bounds = [self bounds];
     NSRect cvFrame = [[[self enclosingScrollView] contentView] frame];
     NSRect svFrame = [[self enclosingScrollView] frame];
-    NSString *s = [NSString stringWithFormat:@"bounds = %@\nsv frame = %@\ncv frame = %@", NSStringFromSize(bounds.size), NSStringFromSize(svFrame.size), NSStringFromSize(cvFrame.size)];
+    NSString *s = [NSString stringWithFormat:@"self bounds.size = %@\nsv frame.size = %@\ncv frame.size = %@", NSStringFromSize(bounds.size), NSStringFromSize(svFrame.size), NSStringFromSize(cvFrame.size)];
     s = [s stringByAppendingFormat:@"\nscroller frame = %@", NSStringFromRect([[[self enclosingScrollView] verticalScroller] frame])];
     s = [s stringByAppendingFormat:@"\niconSize = %@", NSStringFromSize(_iconSize)];
     NSPoint p = { 2, 2 };
