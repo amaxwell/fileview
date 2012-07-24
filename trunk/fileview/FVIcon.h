@@ -53,6 +53,11 @@
  @return A URL that is appropriate for a missing file to be passed to iconWithURL:.  Don't rely on the scheme or path for anything. */
 + (NSURL *)missingFileURL;
 
+/** Override default behavior or add a custom icon.
+ 
+ If no Finder icon or Quick Look importer provides a useful icon, this is more convenient than doing a full-blown subclass and adding it to the class cluster.  It will burn some memory, so should not be used for many different file types.  A Quick Look generator is a better solution, but may not be possible in all cases. */
++ (void)useImage:(NSImage *)image forUTI:(NSString *)type;
+
 /** Only public factory method.
  
  Decides which concrete subclass to return based on the scheme and/or UTI of the URL or its target.

@@ -44,6 +44,7 @@
 #import "FVQuickLookIcon.h"
 #import "FVWebViewIcon.h"
 #import "FVMovieIcon.h"
+#import "FVNSImageIcon.h"
 #import "FVIcon_Private.h"
 
 #pragma mark FVIcon abstract class
@@ -60,8 +61,9 @@ static Class FVPlaceholderIconClass = Nil;
 static Class FVQLIconClass = Nil;
 static NSURL *_missingFileURL = nil;
 
-static NSMapTable *_placeholders = NULL;
-static FVPlaceholderIcon *_defaultPlaceholderIcon = nil;
+static NSMapTable          *_placeholders = NULL;
+static FVPlaceholderIcon   *_defaultPlaceholderIcon = nil;
+static NSMutableDictionary *_customIcons = nil;
 
 @implementation FVPlaceholderIcon
 /*
@@ -101,6 +103,7 @@ static FVPlaceholderIcon *_defaultPlaceholderIcon = nil;
     FVPlaceholderIconClass = [FVPlaceholderIcon self];
     _defaultPlaceholderIcon = [FVPlaceholderIcon allocWithZone:NSDefaultMallocZone()];
     _missingFileURL = [[NSURL alloc] initWithScheme:@"x-fileview" host:@"localhost" path:@"/missing"];
+    _customIcons = [NSMutableDictionary new];
     [self _initializeCategory];
 }
 
@@ -136,6 +139,13 @@ static inline id _placeholderForZone(NSZone *aZone)
 + (NSURL *)missingFileURL;
 {
     return _missingFileURL;
+}
+
++ (void)useImage:(NSImage *)image forUTI:(NSString *)type;
+{
+    FVNSImageIcon *icon = [[FVNSImageIcon alloc] initWithImage:image];
+    [_customIcons setObject:icon forKey:type];
+    [icon release];
 }
 
 + (id)iconWithURL:(NSURL *)representedURL;
@@ -198,6 +208,12 @@ static inline id _placeholderForZone(NSZone *aZone)
         }
     }
     
+    FVIcon *anIcon = [_customIcons objectForKey:(id)theUTI];
+    // !!! early return if we have an override icon
+    if (nil != anIcon) {
+        [(id)theUTI release];
+        return [anIcon retain];
+    }
     
     // limit FVTextIcon to < 20 MB files; layout is really slow with large files
     const UInt64 maximumTextDataSize = 20 * 1024 * 1024;
@@ -214,7 +230,6 @@ static inline id _placeholderForZone(NSZone *aZone)
     if (noErr == err && (catInfo.nodeFlags & kFSNodeIsDirectoryMask) == 0)
         dataPhysicalSize = catInfo.dataPhysicalSize;
     
-    FVIcon *anIcon = nil;
     
     /*
      Problems here.  TextMate claims a lot of plain text types but doesn't declare a UTI for any of them, 

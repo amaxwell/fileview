@@ -183,6 +183,8 @@ static char _FVContentBindingToControllerObserverContext;
 
 + (BOOL)accessInstanceVariablesDirectly { return NO; }
 
++ (void)useImage:(NSImage *)image forUTI:(NSString *)type { [FVIcon useImage:image forUTI:type]; }
+
 // always returns a new instance, so declare as mutable for internal usage and avoid copies
 - (NSMutableDictionary *)_titleAttributes
 {
