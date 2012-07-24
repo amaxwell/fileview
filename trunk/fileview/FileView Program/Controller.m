@@ -123,6 +123,12 @@
     
     [arrayController insertObject:[NSURL URLWithString:@"http://link.aps.org/doi/10.1103/PhysRevA.33.1141"] atArrangedObjectIndex:insertIndex++];
     
+    [arrayController insertObject:[NSURL URLWithString:@"file://localhost/Library/Keychains/System.keychain"] atArrangedObjectIndex:insertIndex++];
+    NSString *keychainApplication = [[NSWorkspace sharedWorkspace] absolutePathForAppBundleWithIdentifier:@"com.apple.keychainaccess"];
+    NSString *keychainUTI = [(id)UTTypeCreatePreferredIdentifierForTag(kUTTagClassFilenameExtension, CFSTR("keychain"), NULL) autorelease];
+    if (keychainUTI)
+        [FileView useImage:[[NSWorkspace sharedWorkspace] iconForFile:keychainApplication] forUTI:keychainUTI];
+    
 #pragma unused(insertIndex)
 
     [_fileView bind:NSContentBinding toObject:arrayController withKeyPath:@"arrangedObjects" options:nil];
