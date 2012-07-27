@@ -84,7 +84,7 @@ static void fv_zone_assert(bool condition) { if(false == (condition)) { HALT; } 
 
 typedef struct _fv_zone_t {
     malloc_zone_t      _basic_zone;
-    void              *_reserved[2];          /* for future expansion of malloc_zone_t */
+    void              *_reserved[4];          /* for future expansion of malloc_zone_t */
     multiset<MSALLOC> *_availableAllocations; /* <fv_allocation_t *>, counted by size  */
     vector<ALLOC>     *_allocations;          /* all allocations, ordered by address   */
     ALLOC             *_allocPtr;             /* pointer to _allocations storage       */
@@ -745,6 +745,12 @@ static void fv_zone_force_unlock(malloc_zone_t *fvzone)
     UNLOCK(zone);
 }
 
+static boolean_t fv_zone_locked(malloc_zone_t *fvzone)
+{
+    fv_zone_t *zone = reinterpret_cast<fv_zone_t *>(fvzone);
+    return TRYLOCK(zone);
+}
+
 typedef struct _fv_enumerator_context {
     task_t              task;
     void               *context;
@@ -874,7 +880,11 @@ static const struct malloc_introspection_t __fv_zone_introspect = {
     fv_zone_log,
     fv_zone_force_lock,
     fv_zone_force_unlock,
-    fv_zone_statistics
+    fv_zone_statistics,
+    fv_zone_locked // added in 10.6
+#if defined(MAC_OS_X_VERSION_10_7) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_7
+#warning needs update
+#endif
 };
 
 static bool __fv_alloc_size_compare(fv_allocation_t *val1, fv_allocation_t *val2) { return (val1->ptrSize < val2->ptrSize); }
@@ -1048,9 +1058,13 @@ malloc_zone_t *fv_create_zone_named(const char *name)
     zone->_basic_zone.free_definite_size = fv_zone_free_definite;
 #endif
     
+#if defined(MAC_OS_X_VERSION_10_8) && MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_8
+    zone->_basic_zone.pressure_relief = NULL;
+#warning should implement
+#endif
+    
     // explicitly initialize padding to NULL
-    zone->_reserved[0] = NULL;
-    zone->_reserved[1] = NULL;
+    memset(zone->_reserved, NULL, sizeof(zone->_reserved));
     
     // http://www.cplusplus.com/reference/stl/set/set.html
     // proof that C++ programmers have to be insane
