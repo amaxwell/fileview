@@ -123,11 +123,10 @@ static FVCGImageCache *_smallImageCache = nil;
 
 #pragma clang diagnostic push
 // Proper warning is unknown by Xcode 3.2.  Starting to think clang sucks.
-// #pragma clang diagnostic ignored "-Wincompatible-pointer-types"
-#pragma clang diagnostic ignored "-Wall"
-+ (id <NSObject, NSCopying>)newKeyForURL:(NSURL *)aURL;
+#pragma clang diagnostic ignored "-Wincompatible-pointer-types"
++ (id)newKeyForURL:(NSURL *)aURL;
 {
-    return (id <NSObject, NSCopying>)[FVCacheFile newKeyForURL:aURL];
+    return (id)[FVCacheFile newKeyForURL:aURL];
 }
 #pragma clang diagnostic pop
 
