@@ -437,7 +437,7 @@ static NSInteger FVCacheLogLevel = 0;
             data = (id)CFDataCreateWithBytesNoCopy(FVAllocatorGetDefault(), (const uint8_t *)bytes, location->_decompressedLength, FVAllocatorGetDefault());
         }
         else {
-            FVLog(@"Unable to malloc %ld bytes in -[FVCacheFile copyDataForKey:] with key %@", location->_decompressedLength, aKey);
+            FVLog(@"Unable to malloc %ld bytes in -[FVCacheFile copyDataForKey:] with key %@", (unsigned long)location->_decompressedLength, aKey);
         }
 
         NSParameterAssert([data length] == location->_decompressedLength);
@@ -550,7 +550,7 @@ static NSInteger FVCacheLogLevel = 0;
     CFRelease(_identifier);
     [super dealloc];
 }
-- (NSString *)description { return [NSString stringWithFormat:@"%.2f kilobytes in %ld files", _kbytes, _count]; }
+- (NSString *)description { return [NSString stringWithFormat:@"%.2f kilobytes in %ld files", _kbytes, (unsigned long)_count]; }
 - (NSUInteger)hash { return CFHash(_identifier); }
 - (BOOL)isEqual:(id)other { return CFStringCompare(_identifier, ((_FVCacheEventRecord *)other)->_identifier, 0) == kCFCompareEqualTo; }
 @end
