@@ -1100,7 +1100,6 @@
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "@loader_path/../../../../../../../";
-				OTHER_LDFLAGS = "-header-pad_max_install_names";
 				PRODUCT_NAME = FileView;
 				WRAPPER_EXTENSION = framework;
 			};
@@ -1115,7 +1114,6 @@
 				FRAMEWORK_VERSION = A;
 				INFOPLIST_FILE = Info.plist;
 				INSTALL_PATH = "@loader_path/../../../../../../../";
-				OTHER_LDFLAGS = "-header-pad_max_install_names";
 				PRODUCT_NAME = FileView;
 				WRAPPER_EXTENSION = framework;
 			};
