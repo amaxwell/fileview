@@ -65,7 +65,7 @@
         _activeOperations = [NSMutableSet new];
         
         static NSUInteger __queueIndex = 0;
-        NSString *queueName = [NSString stringWithFormat:@"com.mac.amaxwell.fileview-%lu", __queueIndex];
+        NSString *queueName = [NSString stringWithFormat:@"com.mac.amaxwell.fileview-%lu", (unsigned long)__queueIndex];
         __queueIndex++;
         
         _queue = dispatch_queue_create([queueName UTF8String], NULL);
