@@ -831,7 +831,7 @@
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0420;
+				LastUpgradeCheck = 0450;
 			};
 			buildConfigurationList = 1DEB91B108733DA50010E9CD /* Build configuration list for PBXProject "FileView" */;
 			compatibilityVersion = "Xcode 3.2";
@@ -1095,6 +1095,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_VERSION = A;
@@ -1109,6 +1110,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				DYLIB_COMPATIBILITY_VERSION = 1;
 				DYLIB_CURRENT_VERSION = 1;
 				FRAMEWORK_VERSION = A;
@@ -1137,6 +1139,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				INFOPLIST_FILE = "${SOURCE_ROOT}/FileView Program/FileView Program-Info.plist";
 				INSTALL_PATH = "$(HOME)/Applications";
@@ -1155,6 +1158,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = "${SOURCE_ROOT}/FileView Program/FileView Program-Info.plist";
 				INSTALL_PATH = "$(HOME)/Applications";
 				OTHER_LDFLAGS = (
@@ -1172,6 +1176,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				PRODUCT_NAME = BundlePluginsTarget;
 			};
 			name = Debug;
@@ -1180,6 +1185,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				PRODUCT_NAME = BundlePluginsTarget;
 			};
 			name = Release;
@@ -1188,6 +1194,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
+				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(DEVELOPER_FRAMEWORKS_DIR)\"",
@@ -1205,6 +1212,7 @@
 			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(DEVELOPER_FRAMEWORKS_DIR)\"",
