@@ -780,7 +780,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     const bool isIndexedImage = (kCGColorSpaceModelIndexed == __FVGetColorSpaceModelOfColorSpace(CGImageGetColorSpace(image)));
     if (isIndexedImage) {
         // we'd better not reach this on 10.4...
-        FVAPIAssert(floor(NSAppKitVersionNumber > NSAppKitVersionNumber10_4), @"indexed color space functions not available on 10.4");
+        FVAPIAssert(floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_4, @"indexed color space functions not available on 10.4");
     }
     
     /*

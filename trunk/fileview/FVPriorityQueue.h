@@ -107,4 +107,4 @@
 @end
 
 typedef void (*FVPriorityQueueApplierFunction)(const void *value, void *context);
-FV_PRIVATE_EXTERN void FVPriorityQueueApplyFunction(FVPriorityQueue *theSet, FVPriorityQueueApplierFunction applier, void *context);
+FV_PRIVATE_EXTERN void FVPriorityQueueApplyFunction(FVPriorityQueue *theSet, FVPriorityQueueApplierFunction applier, void *context) FV_HIDDEN;

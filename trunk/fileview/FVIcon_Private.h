@@ -106,40 +106,40 @@ extern const size_t FVMaxThumbnailDimension;
 
 /** @internal @var FVMaxImageDimension
  Maximum dimension of a full image. */
-FV_PRIVATE_EXTERN const size_t FVMaxImageDimension;
+FV_PRIVATE_EXTERN const size_t FVMaxImageDimension FV_HIDDEN;
 
 /** @internal @var FVDefaultPaperSize
  Nominal paper size to avoid using NSPrintInfo. */
-FV_PRIVATE_EXTERN const NSSize FVDefaultPaperSize;
+FV_PRIVATE_EXTERN const NSSize FVDefaultPaperSize FV_HIDDEN;
 
 /** @internal @var FVTopMargin
  Nominal top margin to avoid using NSPrintInfo. */
-FV_PRIVATE_EXTERN const CGFloat FVTopMargin;
+FV_PRIVATE_EXTERN const CGFloat FVTopMargin FV_HIDDEN;
 
 /** @internal @var FVSideMargin
  Nominal side margin to avoid using NSPrintInfo. */
-FV_PRIVATE_EXTERN const CGFloat FVSideMargin;
+FV_PRIVATE_EXTERN const CGFloat FVSideMargin FV_HIDDEN;
 
 /** @internal 
  Determine if a full image needs to be resampled.  Used by the resampling functions below.
  @param size On input, current image size.  On return, the required size.
  @return true if size pointer was modified. */
-FV_PRIVATE_EXTERN bool FVIconLimitFullImageSize(NSSize *size);
+FV_PRIVATE_EXTERN bool FVIconLimitFullImageSize(NSSize *size) FV_HIDDEN;
 
 /** @internal 
  Determine if a thumbnail image needs to be resampled.  Used by the resampling functions below.
  @param size On input, current image size.  On return, the required size.
  @return true if size pointer was modified. */
-FV_PRIVATE_EXTERN bool FVIconLimitThumbnailSize(NSSize *size);
+FV_PRIVATE_EXTERN bool FVIconLimitThumbnailSize(NSSize *size) FV_HIDDEN;
 
 /** @internal
  Create a thumbnail image with maximum dimension of FVIcon_Private.h::FVMaxThumbnailDimension.
  @param image The image to scale.
  @return Will simply retain the argument and return it if possible. */
-FV_PRIVATE_EXTERN CGImageRef FVCreateResampledThumbnail(CGImageRef image);
+FV_PRIVATE_EXTERN CGImageRef FVCreateResampledThumbnail(CGImageRef image) FV_HIDDEN;
 
 /** @internal
  Create a full size image with maximum dimension of FVIcon_Private.h::FVMaxImageDimension.  
  @param image The image to scale.
  @return Will simply retain the argument and return it if possible. */
-FV_PRIVATE_EXTERN CGImageRef FVCreateResampledFullImage(CGImageRef image);
+FV_PRIVATE_EXTERN CGImageRef FVCreateResampledFullImage(CGImageRef image) FV_HIDDEN;

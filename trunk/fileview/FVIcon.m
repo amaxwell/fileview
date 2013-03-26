@@ -155,6 +155,16 @@ static inline id _placeholderForZone(NSZone *aZone)
 
 - (id)initWithURL:(NSURL *)representedURL;
 {
+    /*
+     clang doesn't understand placeholders, so it thinks self is a memory leak;
+     lie about our init path here to shut it up.
+     */
+#ifdef __clang_analyzer__
+    self = [super init];
+    [self release];
+    assert(0);
+#endif
+    
     // CFURLGetFSRef won't like a nil URL
     NSParameterAssert(nil != representedURL);
     // Subclassers must not call super, or we'd end up with an endless loop
