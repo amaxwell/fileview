@@ -41,7 +41,7 @@
 
 /** Notification posted when the window closes.
  @warning This is a temporary hack for FileView internals, and must not be relied on! */
-FV_PRIVATE_EXTERN NSString * const FVPreviewerWillCloseNotification;
+FV_PRIVATE_EXTERN NSString * const FVPreviewerWillCloseNotification FV_HIDDEN;
 
 @class FVScaledImageView, QTMovieView, PDFView, WebView;
 /** FVPreviewer displays and manages a single-window preview.

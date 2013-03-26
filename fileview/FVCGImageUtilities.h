@@ -47,7 +47,7 @@ __BEGIN_DECLS
 
 /** @internal @brief Get image size in pixels.
  @return CGImage size in pixels. */
-FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image);
+FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image) FV_HIDDEN;
 
 /** @internal @brief Resample an image.
  
@@ -55,7 +55,7 @@ FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image);
  @param image The CGImage to scale (source image).
  @param desiredSize The final size in pixels.
  @return A new CGImage or NULL if it could not be scaled. */
-FV_PRIVATE_EXTERN CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize);
+FV_PRIVATE_EXTERN CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize) FV_HIDDEN;
 
 /** @internal @brief Resample an image.
  
@@ -64,7 +64,7 @@ FV_PRIVATE_EXTERN CGImageRef FVCreateResampledImageOfSize(CGImageRef image, cons
  @param image The CGImage to scale (source image).
  @param desiredSize The final size in pixels.
  @return A new CGImage or NULL if it could not be scaled. */
-FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize);
+FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize) FV_HIDDEN;
 
 /** @internal @brief Return pointer to bitmap storage.
  
@@ -74,20 +74,20 @@ FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, co
  @param image The image whose bitmap data you want to access.
  @param len Returns the length of the bitmap pointer by reference.
  @return A pointer to the data, or NULL on failure. */
-FV_PRIVATE_EXTERN const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len);
+FV_PRIVATE_EXTERN const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len) FV_HIDDEN;
 
 /** @internal @brief Get the CGColorSpaceModel of a color space.
  
  @warning This is a hack on 10.4 and earlier.
  @param colorSpace The color space to query.
  @return A CGColorspaceModel value.  May be kCGColorSpaceModelUnknown. */
-FV_PRIVATE_EXTERN CGColorSpaceModel __FVGetColorSpaceModelOfColorSpace(CGColorSpaceRef colorSpace);
+FV_PRIVATE_EXTERN CGColorSpaceModel __FVGetColorSpaceModelOfColorSpace(CGColorSpaceRef colorSpace) FV_HIDDEN;
 
 /** @internal @brief List of tile rects.
  
  The ImageShear test project uses this to draw tiles for diagnostic purposes.  It has no other useful function.
  @return An array of NSRect structures.  The caller is responsible for freeing this list with NSZoneFree. */
-FV_PRIVATE_EXTERN NSRect * FVCopyRectListForImageWithScaledSize(CGImageRef image, const NSSize desiredSize, NSUInteger *rectCount);
+FV_PRIVATE_EXTERN NSRect * FVCopyRectListForImageWithScaledSize(CGImageRef image, const NSSize desiredSize, NSUInteger *rectCount) FV_HIDDEN;
 
 __END_DECLS
 

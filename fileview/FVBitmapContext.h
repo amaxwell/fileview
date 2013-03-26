@@ -97,14 +97,14 @@ __BEGIN_DECLS
  @param bytesPerSample Bytes per pixel (e.g. an 8-bits-per-channel ARGB image has 32 bits per pixel, so uses 4 bytes per pixel).
  @param pixelsWide Width of the image in pixels.
  @return Number of bytes to allocate per row. */
-FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide);
+FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide) FV_HIDDEN;
 
 /** @internal @brief See if an image is compatible with caching assumptions.
  
  If this returns false, the image should be redrawn into a bitmap context created with FVBitmapContext::bitmapContextWithSize:, and CGBitmapContextCreateImage() should be used to create a new CGImage that can be cached.
  @return true if the image does not need to be redrawn. 
  @todo Move this elsewhere. */
-FV_PRIVATE_EXTERN bool FVImageIsIncompatible(CGImageRef image);
+FV_PRIVATE_EXTERN bool FVImageIsIncompatible(CGImageRef image) FV_HIDDEN;
 
 __END_DECLS
 

@@ -52,13 +52,13 @@ __BEGIN_DECLS
  
  The allocator is thread-safe.
  @return The shared allocator instance. */
-FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void);
+FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void) FV_HIDDEN;
 
 /** @internal @brief NSZone for moderate-to-large blocks.
  
  The allocator is thread-safe.
  @return A shared NSZone. */
-FV_PRIVATE_EXTERN NSZone *FVDefaultZone(void);
+FV_PRIVATE_EXTERN NSZone *FVDefaultZone(void) FV_HIDDEN;
 
 __END_DECLS
 
