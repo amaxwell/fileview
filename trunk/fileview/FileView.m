@@ -152,6 +152,8 @@ static char _FVContentBindingToControllerObserverContext;
         QLPreviewPanelClass = NSClassFromString(@"QLPreviewPanel");
 #endif
     
+    // Hidden pref; 10.7 and later http://mjtsai.com/blog/2012/03/12/qlenabletextselection/
+    [[NSUserDefaults standardUserDefaults] setBool:YES forKey:@"QLEnableTextSelection"];
 }
 
 + (NSColor *)defaultBackgroundColor
