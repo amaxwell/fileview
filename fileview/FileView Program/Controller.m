@@ -205,7 +205,7 @@
 
 - (NSString *)fileView:(FileView *)aFileView subtitleAtIndex:(NSUInteger)anIndex;
 {
-    return [NSString stringWithFormat:@"Check pq for %d", anIndex];
+    return [NSString stringWithFormat:@"Check pq for %tu", anIndex];
 }
 
 - (void)fileView:(FileView *)aFileView willPopUpMenu:(NSMenu *)aMenu onIconAtIndex:(NSUInteger)anIndex;
