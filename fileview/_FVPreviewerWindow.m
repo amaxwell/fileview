@@ -37,8 +37,13 @@
  */
 
 #import "_FVPreviewerWindow.h"
+#import "FVPreviewer.h"
 #import "FVUtilities.h"
 #import <IOKit/hidsystem/event_status_driver.h>
+
+@interface FVPreviewer (FVDoubleClickDelegate)
+- (void)doubleClickedPreviewWindow;
+@end
 
 @implementation _FVPreviewerWindow
 
