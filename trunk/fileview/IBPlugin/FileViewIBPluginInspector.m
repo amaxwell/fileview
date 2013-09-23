@@ -40,6 +40,10 @@
 
 @class FileView;
 
+@interface NSObject (PluginExtensions)
++ (NSColor *)defaultBackgroundColor;
+@end
+
 @implementation FileViewIBPluginInspector
 
 - (NSString *)viewNibName {

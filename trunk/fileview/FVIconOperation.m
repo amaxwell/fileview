@@ -42,6 +42,11 @@
 #import "FVIcon.h"
 #import "FileView.h"
 #import <pthread.h>
+#import <sys/sysctl.h>
+
+@interface FileView (Update)
+- (void)iconUpdated:(FVIcon *)anIcon;
+@end
 
 @implementation FVIconOperation
 
@@ -97,10 +102,6 @@
 @interface FVIconUpdateOperation : FVIconOperation
 @end
 
-@interface FileView (Update)
-- (void)iconUpdated:(FVIcon *)anIcon;
-@end
-
 @implementation FVIconUpdateOperation
 
 - (BOOL)isConcurrent { return NO; }
@@ -120,7 +121,25 @@
 {
     if (NO == [self isCancelled]) {
         NSAutoreleasePool *pool = [NSAutoreleasePool new];
+        
+        int oldSysctlValue;
+        size_t dataSize = sizeof(oldSysctlValue);
+        int ret = sysctlbyname("kern.rage_vnode", &oldSysctlValue, &dataSize, NULL, 0);
+        if (0 == ret) {
+            int sysctlValue = KERN_RAGE_THREAD;
+            ret = sysctlbyname("kern.rage_vnode", NULL, NULL, &sysctlValue, sizeof(sysctlValue));
+            if (ret) perror("sysctlbyname failed to set kern.rage_vnode");
+        }
+        else {
+            perror("sysctlbyname failed to get kern.rage_vnode");
+        }
+        [super finished];        
         [_icon renderOffscreen];
+        if (0 == ret) {
+            ret = sysctlbyname("kern.rage_vnode", NULL, NULL, &oldSysctlValue, sizeof(oldSysctlValue));
+            if (ret) perror("sysctlbyname failed to reset kern.rage_vnode");
+        }
+
         FVIconUpdateOperation *op = [[FVIconUpdateOperation alloc] initWithIcon:_icon view:_view];
         [[FVOperationQueue mainQueue] addOperation:op];
         [op release];
