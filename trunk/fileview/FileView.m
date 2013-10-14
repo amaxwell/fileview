@@ -3682,7 +3682,10 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
      This was evidently a bug in 10.7, as this return path draws incorrectly when there's
      no scroller on 10.8.
      */
-    if (floor(NSAppKitVersionNumber) <= NSAppKitVersionNumber10_7 &&
+#ifndef NSAppKitVersionNumber10_8
+#define NSAppKitVersionNumber10_8 1187
+#endif
+    if (floor(NSAppKitVersionNumber) != NSAppKitVersionNumber10_8 &&
         [NSScroller respondsToSelector:@selector(preferredScrollerStyle)])
         return [NSScroller preferredScrollerStyle] == NSScrollerStyleLegacy;
     
