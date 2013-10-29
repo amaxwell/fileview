@@ -3678,15 +3678,8 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
      layout based on the overlay scroller's presence or absence would likely be even worse,
      so this is probably as good as we can do for now, particularly with the need for
      backwards compatibility.
-     
-     This was evidently a bug in 10.7, as this return path draws incorrectly when there's
-     no scroller on 10.8.
      */
-#ifndef NSAppKitVersionNumber10_8
-#define NSAppKitVersionNumber10_8 1187
-#endif
-    if (floor(NSAppKitVersionNumber) != NSAppKitVersionNumber10_8 &&
-        [NSScroller respondsToSelector:@selector(preferredScrollerStyle)])
+    if ([NSScroller respondsToSelector:@selector(preferredScrollerStyle)])
         return [NSScroller preferredScrollerStyle] == NSScrollerStyleLegacy;
     
     NSSize contentSize = [scrollView contentSize];
