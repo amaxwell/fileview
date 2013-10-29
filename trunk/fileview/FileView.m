@@ -3660,7 +3660,7 @@ static NSScrollView * __FVHidingScrollView()
     return scrollView;
 }
 
-static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
+static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView, FVColumnView *columnView)
 {
     if (scrollView == nil || [scrollView autohidesScrollers] == NO)
         return NO;
@@ -3678,9 +3678,13 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
      layout based on the overlay scroller's presence or absence would likely be even worse,
      so this is probably as good as we can do for now, particularly with the need for
      backwards compatibility.
+     
+     As of 10.8, the legacy scroller isn't drawn if we have zero rows. Needs testing on
+     10.7 and 10.9.
+     
      */
     if ([NSScroller respondsToSelector:@selector(preferredScrollerStyle)])
-        return [NSScroller preferredScrollerStyle] == NSScrollerStyleLegacy;
+        return [NSScroller preferredScrollerStyle] == NSScrollerStyleLegacy && [columnView numberOfRows] > 0;
     
     NSSize contentSize = [scrollView contentSize];
     NSSize contentSizeWithScroller = [NSScrollView contentSizeForFrameSize:[scrollView frame].size
@@ -3693,7 +3697,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
 - (BOOL)willUnhideVerticalScrollerWithFrame:(NSRect)frame
 {
     // !!! early return; nothing to do in this case
-    if (__FVScrollViewHasVerticalScroller([self enclosingScrollView]))
+    if (__FVScrollViewHasVerticalScroller([self enclosingScrollView], self))
         return NO;
 
     NSScrollView *scrollView = __FVHidingScrollView();
@@ -3703,7 +3707,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
     [scrollView setFrame:[[self enclosingScrollView] frame]];    
     [[scrollView documentView] setFrame:frame];
     
-    return __FVScrollViewHasVerticalScroller(scrollView);
+    return __FVScrollViewHasVerticalScroller(scrollView, self);
 }
 
 - (void)_recalculateGridSize
@@ -3745,7 +3749,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
         frame.size.height = MAX([self _rowHeight] * [self numberOfRows] + [self _topMargin] + [self _bottomMargin], NSHeight(minFrame));
         
         // after icon size adjustment, width adjustment may not be necessary since height is smaller
-        if ([self willUnhideVerticalScrollerWithFrame:frame] && __FVScrollViewHasVerticalScroller([self enclosingScrollView]) == NO)
+        if ([self willUnhideVerticalScrollerWithFrame:frame] && __FVScrollViewHasVerticalScroller([self enclosingScrollView], self) == NO)
             frame.size.width -= scrollerWidth;
         
         /*
@@ -3756,7 +3760,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView)
          */
 
     }
-    else if (__FVScrollViewHasVerticalScroller([self enclosingScrollView])) {
+    else if (__FVScrollViewHasVerticalScroller([self enclosingScrollView], self)) {
         
         CGFloat scrollerWidth;
         if ([NSScroller respondsToSelector:@selector(scrollerWidthForControlSize:scrollerStyle:)])
