@@ -3680,11 +3680,24 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView, FVColumn
      backwards compatibility.
      
      As of 10.8, the legacy scroller isn't drawn if we have zero rows. Needs testing on
-     10.7 and 10.9.
+     10.7 and 10.9. Unfortunately, there are multiple cases to consider here:
+     
+        1) No content in view; even legacy scrollers will be hidden, so we need
+           to draw full width. This is easy to catch.
+     
+        2) Icons fit in the view vertically, so we don't need a vertical scroller
+           at all. Apparently legacy scrollers don't draw in that case, either,
+           so I get a background color.
+     
+        3) We need a vertical scroller. In this case, we may or may not use the
+           legacy scroller stuff.
+     
+     Checking -isHidden seems to work on 10.8, but needs more testing.
      
      */
-    if ([NSScroller respondsToSelector:@selector(preferredScrollerStyle)])
-        return [NSScroller preferredScrollerStyle] == NSScrollerStyleLegacy && [columnView numberOfRows] > 0;
+    NSScroller *vscroller = [scrollView verticalScroller];
+    if ([vscroller respondsToSelector:@selector(scrollerStyle)])
+        return [vscroller scrollerStyle] == NSScrollerStyleLegacy && [columnView numberOfRows] > 0 && [vscroller isHidden] == NO;
     
     NSSize contentSize = [scrollView contentSize];
     NSSize contentSizeWithScroller = [NSScrollView contentSizeForFrameSize:[scrollView frame].size
