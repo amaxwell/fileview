@@ -38,23 +38,33 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @internal @brief Memory-mapped data provider.
+/** @internal 
+ 
+ @brief Memory-mapped data provider.
  
  This object is currently used by FVPDFIcon, and probably should not be used anywhere else.  It provides a way to keep PDF files open so scrolling back-and-forth at high magnification doesn't require creating a new PDF data provider.  This class may go away in future since the performance benefits are marginal. */
 @interface _FVMappedDataProvider : NSObject 
 
-/** @internal @brief Determine if too much data is mapped */
+/** @internal 
+ 
+ @brief Determine if too much data is mapped */
 + (BOOL)maxSizeExceeded;
 
-/** @internal @brief Maximum number of memory-mapped data providers */
+/** @internal 
+ 
+ @brief Maximum number of memory-mapped data providers */
 + (unsigned char)maxProviderCount;
 
-/** @internal @brief Get a mapped data provider. 
+/** @internal 
+ 
+ @brief Get a mapped data provider. 
  
  Retaining this object is not required, since the internal cache keeps a valid reference to it until you call removeProviderReferenceForURL: to dispose of it. */
 + (CGDataProviderRef)newDataProviderForURL:(NSURL *)aURL CF_RETURNS_NOT_RETAINED;
 
-/** @internal @brief Dispose of a mapped data provider. 
+/** @internal 
+ 
+ @brief Dispose of a mapped data provider. 
  
  Decrements the provider's retain count.  Must be balanced with calls to dataProviderForURL: or the object will be released prematurely. */
 + (void)releaseProviderForURL:(NSURL *)aURL;

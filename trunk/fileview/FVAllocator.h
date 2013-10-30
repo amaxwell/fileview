@@ -48,13 +48,17 @@ __BEGIN_DECLS
  Provides wrapper functions for a malloc zone created by fv_zone.h::fv_create_zone_named.
  */
 
-/** @internal @brief CFAllocator for moderate-to-large blocks.
+/** @internal 
+ 
+ @brief CFAllocator for moderate-to-large blocks.
  
  The allocator is thread-safe.
  @return The shared allocator instance. */
 FV_PRIVATE_EXTERN CFAllocatorRef FVAllocatorGetDefault(void) FV_HIDDEN;
 
-/** @internal @brief NSZone for moderate-to-large blocks.
+/** @internal 
+ 
+ @brief NSZone for moderate-to-large blocks.
  
  The allocator is thread-safe.
  @return A shared NSZone. */

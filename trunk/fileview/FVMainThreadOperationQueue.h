@@ -42,7 +42,9 @@
 
 @class FVOperation, FVPriorityQueue;
 
-/** @internal @brief Implementation of FVOperationQueue.
+/** @internal 
+ 
+ @brief Implementation of FVOperationQueue.
  
  @warning FVMainThreadOperationQueue must never be instantiated directly.  It is only used and instantiated by the FVOperationQueue abstract class.  
  

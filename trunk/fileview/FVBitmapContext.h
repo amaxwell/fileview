@@ -44,7 +44,9 @@
 
 __BEGIN_DECLS
 
-/** @internal @brief Wrapper around a CGBitmapContext.
+/** @internal 
+ 
+ @brief Wrapper around a CGBitmapContext.
  
  FVBitmapContext is a simple wrapper around a bitmap-based graphics context, and provides Core Graphics and Cocoa graphics contexts.  Memory for the bitmap data may not be allocated in the default zone or the object's zone, and is considered to be owned by the FVBitmapContext.  Consequently, do not attempt to access the CGContext's bitmap data after the FVBitmapContext is deallocated.  Likewise, retaining any of the graphics contexts returned from an instance and using them after it has been deallocated is a programmer error.
  
@@ -62,7 +64,9 @@ __BEGIN_DECLS
     NSGraphicsContext *_context;
 }
 
-/** @internal @brief Convenience initializer.
+/** @internal 
+ 
+ @brief Convenience initializer.
  
  This is the only public API for creating an FVBitmapContext.
  
@@ -70,18 +74,24 @@ __BEGIN_DECLS
  @return An autoreleased instance of a new FVBitmapContext. */
 + (FVBitmapContext *)bitmapContextWithSize:(NSSize)pixelSize;
 
-/** @internal @brief Core Graphics context.
+/** @internal 
+ 
+ @brief Core Graphics context.
  
  @return CGContext owned by FVBitmapContext. */
 - (CGContextRef)graphicsPort;
 
-/** @internal @brief Unflipped Cocoa graphics context.
+/** @internal 
+ 
+ @brief Unflipped Cocoa graphics context.
  
  Lazily instantiates a new NSGraphicsContext from FVBitmapContext::graphicsPort. 
  @return Unflipped NSGraphicsContext owned by FVBitmapContext. */
 - (NSGraphicsContext *)graphicsContext;
 
-/** @internal @brief Flipped Cocoa graphics context.
+/** @internal 
+ 
+ @brief Flipped Cocoa graphics context.
  
  Lazily instantiates a new NSGraphicsContext from FVBitmapContext::graphicsPort. 
  @return Flipped NSGraphicsContext owned by FVBitmapContext. */
@@ -91,7 +101,9 @@ __BEGIN_DECLS
 
 /** @file FVBitmapContext.h  Bitmap context creation and disposal. */
 
-/** @internal @brief Row bytes for pixel width.
+/** @internal 
+ 
+ @brief Row bytes for pixel width.
  
  Computes the appropriate number of bytes per row for 64-byte alignment.  Algorithm borrowed from Apple's sample code.
  @param bytesPerSample Bytes per pixel (e.g. an 8-bits-per-channel ARGB image has 32 bits per pixel, so uses 4 bytes per pixel).
@@ -99,7 +111,9 @@ __BEGIN_DECLS
  @return Number of bytes to allocate per row. */
 FV_PRIVATE_EXTERN size_t FVPaddedRowBytesForWidth(const size_t bytesPerSample, const size_t pixelsWide) FV_HIDDEN;
 
-/** @internal @brief See if an image is compatible with caching assumptions.
+/** @internal 
+ 
+ @brief See if an image is compatible with caching assumptions.
  
  If this returns false, the image should be redrawn into a bitmap context created with FVBitmapContext::bitmapContextWithSize:, and CGBitmapContextCreateImage() should be used to create a new CGImage that can be cached.
  @return true if the image does not need to be redrawn. 

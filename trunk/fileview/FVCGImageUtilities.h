@@ -45,11 +45,15 @@ __BEGIN_DECLS
 
 /** @file FVCGImageUtilities.h  Manipulate CGImages. */
 
-/** @internal @brief Get image size in pixels.
+/** @internal 
+ 
+ @brief Get image size in pixels.
  @return CGImage size in pixels. */
 FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image) FV_HIDDEN;
 
-/** @internal @brief Resample an image.
+/** @internal 
+ 
+ @brief Resample an image.
  
  This function is used for resampling CGImages or converting an image to be compatible with cache limitations (if it uses the wrong colorspace, for instance).  Tiling and scaling are performed using vImage, which may give unacceptable results at very small scale levels due to limitations in the tiling scheme.  However, it should be more memory-efficient than using FVCGCreateResampledImageOfSize.  Images returned are always host-order 8-bit with alpha channel.
  @param image The CGImage to scale (source image).
@@ -57,7 +61,9 @@ FV_PRIVATE_EXTERN NSSize FVCGImageSize(CGImageRef image) FV_HIDDEN;
  @return A new CGImage or NULL if it could not be scaled. */
 FV_PRIVATE_EXTERN CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize) FV_HIDDEN;
 
-/** @internal @brief Resample an image.
+/** @internal 
+ 
+ @brief Resample an image.
  
  This function is used for resampling CGImages or converting an image to be compatible with cache limitations (if it uses the wrong colorspace, for instance).  The image is redrawn into a new CGBitmapContext, and any scaling is performed by CoreGraphics.  Images returned are always host-order 8-bit with alpha channel.
  @warning This function can be memory-intensive.
@@ -66,7 +72,9 @@ FV_PRIVATE_EXTERN CGImageRef FVCreateResampledImageOfSize(CGImageRef image, cons
  @return A new CGImage or NULL if it could not be scaled. */
 FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSize) FV_HIDDEN;
 
-/** @internal @brief Return pointer to bitmap storage.
+/** @internal 
+ 
+ @brief Return pointer to bitmap storage.
  
  @todo What length is returned for float32 or uint16_t images?
  
@@ -76,14 +84,18 @@ FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, co
  @return A pointer to the data, or NULL on failure. */
 FV_PRIVATE_EXTERN const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len) FV_HIDDEN;
 
-/** @internal @brief Get the CGColorSpaceModel of a color space.
+/** @internal 
+ 
+ @brief Get the CGColorSpaceModel of a color space.
  
  @warning This is a hack on 10.4 and earlier.
  @param colorSpace The color space to query.
  @return A CGColorspaceModel value.  May be kCGColorSpaceModelUnknown. */
 FV_PRIVATE_EXTERN CGColorSpaceModel __FVGetColorSpaceModelOfColorSpace(CGColorSpaceRef colorSpace) FV_HIDDEN;
 
-/** @internal @brief List of tile rects.
+/** @internal 
+ 
+ @brief List of tile rects.
  
  The ImageShear test project uses this to draw tiles for diagnostic purposes.  It has no other useful function.
  @return An array of NSRect structures.  The caller is responsible for freeing this list with NSZoneFree. */

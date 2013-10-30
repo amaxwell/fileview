@@ -38,7 +38,9 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @internal @brief Color space description.
+/** @internal 
+ 
+ @brief Color space description.
  
  This object encapsulates the color model (including lookup table) of a CGColorSpace for archiving with NSArchiver.  When unarchiving, device-dependent colorspaces are used, so complete fidelity may not be achieved.  Color space names are not (publicly) available on 10.5 and earlier, so that simple route is not available.  In addition, not all color spaces have an ICC profile, so that isn't reliable either (and is only available on 10.5 and later).  
  
@@ -57,7 +59,9 @@
     unsigned char         *_colorTable;       // length is _colorTableLength * _baseColorSpaceComponents
 }
 
-/** @internal @brief Designated initializer.
+/** @internal 
+ 
+ @brief Designated initializer.
  
  Several heuristics are used to determine the color space characteristics.
  
@@ -65,7 +69,9 @@
  @return An initialized description object. */
 - (id)initWithColorSpace:(CGColorSpaceRef)colorSpace;
 
-/** @internal @brief Create a CGColorSpace.
+/** @internal 
+ 
+ @brief Create a CGColorSpace.
  
  Creates a new CGColorSpace based on the characteristics of the FVCGColorSpaceDescription.  The caller is responsible for releasing this instance.
  

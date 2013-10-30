@@ -57,7 +57,9 @@ __BEGIN_DECLS
  @warning You must not use this to replace the system's malloc zone, since the implementation uses malloc.
  */
 
-/** @internal @brief Malloc zone.
+/** @internal 
+ 
+ @brief Malloc zone.
  
  The zone is thread safe.  All zones share a common garbage collection thread that runs periodically or when a high water mark is reached.  There is typically little benefit from creating multiple zones, and destruction has all the caveats of Apple's zone functions. 
  @return A new malloc zone structure. */
