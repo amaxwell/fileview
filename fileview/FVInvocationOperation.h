@@ -40,7 +40,9 @@
 #import "FVConcreteOperation.h"
 #import <libkern/OSAtomic.h>
 
-/** @internal @brief FVOperation subclass wraps NSInvocation
+/** @internal 
+ 
+ @brief FVOperation subclass wraps NSInvocation
  
  FVInvocationOperation is designed to be similar in usage to NSInvocationOperation.  It can be created with any invocation, but the invocation should not be modified after the operation has been enqueued.  FVInvocationOperation is capable of returning a value; non-objects are wrapped in an NSValue. */
 @interface FVInvocationOperation : FVConcreteOperation

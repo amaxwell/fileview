@@ -38,7 +38,9 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @internal @brief Binary cache file.
+/** @internal 
+ 
+ @brief Binary cache file.
  
  Conceptually, FVCacheFile provides a dictionary-like interface to a data file wherein NSData objects are represented by a key, and only one object exists for a given key.  FVCacheFile instances are thread-safe for multiple readers and writers, although write operations are serialized.  Reads are performed using mmap(2), and data is compressed using zlib when writing and decompressed while reading.  Various preferences are available for gathering usage statistics to see object space usage per key.
  

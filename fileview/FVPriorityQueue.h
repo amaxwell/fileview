@@ -38,7 +38,9 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @internal @brief Priority queue (ordered set) 
+/** @internal 
+ 
+ @brief Priority queue (ordered set) 
  
  FVPriorityQueue is an ordered collection of unique objects.  Objects are ordered in the queue by priority, as determined by the result of compare: as follows:
  @code

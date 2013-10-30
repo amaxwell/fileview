@@ -43,7 +43,9 @@
 
 @class FVOperation, FVPriorityQueue;
 
-/** @internal @brief Implementation of FVOperationQueue.
+/** @internal 
+ 
+ @brief Implementation of FVOperationQueue.
  
   FVGCDOperationQueue is only used and instantiated by the FVOperationQueue abstract class.  It must never be used directly, although you could copy its implementation for another subclass of FVOperationQueue.  FVGCDOperationQueue uses Grand Central Dispatch to process queue entries.  FVGCDOperationQueue is thread-safe. */
 @interface FVGCDOperationQueue : FVOperationQueue

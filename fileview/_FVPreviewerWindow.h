@@ -38,7 +38,9 @@
 
 #import <Cocoa/Cocoa.h>
 
-/** @internal @brief Window subclass for the previewer.
+/** @internal 
+ 
+ @brief Window subclass for the previewer.
  
  The Quick Look panel allows the controlling responder/view to remain key, practically.  The best
  way to handle this in the custom preview is to return NO from NSWindow::canBecomeKeyWindow, but

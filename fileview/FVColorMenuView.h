@@ -40,7 +40,9 @@
 
 @class FVColorMenuMatrix;
 
-/** @internal @brief Finder label menu view.
+/** @internal 
+ 
+ @brief Finder label menu view.
  
  FVColorMenuView provides an NSView subclass that is a close approximation of the Finder label color control.  Presently it's only available directly in code, but is easy to set up in code:
  @code

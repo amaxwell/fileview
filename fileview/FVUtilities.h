@@ -62,14 +62,18 @@ FV_PRIVATE_EXTERN const CFSetCallBacks FVNSObjectSetCallBacks FV_HIDDEN;
  For NSObject subclasses in a CFSet using pointer equality.  Compatible with toll-free bridging. */
 FV_PRIVATE_EXTERN const CFSetCallBacks FVNSObjectPointerSetCallBacks FV_HIDDEN;
 
-/** @internal @brief For use with integer-valued dictionaries.
+/** @internal 
+ 
+ @brief For use with integer-valued dictionaries.
  @param dict CFDictionary with integer values.
  @param key Key of interest.
  @param value Pointer in which to return the value.
  @return TRUE if the key was present, FALSE if not present */  
 FV_PRIVATE_EXTERN Boolean FVCFDictionaryGetIntegerIfPresent(CFDictionaryRef dict, const void *key, NSInteger *value) FV_HIDDEN;
 
-/** @internal @brief Nonretaining timer.
+/** @internal 
+ 
+ @brief Nonretaining timer.
  Creates a timer that does not retain its target; does not schedule the timer in a runloop.
  @param interval Fire interval.
  @param fireTime Absolute time of first firing.
@@ -79,10 +83,14 @@ FV_PRIVATE_EXTERN Boolean FVCFDictionaryGetIntegerIfPresent(CFDictionaryRef dict
 FV_PRIVATE_EXTERN CFRunLoopTimerRef 
 FVCreateWeakTimerWithTimeInterval(CFAbsoluteTime interval, CFAbsoluteTime fireTime, id target, SEL selector) FV_HIDDEN;
 
-/** @internal @brief Logging function. 
+/** @internal 
+ 
+ @brief Logging function. 
  Log to stdout without the date/app/pid gunk that NSLog appends */
 FV_PRIVATE_EXTERN void FVLogv(NSString *format, va_list argList) FV_HIDDEN;
-/** @internal @brief Logging function. 
+/** @internal 
+ 
+ @brief Logging function. 
  Log to stdout without the date/app/pid gunk that NSLog appends */
 FV_PRIVATE_EXTERN void FVLog(NSString *format, ...) NS_FORMAT_FUNCTION(1,2) FV_HIDDEN;
 

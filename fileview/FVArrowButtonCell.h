@@ -46,7 +46,9 @@ enum {
 };
 typedef NSUInteger FVArrowDirection;
 
-/** @internal @brief Circular arrow button.
+/** @internal 
+ 
+ @brief Circular arrow button.
  
  FVArrowButtonCell is a circle with an arrow inside, used as a page change button.  Modeled after the page change button that Finder shows for PDF files on 10.5 in column mode preview.  */
 @interface FVArrowButtonCell : NSButtonCell {

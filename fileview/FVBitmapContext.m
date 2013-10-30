@@ -40,7 +40,9 @@
 #import "FVCGImageUtilities.h"
 #import "FVAllocator.h"
 
-/** @internal @brief Bitmap context creation.
+/** @internal 
+ 
+ @brief Bitmap context creation.
  
  Create a new ARGB (ppc) or BGRA (x86) bitmap context of the given size, with rows padded appropriately and Device RGB colorspace.  The context should be released using CFRelease, and its bitmap data should be deallocated with CFAllocatorDeallocate/FVAllocatorGetDefault.  The context may contain garbage, so clear it first if you're drawing transparent content.
  @param width Width in pixels.
