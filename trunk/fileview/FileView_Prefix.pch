@@ -114,22 +114,10 @@ do { if(!(condition)) { [NSException raise:NSInvalidArgumentException format:(de
     #endif
 #endif
 
-#ifdef MAC_OS_X_VERSION_10_8
-  #define FV_HIDDEN __attribute__((visibility("hidden")))
-  #ifdef __cplusplus
-    #define FV_EXTERN           extern "C"
-    #define FV_PRIVATE_EXTERN   extern "C"
-  #else
-    #define FV_EXTERN           extern
-    #define FV_PRIVATE_EXTERN   extern
-  #endif
+#ifdef __cplusplus
+  #define FV_EXTERN           extern "C"
+  #define FV_PRIVATE_EXTERN   __private_extern__ "C"
 #else
-  #define FV_HIDDEN
-  #ifdef __cplusplus
-    #define FV_EXTERN		    extern "C"
-    #define FV_PRIVATE_EXTERN	__private_extern__ "C"
-  #else
-    #define FV_EXTERN		    extern
-    #define FV_PRIVATE_EXTERN	__private_extern__
-  #endif
+  #define FV_EXTERN           extern
+  #define FV_PRIVATE_EXTERN   __private_extern__
 #endif
