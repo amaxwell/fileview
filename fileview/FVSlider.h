@@ -39,7 +39,7 @@
 #import <Cocoa/Cocoa.h>
 
 // Notification posted when the slider receives mouseExited:
-FV_PRIVATE_EXTERN NSString * const FVSliderMouseExitedNotificationName FV_HIDDEN;
+FV_EXTERN NSString * const FVSliderMouseExitedNotificationName;
 
 @interface FVSlider : NSSlider 
 {

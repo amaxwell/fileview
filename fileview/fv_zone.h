@@ -63,7 +63,7 @@ __BEGIN_DECLS
  
  The zone is thread safe.  All zones share a common garbage collection thread that runs periodically or when a high water mark is reached.  There is typically little benefit from creating multiple zones, and destruction has all the caveats of Apple's zone functions. 
  @return A new malloc zone structure. */
-FV_PRIVATE_EXTERN malloc_zone_t * fv_create_zone_named(const char *name) FV_HIDDEN;
+FV_PRIVATE_EXTERN malloc_zone_t * fv_create_zone_named(const char *name);
 
 __END_DECLS
 
