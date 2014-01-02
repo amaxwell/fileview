@@ -97,6 +97,9 @@ enum {
 };
 typedef NSUInteger FVDropOperation;
 
+// sets the default cursor for drop operations; originally NSDragOperationLink
+#define DEFAULT_DROP_OPERATION NSDragOperationGeneric
+
 #define DEFAULT_ICON_SIZE ((NSSize) { 64, 64 })
 #define DEFAULT_PADDING   ((CGFloat) 32)         // 16 per side
 #define MINIMUM_PADDING   ((CGFloat) 10)
@@ -487,16 +490,22 @@ static char _FVContentBindingToControllerObserverContext;
 - (void)_registerForDraggedTypes
 {
     if (_fvFlags.isEditable && _dataSource) {
-        const SEL selectors[] = 
-        { 
-            @selector(fileView:insertURLs:atIndexes:),
-            @selector(fileView:replaceURLsAtIndexes:withURLs:), 
-            @selector(fileView:moveURLsAtIndexes:toIndex:),
-            @selector(fileView:deleteURLsAtIndexes:) 
+        struct _old_new_selectors {
+            SEL old;
+            SEL new;
         };
-        NSUInteger i, iMax = sizeof(selectors) / sizeof(SEL);
-        for (i = 0; i < iMax; i++)
-            FVAPIAssert1([_dataSource respondsToSelector:selectors[i]], @"datasource must implement %@", NSStringFromSelector(selectors[i]));
+        struct _old_new_selectors selectors[] =
+        {
+            { @selector(fileView:insertURLs:atIndexes:),          @selector(fileView:insertURLs:atIndexes:dragOperation:)          },
+            { @selector(fileView:replaceURLsAtIndexes:withURLs:), @selector(fileView:replaceURLsAtIndexes:withURLs:dragOperation:) },
+            { @selector(fileView:moveURLsAtIndexes:toIndex:),     @selector(fileView:moveURLsAtIndexes:toIndex:dragOperation:)     },
+            { @selector(fileView:deleteURLsAtIndexes:),           @selector(fileView:deleteURLsAtIndexes:)    /* same */           }
+        };
+        NSUInteger i, iMax = sizeof(selectors) / sizeof(struct _old_new_selectors);
+        for (i = 0; i < iMax; i++) {
+            struct _old_new_selectors ons = selectors[i];
+            FVAPIAssert2([_dataSource respondsToSelector:ons.old] || [_dataSource respondsToSelector:ons.new], @"datasource must implement %@ or %@", NSStringFromSelector(ons.old), NSStringFromSelector(ons.new));
+        }
 
         NSString *weblocType = @"CorePasteboardFlavorType 0x75726C20";
         [self registerForDraggedTypes:[NSArray arrayWithObjects:NSFilenamesPboardType, NSURLPboardType, weblocType, (NSString *)kUTTypeURL, (NSString *)kUTTypeUTF8PlainText, NSStringPboardType, nil]];
@@ -2744,6 +2753,13 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
     return op;
 }
 
+- (BOOL)_isModifierKeyDown
+{
+    // +[NSEvent modifierFlags] is cleaner, but requires 10.6 and later
+    const NSUInteger modifiers = CGEventSourceFlagsState(kCGEventSourceStateCombinedSessionState);
+    return (kCGEventFlagMaskControl & modifiers || kCGEventFlagMaskAlternate & modifiers || kCGEventFlagMaskCommand & modifiers);
+}
+
 - (NSDragOperation)draggingUpdated:(id <NSDraggingInfo>)sender
 {
     NSPoint dragLoc = [sender draggingLocation];
@@ -2770,7 +2786,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
             _fvFlags.dropOperation = FVDropNone;
         } 
         else {
-            dragOp = NSDragOperationLink;
+            dragOp = [self _isModifierKeyDown] ? [sender draggingSourceOperationMask] : DEFAULT_DROP_OPERATION;
         }
     } 
     else if (FVDropOnView == _fvFlags.dropOperation) {
@@ -2783,7 +2799,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
             _fvFlags.dropOperation = FVDropNone;
         } 
         else {
-            dragOp = NSDragOperationLink;
+            dragOp = [self _isModifierKeyDown] ? [sender draggingSourceOperationMask] : DEFAULT_DROP_OPERATION;
         }
     } 
     else if (FVDropInsert == _fvFlags.dropOperation) {
@@ -2802,7 +2818,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
             }
         } 
         else {
-            dragOp = NSDragOperationLink;
+            dragOp = [self _isModifierKeyDown] ? [sender draggingSourceOperationMask] : DEFAULT_DROP_OPERATION;
         }
     }
     
@@ -2814,7 +2830,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     if ([self _isLocalDraggingInfo:sender] || FVPasteboardHasURL([sender draggingPasteboard]))
-        return NSDragOperationLink;
+        return [self _isModifierKeyDown] ? [sender draggingSourceOperationMask] : DEFAULT_DROP_OPERATION;
     else
         return NSDragOperationNone;
 }
@@ -2864,8 +2880,12 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
         if (nil == aURL && [[pboard types] containsObject:NSFilenamesPboardType]) {
             aURL = [NSURL fileURLWithPath:[[pboard propertyListForType:NSFilenamesPboardType] lastObject]];
         }
-        if (aURL)
-            didPerform = [[self dataSource] fileView:self replaceURLsAtIndexes:[NSIndexSet indexSetWithIndex:idx] withURLs:[NSArray arrayWithObject:aURL]];
+        if (aURL) {
+            if ([[self dataSource] respondsToSelector:@selector(fileView:replaceURLsAtIndexes:withURLs:dragOperation:)])
+                didPerform = [[self dataSource] fileView:self replaceURLsAtIndexes:[NSIndexSet indexSetWithIndex:idx] withURLs:[NSArray arrayWithObject:aURL] dragOperation:[sender draggingSourceOperationMask]];
+            else
+                didPerform = [[self dataSource] fileView:self replaceURLsAtIndexes:[NSIndexSet indexSetWithIndex:idx] withURLs:[NSArray arrayWithObject:aURL]];
+        }
     }
     else if (FVDropInsert == dropOp) {
         
@@ -2879,11 +2899,17 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
                 didPerform = NO;
             }
             else {
-                didPerform = [[self dataSource] fileView:self moveURLsAtIndexes:[self selectionIndexes] toIndex:insertIndex];
+                if ([[self dataSource] respondsToSelector:@selector(fileView:moveURLsAtIndexes:toIndex:dragOperation:)])
+                    didPerform = [[self dataSource] fileView:self moveURLsAtIndexes:[self selectionIndexes] toIndex:insertIndex dragOperation:[sender draggingSourceOperationMask]];
+                else
+                    didPerform = [[self dataSource] fileView:self moveURLsAtIndexes:[self selectionIndexes] toIndex:insertIndex];
             }
         } else {
             NSIndexSet *insertSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange(insertIndex, [allURLs count])];
-            [[self dataSource] fileView:self insertURLs:allURLs atIndexes:insertSet];
+            if ([[self dataSource] respondsToSelector:@selector(fileView:insertURLs:atIndexes:dragOperation:)])
+                [[self dataSource] fileView:self insertURLs:allURLs atIndexes:insertSet dragOperation:[sender draggingSourceOperationMask]];
+            else
+                [[self dataSource] fileView:self insertURLs:allURLs atIndexes:insertSet];
             didPerform = YES;
         }
     }
@@ -2892,7 +2918,10 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
         // this must be an add operation, and only non-local drag sources can do that
         NSArray *allURLs = FVURLSFromPasteboard(pboard);
         NSIndexSet *insertSet = [NSIndexSet indexSetWithIndexesInRange:NSMakeRange([_controller numberOfIcons], [allURLs count])];
-        [[self dataSource] fileView:self insertURLs:allURLs atIndexes:insertSet];
+        if ([[self dataSource] respondsToSelector:@selector(fileView:insertURLs:atIndexes:dragOperation:)])
+            [[self dataSource] fileView:self insertURLs:allURLs atIndexes:insertSet dragOperation:[sender draggingSourceOperationMask]];
+        else
+            [[self dataSource] fileView:self insertURLs:allURLs atIndexes:insertSet];
         didPerform = YES;
 
     }
