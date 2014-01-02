@@ -310,23 +310,29 @@ enum {
 
 /** Informal protocol for datasources.
  
- Datasource must implement all of these methods or dropping/rearranging will be disabled.  
+ Datasource must implement all of these methods or dropping/rearranging will be disabled. Some methods
+ now have an additional NSDragOperation parameter that will change based on modifier keys. If you
+ implement the variant with a dragOperation parameter, it will be used, and it is not necessary to
+ implement the non-dragOperation variant.
  */
 @interface NSObject (FileViewDragDataSource)
 
 /** Implement to do something (or nothing) with the dropped URLs
  */
 - (void)fileView:(FileView *)aFileView insertURLs:(NSArray *)absoluteURLs atIndexes:(NSIndexSet *)aSet;
+- (void)fileView:(FileView *)aFileView insertURLs:(NSArray *)absoluteURLs atIndexes:(NSIndexSet *)aSet dragOperation:(NSDragOperation)dragOperation;
 
 /** The datasource may replace the files at the given indexes
  @return YES if the replacement occurred.
  */
 - (BOOL)fileView:(FileView *)aFileView replaceURLsAtIndexes:(NSIndexSet *)aSet withURLs:(NSArray *)newURLs;
+- (BOOL)fileView:(FileView *)aFileView replaceURLsAtIndexes:(NSIndexSet *)aSet withURLs:(NSArray *)newURLs dragOperation:(NSDragOperation)dragOperation;
 
 /** Rearranging files in the view
  @return YES if the rearrangement occurred.
  */
 - (BOOL)fileView:(FileView *)aFileView moveURLsAtIndexes:(NSIndexSet *)aSet toIndex:(NSUInteger)anIndex;
+- (BOOL)fileView:(FileView *)aFileView moveURLsAtIndexes:(NSIndexSet *)aSet toIndex:(NSUInteger)anIndex dragOperation:(NSDragOperation)dragOperation;
 
 /** Does not delete the file from disk; this is the datasource's responsibility
  @return YES if the deletion occurred.
