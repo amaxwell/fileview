@@ -2829,10 +2829,17 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
 // this is called as soon as the mouse is moved to start a drag, or enters the window from outside
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
-    if ([self _isLocalDraggingInfo:sender] || FVPasteboardHasURL([sender draggingPasteboard]))
+    // !!! multiple returns
+    
+    if ([self _isLocalDraggingInfo:sender])
         return [self _isModifierKeyDown] ? [sender draggingSourceOperationMask] : DEFAULT_DROP_OPERATION;
-    else
-        return NSDragOperationNone;
+
+    NSUInteger count = [FVURLSFromPasteboard([sender draggingPasteboard]) count];
+    if ([sender respondsToSelector:@selector(setNumberOfValidItemsForDrop:)])
+        [sender setNumberOfValidItemsForDrop:count];
+    if (count)
+        return [self _isModifierKeyDown] ? [sender draggingSourceOperationMask] : DEFAULT_DROP_OPERATION;
+    return NSDragOperationNone;
 }
 
 - (void)draggingExited:(id <NSDraggingInfo>)sender
