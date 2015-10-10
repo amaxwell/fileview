@@ -52,7 +52,7 @@ static bool __FVOASafe = false;
     FVINITIALIZE(FVObject);
     
     // used by CF and liboainject; Omni uses NSKeepAllocationStatistics, but the header says that's unused
-    if (&__CFOASafe) __FVOASafe = __CFOASafe;
+    if (NULL != (&__CFOASafe)) __FVOASafe = __CFOASafe;
 }
 
 // _rc is initialized to zero in allocWithZone:, so avoid overriding -init by counting from 0.

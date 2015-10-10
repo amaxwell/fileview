@@ -2671,7 +2671,10 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
             
             if (FVWriteURLsToPasteboard(selectedURLs, pboard)) {
                 // OK to pass nil for the image, since we totally ignore it anyway
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
                 [self dragImage:nil at:p offset:NSZeroSize event:event pasteboard:pboard source:self slideBack:YES];
+#pragma clang diagnostic pop
             }
         }
         else {
@@ -3151,7 +3154,10 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
 
 - (IBAction)revealInFinder:(id)sender
 {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wnonnull"
     [[NSWorkspace sharedWorkspace] selectFile:[[[self _selectedURLs] lastObject] path] inFileViewerRootedAtPath:nil];
+#pragma clang diagnostic pop
 }
 
 - (IBAction)openSelectedURLs:(id)sender

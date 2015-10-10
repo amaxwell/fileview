@@ -39,7 +39,6 @@
 #import "FVWebViewIcon.h"
 #import "FVFinderIcon.h"
 #import "FVMIMEIcon.h"
-#import <WebKit/WebKit.h>
 
 @interface WebView (FVExtensions)
 - (BOOL)fv_isLoading;

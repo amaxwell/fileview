@@ -39,11 +39,12 @@
 #import <Cocoa/Cocoa.h>
 #import "FVIcon.h"
 #import "FVIcon_Private.h"
+#import <WebKit/WebKit.h>
 
 @class FVFinderIcon;
 @class WebView;
 
-@interface FVWebViewIcon : FVIcon <NSLocking>
+@interface FVWebViewIcon : FVIcon <NSLocking, WebFrameLoadDelegate, WebPolicyDelegate, WebResourceLoadDelegate>
 {
     CGImageRef       _viewImage;
     CGImageRef       _fullImage;

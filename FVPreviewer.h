@@ -38,6 +38,7 @@
 
 #import <Cocoa/Cocoa.h>
 #import <Quartz/Quartz.h>
+#import <WebKit/WebKit.h>
 
 /** Notification posted when the window closes.
  @warning This is a temporary hack for FileView internals, and must not be relied on! */
@@ -55,7 +56,7 @@ FV_EXTERN NSString * const FVPreviewerWillCloseNotification;
  */
 
 #if MAC_OS_X_VERSION_10_6 && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_6)
-@interface FVPreviewer : NSWindowController <NSAnimationDelegate> {
+@interface FVPreviewer : NSWindowController <NSAnimationDelegate, WebFrameLoadDelegate> {
 #else
 @interface FVPreviewer : NSWindowController <NSAnimationDelegate> {
 #endif
