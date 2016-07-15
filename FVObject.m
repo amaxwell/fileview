@@ -41,67 +41,7 @@
 #import <Foundation/NSDebug.h>
 #import <libkern/OSAtomic.h>
 
-extern bool __CFOASafe;
-static bool __FVOASafe = false;
-#define RETAIN_WARNING_THRESHOLD 1000000
 
 @implementation FVObject
-
-+ (void)initialize
-{
-    FVINITIALIZE(FVObject);
-    
-    // used by CF and liboainject; Omni uses NSKeepAllocationStatistics, but the header says that's unused
-    if (NULL != (&__CFOASafe)) __FVOASafe = __CFOASafe;
-}
-
-// _rc is initialized to zero in allocWithZone:, so avoid overriding -init by counting from 0.
-
-#if DEBUG
-static void _FVObjectError(NSString *format, ...)
-{
-    va_list list;
-    va_start(list, format);
-    FVLogv(format, list);
-    va_end(list);
-}
-#endif
-
-- (oneway void)release 
-{
-    // call NSRecordAllocationEvent before the event, since it may call retainCount (and we may dealloc)
-    if (__builtin_expect(__FVOASafe, 0)) NSRecordAllocationEvent(NSObjectInternalRefDecrementedEvent, self);
-    
-    if (__builtin_expect(0 == _rc, 0)) {
-        [self dealloc];
-    }
-    else {
-        int32_t rc = OSAtomicDecrement32Barrier((volatile int32_t *)&_rc);
-#if DEBUG
-        if (__builtin_expect(-1 == rc, 0))
-            _FVObjectError(@"*** possible refcount underflow for %@, break on _FVObjectError() to debug.", self);
-#else
-#pragma unused(rc)
-#endif
-    }
-}
-
-- (id)retain
-{
-    if (__builtin_expect(__FVOASafe, 0)) NSRecordAllocationEvent(NSObjectInternalRefIncrementedEvent, self);
-    
-    uint32_t rc = OSAtomicIncrement32Barrier((volatile int32_t *)&_rc);
-#if DEBUG
-    if (__builtin_expect(RETAIN_WARNING_THRESHOLD < rc, 1))
-        _FVObjectError(@"*** high retain count (%u) for %@, break on _FVObjectError() to debug.", rc, self);
-#else
-#pragma unused(rc)
-#endif
-
-    return self;
-}
-
-- (NSUInteger)retainCount { return _rc + 1; }
-
 
 @end

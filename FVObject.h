@@ -45,8 +45,7 @@
  Use for objects that are retained/released frequently, since inline reference counting can be quite a bit faster than the global hashtable lookups. */
 @interface FVObject : NSObject 
 {
-@private
-    volatile uint32_t _rc;
+
 }
 
 @end
