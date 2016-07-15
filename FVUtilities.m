@@ -352,6 +352,9 @@ NSGraphicsContext *FVWindowGraphicsContextWithSize(NSSize size)
     NSRect rect = NSZeroRect;
     rect.size = size;
     NSWindow *window = [[NSWindow alloc] initWithContentRect:rect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+    // attempt to get rid of bullshit logs: CoreAnimation: warning, deleted thread with uncommitted CATransaction
+    if ([window respondsToSelector:@selector(setAnimationBehavior:)])
+        [window setAnimationBehavior:NSWindowAnimationBehaviorNone];
     [window autorelease];
     return [NSGraphicsContext graphicsContextWithWindow:window];
 }
