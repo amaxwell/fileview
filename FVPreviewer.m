@@ -45,6 +45,10 @@
 
 NSString * const FVPreviewerWillCloseNotification = @"FVPreviewerWillCloseNotification";
 
+@interface NSObject (FVPreviewerAppleIsRunByStupidAssholes)
+- (void)setMovie:(id)obj;
+@end
+
 @implementation FVPreviewer
 
 + (FVPreviewer *)sharedPreviewer;
@@ -387,9 +391,9 @@ static NSData *PDFDataWithPostScriptDataAtURL(NSURL *aURL)
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeAudiovisualContent)) {
         // use A/V content instead of just movie, since audio is fair game for the preview
-        QTMovie *movie = [[QTMovie alloc] initWithURL:representedURL error:NULL];
+        id movie = [[NSClassFromString(@"QTMovie") alloc] initWithURL:representedURL error:NULL];
         if (nil != movie) {
-            theView = movieView;
+            theView = (id)movieView;
             [movieView setMovie:movie];
             [movie release];
         }
