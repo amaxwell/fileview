@@ -73,6 +73,8 @@
 		F95133830ECDEA6E00723208 /* fv_zone.h in Headers */ = {isa = PBXBuildFile; fileRef = F95133810ECDEA6E00723208 /* fv_zone.h */; };
 		F95133840ECDEA6E00723208 /* fv_zone.cpp in Sources */ = {isa = PBXBuildFile; fileRef = F95133820ECDEA6E00723208 /* fv_zone.cpp */; };
 		F95881AC0E3A811B001807B6 /* FVQuickLookIcon.m in Sources */ = {isa = PBXBuildFile; fileRef = F946921C0CA5700800AC2772 /* FVQuickLookIcon.m */; };
+		F95EF1CD1E40235F00BF2B38 /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F95EF1CC1E40235E00BF2B38 /* AVFoundation.framework */; };
+		F95EF1CF1E4AFD2900BF2B38 /* CoreMedia.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F95EF1CE1E4AFD2900BF2B38 /* CoreMedia.framework */; };
 		F963C2690E17FEA10066B20F /* FileViewIBPlugin.ibplugin in CopyFiles */ = {isa = PBXBuildFile; fileRef = F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */; };
 		F963C3950E180FCB0066B20F /* FileViewIBPluginLibrary.nib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3940E180FCB0066B20F /* FileViewIBPluginLibrary.nib */; };
 		F963C3970E180FD70066B20F /* FileViewIBPluginInspector.xib in Resources */ = {isa = PBXBuildFile; fileRef = F963C3960E180FD70066B20F /* FileViewIBPluginInspector.xib */; };
@@ -272,6 +274,8 @@
 		F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVAliasBadge.m; sourceTree = "<group>"; };
 		F95133810ECDEA6E00723208 /* fv_zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fv_zone.h; sourceTree = "<group>"; };
 		F95133820ECDEA6E00723208 /* fv_zone.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = fv_zone.cpp; sourceTree = "<group>"; };
+		F95EF1CC1E40235E00BF2B38 /* AVFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFoundation.framework; path = ../../../../../../../System/Library/Frameworks/AVFoundation.framework; sourceTree = "<group>"; };
+		F95EF1CE1E4AFD2900BF2B38 /* CoreMedia.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreMedia.framework; path = System/Library/Frameworks/CoreMedia.framework; sourceTree = SDKROOT; };
 		F976F7810E19AF3A00D67F1B /* FVColumnView.classdescription */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = FVColumnView.classdescription; sourceTree = "<group>"; };
 		F980F0920CCC3C2E0067C1DF /* libz.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.dylib; path = /usr/lib/libz.dylib; sourceTree = "<absolute>"; };
 		F98D3A5C0D82EFD300ED9D22 /* FVCGImageUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVCGImageUtilities.h; sourceTree = "<group>"; };
@@ -373,7 +377,9 @@
 			files = (
 				F9865B540E3AC65300B7A373 /* QuickLook.framework in Frameworks */,
 				8DC2EF570486A6940098B216 /* Cocoa.framework in Frameworks */,
+				F95EF1CD1E40235F00BF2B38 /* AVFoundation.framework in Frameworks */,
 				F94692310CA5710500AC2772 /* QTKit.framework in Frameworks */,
+				F95EF1CF1E4AFD2900BF2B38 /* CoreMedia.framework in Frameworks */,
 				F94692320CA5710500AC2772 /* Quartz.framework in Frameworks */,
 				F94692340CA5710500AC2772 /* WebKit.framework in Frameworks */,
 				F980F0930CCC3C2E0067C1DF /* libz.dylib in Frameworks */,
@@ -434,6 +440,8 @@
 		0867D69AFE84028FC02AAC07 /* External Frameworks and Libraries */ = {
 			isa = PBXGroup;
 			children = (
+				F95EF1CE1E4AFD2900BF2B38 /* CoreMedia.framework */,
+				F95EF1CC1E40235E00BF2B38 /* AVFoundation.framework */,
 				F9C6304011C0A2B200043475 /* IOKit.framework */,
 				F92CBB3F0D806B7C0009E371 /* Accelerate.framework */,
 				F91A5BC80E1C126E00FC4E59 /* InterfaceBuilderKit.framework */,
@@ -831,7 +839,7 @@
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0700;
+				LastUpgradeCheck = 0820;
 			};
 			buildConfigurationList = 1DEB91B108733DA50010E9CD /* Build configuration list for PBXProject "FileView" */;
 			compatibilityVersion = "Xcode 3.2";

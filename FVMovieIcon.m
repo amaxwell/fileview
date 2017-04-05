@@ -41,59 +41,14 @@
 #import "FVAllocator.h"
 #import "FVOperationQueue.h"
 #import "FVInvocationOperation.h"
-
-#import <QTKit/QTKit.h>
+#import <AVFoundation/AVFoundation.h>
 
 @implementation FVMovieIcon
 
-/*
- QTMovie can't be used from multiple threads simultaneously, since the underlying C functions apparently aren't thread safe.  Deallocation in particular seems to crash.  In addition, Christiaan found a case where a QT component tried to display a window and ended up trying to run NSApp in a modal session from a thread.  While modal windows are supposed to work from a thread, it appeared to cause a crash in some Carbon window drawing code.
- 
- If performance problems are evident, we could just use Quick Look for thumbnailing movies, but I don't see any problems dropping ~200 movies on the test program window.
- 
- Note: QTKit on 10.5 has enterQTKitOnThread/exitQTKitOnThread, which might be worth investigating as well.  Another note: enterQTKitOnThread does not seem to help, even locking beforehand so multiple threads aren't calling it simultaneously.  Trying to load certain wmv files causes it to crash very reliably.
- 
- */
-
-- (NSData *)_copyTIFFDataFromMovie
++ (BOOL)canInitWithUTI:(NSString *)theUTI;
 {
-    NSAssert2(pthread_main_np() != 0, @"*** threading violation *** +[%@ %@] requires main thread", self, NSStringFromSelector(_cmd));
-    NSMutableDictionary *attributes = [NSMutableDictionary new];
-    [attributes setObject:_fileURL forKey:QTMovieURLAttribute];
-    
-    // Loading /DevTools/Documentation/DocSets/com.apple.ADC_Reference_Library.CoreReference.docset/Contents/Resources/Documents/documentation/QuickTime/REF/Effects/gradwip2.mov puts up a stupid modal dialog about searching for resources /after/ blocking for a long time.
-    [attributes setObject:[NSNumber numberWithBool:NO] forKey:QTMovieResolveDataRefsAttribute];
-    
-    // QTMovieResolveDataRefsAttribute = NO probably implies QTMovieAskUnresolvedDataRefsAttribute = NO ...
-    [attributes setObject:[NSNumber numberWithBool:NO] forKey:QTMovieAskUnresolvedDataRefsAttribute];
-        
-    // failed atttempt to stop Flip4Mac from putting up a progress bar during loads
-    [attributes setObject:[NSNumber numberWithBool:YES] forKey:QTMovieDontInteractWithUserAttribute];
-    
-    QTMovie *movie = [[QTMovie alloc] initWithAttributes:attributes error:NULL];
-    [attributes release];
-    
-    // Is poster time something the movie producer sets?  Always zero on my tests, which is typically a black screen.  Quick Look uses some non-zero time, but it doesn't seem to be a fixed percentage.
-    QTTime movieTime = [[movie attributeForKey:QTMovieDurationAttribute] QTTimeValue];
-    NSValue *timeValue = [movie attributeForKey:QTMovieCurrentTimeAttribute];
-    if (nil == timeValue || QTTimeCompare(QTZeroTime, [timeValue QTTimeValue]) == NSOrderedSame)
-        timeValue = [movie attributeForKey:QTMoviePosterTimeAttribute];
-    
-    QTTime timeToGet = QTZeroTime;
-    if (timeValue && QTTimeCompare(QTZeroTime, [timeValue QTTimeValue]) == NSOrderedSame) {
-        // 4% or 10 seconds, whichever is smaller
-        NSTimeInterval frameTime = MIN((movieTime.timeValue / movieTime.timeScale) * 0.04, 10);
-        timeToGet = QTMakeTimeWithTimeInterval(frameTime);
-    }
-    NSData *data = [[[movie frameImageAtTime:timeToGet] TIFFRepresentation] retain];
-    [movie release];    
-    
-    return data;
-}
-
-+ (BOOL)canInitWithURL:(NSURL *)url;
-{
-    return [QTMovie canInitWithURL:url];
+    // no AVURLAsshat before 10.7
+    return floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6 && [[AVURLAsset audiovisualTypes] containsObject:(id)theUTI];
 }
 
 - (BOOL)canReleaseResources;
@@ -105,20 +60,26 @@
 - (CFDataRef)_copyDataForImageSourceWhileLocked
 {
     NSAssert2([self tryLock] == NO, @"*** threading violation *** -[%@ %@] requires caller to lock self", [self class], NSStringFromSelector(_cmd));
-    
-    FVInvocationOperation *op;
-    op = [[FVInvocationOperation alloc] initWithTarget:self selector:@selector(_copyTIFFDataFromMovie) object:nil];
-    [op setConcurrent:NO];
-    [[FVOperationQueue mainQueue] addOperation:op];
-    while (NO == [op isFinished])
-        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, TRUE);
-    
-    CFDataRef data = (CFDataRef)[op retainedResult];
-    // result isn't owned by the operation, but the containing invocation is
-    [op release];
 
+    AVURLAsset *ass = [[AVURLAsset alloc] initWithURL:_fileURL options:nil];
+    CMTime tm = CMTimeMultiplyByFloat64([ass duration], 0.04);
+    AVAssetImageGenerator *assGen = [[AVAssetImageGenerator alloc] initWithAsset:ass];
+    [ass release];
+    CGImageRef cgImage = [assGen copyCGImageAtTime:tm actualTime:NULL error:NULL];
+    [assGen release];
+    
+    CFMutableDataRef data = NULL;
+    if (cgImage) {
+        data = CFDataCreateMutable(CFAllocatorGetDefault(), 0);
+        CGImageDestinationRef dest = CGImageDestinationCreateWithData(data, kUTTypeTIFF, 1, NULL);
+        CGImageDestinationAddImage(dest, cgImage, NULL);
+        CFRelease(cgImage);
+        CGImageDestinationFinalize(dest);
+        if (dest) CFRelease(dest);
+    }
+    
     // superclass will cache the resulting images to disk unconditionally, in order to avoid hitting the main thread again
-    return data;        
+    return data;
 }
 
 @end

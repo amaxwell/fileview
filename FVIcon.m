@@ -272,7 +272,7 @@ static inline id _placeholderForZone(NSZone *aZone)
          */
         anIcon = [[FVQLIconClass allocWithZone:zone] initWithURL:representedURL];
     }
-    else if (UTTypeConformsTo(theUTI, kUTTypeMovie) && [FVMovieIcon canInitWithURL:representedURL]) {
+    else if (UTTypeConformsTo(theUTI, kUTTypeMovie) && [FVMovieIcon canInitWithUTI:(NSString *)theUTI]) {
         anIcon = [[FVMovieIcon allocWithZone:zone] initWithURL:representedURL];
     }
     else if (UTTypeConformsTo(theUTI, kUTTypeHTML) || UTTypeConformsTo(theUTI, kUTTypeWebArchive)) {

@@ -42,6 +42,6 @@
 
 @interface FVMovieIcon : FVImageIcon
 
-+ (BOOL)canInitWithURL:(NSURL *)url;
++ (BOOL)canInitWithUTI:(NSString *)theUTI;
 
 @end

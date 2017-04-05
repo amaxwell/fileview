@@ -38,7 +38,7 @@
 
 #import <FileView/FVPreviewer.h>
 #import "FVScaledImageView.h"
-#import <QTKit/QTKit.h>
+//#import <QTKit/QTKit.h>
 #import <pthread.h>
 #import "_FVPreviewerWindow.h"
 #import "FVTextIcon.h" // for NSAttributedString initialization check
