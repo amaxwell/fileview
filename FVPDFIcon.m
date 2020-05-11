@@ -54,6 +54,9 @@ static _FVSplitSet     *_releaseableIcons = nil;
     FVINITIALIZE(FVPDFIcon);
     unsigned char split = [_FVMappedDataProvider maxProviderCount] / 2 - 1;
     _releaseableIcons = [[_FVSplitSet allocWithZone:[self zone]] initWithSplit:split];
+#warning fixme
+    // NSWindow creation needs to run on the main thread; this works around a crash on Mojave
+    [self _pageLayer];
 }
 
 // Do not use directly!  File scope only because pthread_once doesn't take an argument.
