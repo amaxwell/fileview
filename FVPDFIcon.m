@@ -54,19 +54,14 @@ static _FVSplitSet     *_releaseableIcons = nil;
     FVINITIALIZE(FVPDFIcon);
     unsigned char split = [_FVMappedDataProvider maxProviderCount] / 2 - 1;
     _releaseableIcons = [[_FVSplitSet allocWithZone:[self zone]] initWithSplit:split];
-#warning fixme
-    // NSWindow creation needs to run on the main thread; this works around a crash on Mojave
-    [self _pageLayer];
 }
 
-// Do not use directly!  File scope only because pthread_once doesn't take an argument.
-static CGLayerRef _pageLayer = NULL;
-static void __FVPageLayerInit()
+static void __FVPageLayerInit(CGLayerRef *ctxtPtr)
 {
     const CGSize layerSize = { 1, 1 };
     CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
-    _pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
-    context = CGLayerGetContext(_pageLayer);
+    CGLayerRef pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
+    context = CGLayerGetContext(pageLayer);
     CGColorRef color = NULL;
     if (NULL != &kCGColorWhite && NULL != CGColorGetConstantColor) {
         color = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
@@ -80,16 +75,30 @@ static void __FVPageLayerInit()
     CGContextSetFillColorWithColor(context, color);
     CGColorRelease(color);
     CGRect pageRect = CGRectZero;
-    pageRect.size = CGLayerGetSize(_pageLayer);
+    pageRect.size = CGLayerGetSize(pageLayer);
     CGContextClipToRect(context, pageRect);
     CGContextFillRect(context, pageRect);
+    *ctxtPtr = pageLayer;
 }
 
 + (CGLayerRef)_pageLayer
 {
-    static pthread_once_t once = PTHREAD_ONCE_INIT;
-    (void) pthread_once(&once, __FVPageLayerInit);
-    return _pageLayer;
+    static dispatch_once_t once;
+    static CGLayerRef pageLayer = NULL;
+    // layer creation needs to occur on the main thread in Mojave and later, which crash with an exception when creating an NSWindow on a background thread
+    // although arguably the window creation to get the graphics context is what should happen on the main thread, not all of this stuff, it's trivial overhead
+    dispatch_once(&once, ^{
+        if ([NSThread isMainThread]) {
+            NSLog(@"running layer creation directly");
+            __FVPageLayerInit(&pageLayer);
+        }
+        else {
+            NSLog(@"Using dispatch queue to create layer");
+            dispatch_sync_f(dispatch_get_main_queue(), &pageLayer, __FVPageLayerInit);
+        }
+
+    });
+    return pageLayer;
 }
 
 /*
