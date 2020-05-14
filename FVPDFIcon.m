@@ -88,14 +88,15 @@ static void __FVPageLayerInit(CGLayerRef *ctxtPtr)
     // layer creation needs to occur on the main thread in Mojave and later, which crash with an exception when creating an NSWindow on a background thread
     // although arguably the window creation to get the graphics context is what should happen on the main thread, not all of this stuff, it's trivial overhead
     dispatch_once(&once, ^{
-        if ([NSThread isMainThread]) {
-            NSLog(@"running layer creation directly");
-            __FVPageLayerInit(&pageLayer);
-        }
-        else {
-            NSLog(@"Using dispatch queue to create layer");
-            dispatch_sync_f(dispatch_get_main_queue(), &pageLayer, __FVPageLayerInit);
-        }
+        __FVPageLayerInit(&pageLayer);
+//        if ([NSThread isMainThread]) {
+//            NSLog(@"running layer creation directly");
+//            __FVPageLayerInit(&pageLayer);
+//        }
+//        else {
+//            NSLog(@"Using dispatch queue to create layer");
+//            dispatch_sync_f(dispatch_get_main_queue(), &pageLayer, __FVPageLayerInit);
+//        }
 
     });
     return pageLayer;
