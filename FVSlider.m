@@ -83,13 +83,11 @@ NSString * const FVSliderMouseExitedNotificationName = @"FVSliderMouseExitedNoti
 {
     CGFloat inset = MAX(NSWidth(knobRect) / 6, NSHeight(knobRect) / 6);
     knobRect = NSInsetRect(knobRect, inset, inset);
-    if ([[self controlView] lockFocusIfCanDraw]) {
-        [NSGraphicsContext saveGraphicsState];
-        [[NSColor whiteColor] setFill];
-        [[NSBezierPath bezierPathWithOvalInRect:knobRect] fill];
-        [NSGraphicsContext restoreGraphicsState];
-        [[self controlView] unlockFocus];
-    }
+    // used to send lockFocusIfCanDraw to the control view, but that started returning NO on Mojave
+    [NSGraphicsContext saveGraphicsState];
+    [[NSColor whiteColor] setFill];
+    [[NSBezierPath bezierPathWithOvalInRect:knobRect] fill];
+    [NSGraphicsContext restoreGraphicsState];
 }
 
 - (id)init
