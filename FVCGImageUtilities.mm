@@ -161,6 +161,13 @@ static CGImageRef __FVCopyImageUsingCacheColorspace(CGImageRef image, NSSize siz
 // private on all versions of OS X
 FV_EXTERN void * CGDataProviderGetBytePtr(CGDataProviderRef provider) WEAK_IMPORT_ATTRIBUTE;
 FV_EXTERN size_t CGDataProviderGetSize(CGDataProviderRef provider) WEAK_IMPORT_ATTRIBUTE;
+/*
+ The function `CGDataProviderGetBytePtr' is obsolete.
+ Your component my be leaking CGDataProvider!
+ Please use `CGDataProviderRetainBytePtr' instead, paired with proper 'CGDataProviderReleaseBytePtr'.
+ */
+FV_EXTERN void * CGDataProviderRetainBytePtr(CGDataProviderRef provider) WEAK_IMPORT_ATTRIBUTE;
+FV_EXTERN void CGDataProviderReleaseBytePtr(CGDataProviderRef provider) WEAK_IMPORT_ATTRIBUTE;
 
 const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len)
 {
@@ -171,6 +178,23 @@ const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len)
         if (len) *len = CGDataProviderGetSize(provider);
     }
     return bytePtr;
+}
+
+const uint8_t * __FVCGImageRetainBytePtr(CGImageRef image, size_t *len)
+{
+    CGDataProviderRef provider = CGImageGetDataProvider(image);
+    uint8_t *bytePtr = NULL;
+    if (NULL != CGDataProviderRetainBytePtr && NULL != CGDataProviderGetSize && NULL != CGDataProviderReleaseBytePtr) {
+        bytePtr = (uint8_t *)CGDataProviderRetainBytePtr(provider);
+        if (len) *len = CGDataProviderGetSize(provider);
+    }
+    return bytePtr;
+}
+
+void __FVCGImageReleaseBytePtr(CGImageRef image)
+{
+    CGDataProviderRef provider = CGImageGetDataProvider(image);
+    CGDataProviderReleaseBytePtr(provider);
 }
 
 static inline bool __FVBitmapInfoIsIncompatible(CGImageRef image)
@@ -760,7 +784,7 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
     
     // make this call early to increase the allocation size record if needed
     CFDataRef originalImageData = NULL;
-    const uint8_t *srcBytes = __FVCGImageGetBytePtr(image, NULL);   
+    const uint8_t *srcBytes = __FVCGImageRetainBytePtr(image, NULL);
     if (NULL == srcBytes) {
         
         originalImageData = CGDataProviderCopyData(CGImageGetDataProvider(image));        
@@ -986,6 +1010,9 @@ static CGImageRef __FVTileAndScale_8888_or_888_Image(CGImageRef image, const NSS
         __FVCGImageDiscardAllocationSize(__FVCGImageGetDataSize(image));
 #endif
     }
+    else {
+        __FVCGImageReleaseBytePtr(image);
+    }
     
     // tell this buffer not to call free() when it deallocs, so we avoid copying the data
     CFDataRef data = NULL;
@@ -1123,7 +1150,11 @@ CGImageRef FVCreateResampledImageOfSize(CGImageRef image, const NSSize desiredSi
     }
         
 #if FV_LIMIT_TILEMEMORY_USAGE
-    const size_t allocSize =  __FVCGImageGetBytePtr(image, NULL) == NULL ? __FVCGImageGetDataSize(image) : 0;
+    size_t allocSize = 0;
+    if (__FVCGImageRetainBytePtr(image, NULL))
+        __FVCGImageReleaseBytePtr(image);
+    else
+        allocSize = __FVCGImageGetDataSize(image);
     // increase before calling __FVTileAndScale_8888_or_888_Image; will be decreased after releasing copied data
     __FVCGImageRequestAllocationSize(allocSize);
 #endif

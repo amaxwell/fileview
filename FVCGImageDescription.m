@@ -73,13 +73,14 @@
         _colorSpaceDescription = [[FVCGColorSpaceDescription allocWithZone:[self zone]] initWithColorSpace:CGImageGetColorSpace(_image)];
         
         size_t bitmapPtrSize;
-        const uint8_t *bitmapPtr = __FVCGImageGetBytePtr(_image, &bitmapPtrSize);
+        const uint8_t *bitmapPtr = __FVCGImageRetainBytePtr(_image, &bitmapPtrSize);
         if (NULL == bitmapPtr) {
             _bitmapData = CGDataProviderCopyData(CGImageGetDataProvider(_image));
         }
         else {
             // wrap in a non-copying, non-freeing CFData for archiving access
             _bitmapData = CFDataCreateWithBytesNoCopy(CFGetAllocator(self), bitmapPtr, bitmapPtrSize, kCFAllocatorNull);
+            __FVCGImageReleaseBytePtr(image);
         }
         
         NSAssert3((size_t)CFDataGetLength(_bitmapData) == _bytesPerRow * _height, @"strange data length %ld for %@ (should be >= %lu)", CFDataGetLength(_bitmapData), _image, (unsigned long)(_bytesPerRow * _height));

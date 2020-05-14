@@ -84,6 +84,9 @@ FV_PRIVATE_EXTERN CGImageRef FVCGCreateResampledImageOfSize(CGImageRef image, co
  @return A pointer to the data, or NULL on failure. */
 FV_PRIVATE_EXTERN const uint8_t * __FVCGImageGetBytePtr(CGImageRef image, size_t *len);
 
+FV_PRIVATE_EXTERN const uint8_t * __FVCGImageRetainBytePtr(CGImageRef image, size_t *len);
+FV_PRIVATE_EXTERN void __FVCGImageReleaseBytePtr(CGImageRef image);
+
 /** @internal 
  
  @brief Get the CGColorSpaceModel of a color space.
