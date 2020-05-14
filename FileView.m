@@ -2033,6 +2033,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         FVAPIAssert(floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6, @"gradient background is only available on 10.7 and later");
         
         // otherwise we see a blocky transition, which fades on the redraw when scrolling stops
+#warning fixme: Mojave seems to need copy on scroll
         if ([[[self enclosingScrollView] contentView] copiesOnScroll])
             [[[self enclosingScrollView] contentView] setCopiesOnScroll:NO];
         
@@ -2354,7 +2355,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
             if ([[[self window] childWindows] containsObject:_sliderWindow] == NO) {
                 NSRect sliderRect = [self _sliderRect];
                 sliderRect = [self convertRect:sliderRect toView:nil];
-                sliderRect.origin = [[self window] convertBaseToScreen:sliderRect.origin];
+                sliderRect = [[self window] convertRectToScreen:sliderRect];
                 // looks cool to use -animator here, but makes it hard to hit...
                 if (NSEqualRects([_sliderWindow frame], sliderRect) == NO)
                     [_sliderWindow setFrame:sliderRect display:NO];
@@ -2676,6 +2677,7 @@ static NSRect _rectWithCorners(const NSPoint aPoint, const NSPoint bPoint) {
                 // OK to pass nil for the image, since we totally ignore it anyway
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wnonnull"
+#pragma clang diagnostic ignored "-Wdeprecated"
                 [self dragImage:nil at:p offset:NSZeroSize event:event pasteboard:pboard source:self slideBack:YES];
 #pragma clang diagnostic pop
             }
@@ -3551,7 +3553,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
 {
     if ([FVPreviewer useQuickLookForURL:aURL] == NO || Nil == QLPreviewPanelClass) {
         iconRect = [self convertRect:iconRect toView:nil];
-        iconRect.origin = [[self window] convertBaseToScreen:iconRect.origin];
+        iconRect = [[self window] convertRectToScreen:iconRect];
         // note: controllingQLPreviewPanel is only true if QLPreviewPanelClass exists, but clang doesn't know that
         if (_fvFlags.controllingQLPreviewPanel && Nil != QLPreviewPanelClass) {
             iconRect = [[QLPreviewPanelClass sharedPreviewPanel] frame];
@@ -3630,7 +3632,7 @@ static void addFinderLabelsToSubmenu(NSMenu *submenu)
     if ([self numberOfPreviewItemsInPreviewPanel:panel] == 1 && [self _getGridRow:&r column:&c ofIndex:[_selectedIndexes lastIndex]]) {
         iconRect = [self _rectOfIconInRow:r column:c];
         iconRect = [self convertRect:iconRect toView:nil];
-        iconRect.origin = [[self window] convertBaseToScreen:iconRect.origin];
+        iconRect = [[self window] convertRectToScreen:iconRect];
     }
     return iconRect;
 }
@@ -3746,9 +3748,12 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView, FVColumn
     
     NSSize contentSize = [scrollView contentSize];
     NSSize contentSizeWithScroller = [NSScrollView contentSizeForFrameSize:[scrollView frame].size
-                                                     hasHorizontalScroller:NO
-                                                       hasVerticalScroller:YES
-                                                                borderType:[scrollView borderType]];
+                                                   horizontalScrollerClass:Nil
+                                                     verticalScrollerClass:[[scrollView verticalScroller] class]
+                                                                borderType:[scrollView borderType]
+                                                               controlSize:[[scrollView verticalScroller] controlSize]
+                                                             scrollerStyle:[scrollView scrollerStyle]];
+
     return ((NSInteger)contentSize.width == (NSInteger)contentSizeWithScroller.width);
 }
 
@@ -3776,9 +3781,11 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView, FVColumn
     NSScrollView *sv = [self enclosingScrollView];
     if (sv) {
         minFrame.size = [NSScrollView contentSizeForFrameSize:[sv frame].size
-                                        hasHorizontalScroller:NO
-                                          hasVerticalScroller:NO
-                                                   borderType:[sv borderType]];
+                                      horizontalScrollerClass:Nil
+                                        verticalScrollerClass:Nil
+                                                   borderType:[sv borderType]
+                                                  controlSize:[[sv verticalScroller] controlSize]
+                                                scrollerStyle:[sv scrollerStyle]];
     }
     
     _padding = [self _defaultPaddingForScale:[self iconScale]];
@@ -3795,12 +3802,8 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView, FVColumn
     // see if the vertical scroller will show its ugly face and muck up the layout...
     if ([self willUnhideVerticalScrollerWithFrame:frame]) {
         
-        CGFloat scrollerWidth;
-        if ([NSScroller respondsToSelector:@selector(scrollerWidthForControlSize:scrollerStyle:)])
-            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize] scrollerStyle:[NSScroller preferredScrollerStyle]];
-        else
-            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize]];
-                    
+        CGFloat scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize] scrollerStyle:[NSScroller preferredScrollerStyle]];
+        
         // shrink by the scroller width and recompute icon size
         length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin] - scrollerWidth;    
         _iconSize = NSMakeSize(length, length);
@@ -3820,11 +3823,7 @@ static bool __FVScrollViewHasVerticalScroller(NSScrollView *scrollView, FVColumn
     }
     else if (__FVScrollViewHasVerticalScroller([self enclosingScrollView], self)) {
         
-        CGFloat scrollerWidth;
-        if ([NSScroller respondsToSelector:@selector(scrollerWidthForControlSize:scrollerStyle:)])
-            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize] scrollerStyle:[NSScroller preferredScrollerStyle]];
-        else
-            scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize]];
+        CGFloat scrollerWidth = [NSScroller scrollerWidthForControlSize:[verticalScroller controlSize] scrollerStyle:[NSScroller preferredScrollerStyle]];
         
         // shrink by the scroller width and recompute icon size
         length = NSWidth(minFrame) - _padding.width - [self _leftMargin] - [self _rightMargin] - scrollerWidth;    
