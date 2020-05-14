@@ -1651,6 +1651,7 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
 // redraw at full quality after a resize
 - (void)viewDidEndLiveResize
 {
+    [super viewDidEndLiveResize];
     [self setNeedsDisplay:YES];
     _fvFlags.scheduledLiveResize = NO;
 }
