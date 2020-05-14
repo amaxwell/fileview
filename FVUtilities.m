@@ -354,11 +354,10 @@ NSGraphicsContext *FVWindowGraphicsContextWithSize(NSSize size)
     __block NSWindow *window = nil;
     // Mojave crashes with an exception if you try to create a window on a background thread, even though NSWindow was supposedly thread-safe
     if ([NSThread isMainThread]) {
-        NSLog(@"creating NSWindow for offscreen context directly");
         window = [[NSWindow alloc] initWithContentRect:rect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
     }
     else {
-        NSLog(@"trying to create NSWindow for offscreen context on main thread");
+        FVLog(@"trying to create NSWindow for offscreen context on main thread");
         dispatch_sync(dispatch_get_main_queue(), ^{
             window = [[NSWindow alloc] initWithContentRect:rect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
         });

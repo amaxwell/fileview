@@ -56,48 +56,31 @@ static _FVSplitSet     *_releaseableIcons = nil;
     _releaseableIcons = [[_FVSplitSet allocWithZone:[self zone]] initWithSplit:split];
 }
 
-static void __FVPageLayerInit(CGLayerRef *ctxtPtr)
-{
-    const CGSize layerSize = { 1, 1 };
-    CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
-    CGLayerRef pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
-    context = CGLayerGetContext(pageLayer);
-    CGColorRef color = NULL;
-    if (NULL != &kCGColorWhite && NULL != CGColorGetConstantColor) {
-        color = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
-    }
-    else {
-        CGFloat components[4] = { 1, 1 };
-        CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericGray);
-        color = CGColorCreate(cspace, components);
-        CGColorSpaceRelease(cspace);
-    }
-    CGContextSetFillColorWithColor(context, color);
-    CGColorRelease(color);
-    CGRect pageRect = CGRectZero;
-    pageRect.size = CGLayerGetSize(pageLayer);
-    CGContextClipToRect(context, pageRect);
-    CGContextFillRect(context, pageRect);
-    *ctxtPtr = pageLayer;
-}
-
 + (CGLayerRef)_pageLayer
 {
     static dispatch_once_t once;
     static CGLayerRef pageLayer = NULL;
-    // layer creation needs to occur on the main thread in Mojave and later, which crash with an exception when creating an NSWindow on a background thread
-    // although arguably the window creation to get the graphics context is what should happen on the main thread, not all of this stuff, it's trivial overhead
     dispatch_once(&once, ^{
-        __FVPageLayerInit(&pageLayer);
-//        if ([NSThread isMainThread]) {
-//            NSLog(@"running layer creation directly");
-//            __FVPageLayerInit(&pageLayer);
-//        }
-//        else {
-//            NSLog(@"Using dispatch queue to create layer");
-//            dispatch_sync_f(dispatch_get_main_queue(), &pageLayer, __FVPageLayerInit);
-//        }
-
+        const CGSize layerSize = { 1, 1 };
+        CGContextRef context = [FVWindowGraphicsContextWithSize(NSSizeFromCGSize(layerSize)) graphicsPort];
+        pageLayer = CGLayerCreateWithContext(context, layerSize, NULL);
+        context = CGLayerGetContext(pageLayer);
+        CGColorRef color = NULL;
+        if (NULL != &kCGColorWhite && NULL != CGColorGetConstantColor) {
+            color = CGColorRetain(CGColorGetConstantColor(kCGColorWhite));
+        }
+        else {
+            CGFloat components[4] = { 1, 1 };
+            CGColorSpaceRef cspace = CGColorSpaceCreateWithName(kCGColorSpaceGenericGray);
+            color = CGColorCreate(cspace, components);
+            CGColorSpaceRelease(cspace);
+        }
+        CGContextSetFillColorWithColor(context, color);
+        CGColorRelease(color);
+        CGRect pageRect = CGRectZero;
+        pageRect.size = CGLayerGetSize(pageLayer);
+        CGContextClipToRect(context, pageRect);
+        CGContextFillRect(context, pageRect);
     });
     return pageLayer;
 }
