@@ -1662,8 +1662,8 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     NSRect r = [super adjustScroll:proposedVisibleRect];
     _timeOfLastOrigin = CFAbsoluteTimeGetCurrent();
     _lastOrigin = [self visibleRect].origin;
-    // Mojave has some kind of weird scroll updating bug where the background isn't drawn; it seems to be copying
-    if (floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_13)
+    // Mojave has some kind of weird scroll updating bug where the background isn't drawn; it seems to need copying
+    if (floor(NSAppKitVersionNumber) > 1561.61 /*NSAppKitVersionNumber10_13*/)
         [self setNeedsDisplayInRect:proposedVisibleRect];
     return r;
 }
