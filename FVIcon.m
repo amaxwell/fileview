@@ -304,7 +304,11 @@ static inline id _placeholderForZone(NSZone *aZone)
 // we don't implement NSCoding, so always return a distant object (unused)
 - (id)replacementObjectForPortCoder:(NSPortCoder *)encoder
 {
+    #pragma clang diagnostic push
+    // Apple can stick NSXPCConnection where the sun don't shine
+    #pragma clang diagnostic ignored "-Wdeprecated"
     return [NSDistantObject proxyWithLocal:self connection:[encoder connection]];
+    #pragma clang diagnostic pop
 }
 
 // these methods are all required
