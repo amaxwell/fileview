@@ -355,16 +355,19 @@ NSGraphicsContext *FVWindowGraphicsContextWithSize(NSSize size)
     // Mojave crashes with an exception if you try to create a window on a background thread, even though NSWindow was supposedly thread-safe
     if ([NSThread isMainThread]) {
         window = [[NSWindow alloc] initWithContentRect:rect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+        // attempt to get rid of bullshit logs: CoreAnimation: warning, deleted thread with uncommitted CATransaction
+        if ([window respondsToSelector:@selector(setAnimationBehavior:)])
+            [window setAnimationBehavior:NSWindowAnimationBehaviorNone];
     }
     else {
         FVLog(@"trying to create NSWindow for offscreen context on main thread");
         dispatch_sync(dispatch_get_main_queue(), ^{
             window = [[NSWindow alloc] initWithContentRect:rect styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+            // attempt to get rid of bullshit logs: CoreAnimation: warning, deleted thread with uncommitted CATransaction
+            if ([window respondsToSelector:@selector(setAnimationBehavior:)])
+                [window setAnimationBehavior:NSWindowAnimationBehaviorNone];
         });
     }
-    // attempt to get rid of bullshit logs: CoreAnimation: warning, deleted thread with uncommitted CATransaction
-    if ([window respondsToSelector:@selector(setAnimationBehavior:)])
-        [window setAnimationBehavior:NSWindowAnimationBehaviorNone];
     [window autorelease];
     return [NSGraphicsContext graphicsContextWithWindow:window];
 }
