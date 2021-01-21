@@ -215,7 +215,7 @@ static CFDictionaryRef _imsrcOptions = NULL;
         }
         
         // resample the original image for better quality
-        if (NULL == _thumbnail) {
+        if (NULL == _thumbnail && sourceImage) {
             _thumbnail = FVCreateResampledThumbnail(sourceImage);
             thumbnail = CGImageRetain(_thumbnail);
         }
