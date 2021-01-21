@@ -2018,8 +2018,18 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
     
     // any solid color background should override the gradient code
     if ([self backgroundColor]) {
+        [NSGraphicsContext saveGraphicsState];
         [[self backgroundColor] setFill];
         NSRectFillUsingOperation(rect, NSCompositeCopy);
+        [NSGraphicsContext restoreGraphicsState];
+    }
+    else if (floor(NSAppKitVersionNumber) >= NSAppKitVersionNumber10_14 && [[[NSAppearance currentAppearance] name] containsString:@"Dark"]) {
+        [NSGraphicsContext saveGraphicsState];
+        // picked with DigitalColorMeter on Mojave
+        [[NSColor colorWithRed:45.0/255 green:45.0/255 blue:45.0/255 alpha:1.0] setFill];
+        NSRectClip(rect);
+        NSRectFillUsingOperation(rect, NSCompositeCopy);
+        [NSGraphicsContext restoreGraphicsState];
     }
     else {
         /*
