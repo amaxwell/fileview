@@ -195,7 +195,9 @@ static char _FVContentBindingToControllerObserverContext;
 {
     NSMutableDictionary *ta = [NSMutableDictionary dictionary];
     [ta setObject:[NSFont systemFontOfSize:12.0] forKey:NSFontAttributeName];
-    [ta setObject:[NSColor darkGrayColor] forKey:NSForegroundColorAttributeName];
+    // magic color for dark mode
+    NSColor *fgColor = [NSColor respondsToSelector:@selector(labelColor)] ? [NSColor labelColor] : [NSColor darkGrayColor];
+    [ta setObject:fgColor forKey:NSForegroundColorAttributeName];
     NSMutableParagraphStyle *ps = [[NSParagraphStyle defaultParagraphStyle] mutableCopy];
     // Apple uses this in IKImageBrowserView
     [ps setLineBreakMode:NSLineBreakByTruncatingTail];
@@ -217,7 +219,9 @@ static char _FVContentBindingToControllerObserverContext;
 {
     NSMutableDictionary *ta = [self _titleAttributes];
     [ta setObject:[NSFont systemFontOfSize:10.0] forKey:NSFontAttributeName];
-    [ta setObject:[NSColor grayColor] forKey:NSForegroundColorAttributeName];
+    // magic color for dark mode
+    NSColor *fgColor = [NSColor respondsToSelector:@selector(secondaryLabelColor)] ? [NSColor secondaryLabelColor] : [NSColor grayColor];
+    [ta setObject:fgColor forKey:NSForegroundColorAttributeName];
     return ta;
 }
 
@@ -2023,10 +2027,10 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         NSRectFillUsingOperation(rect, NSCompositeCopy);
         [NSGraphicsContext restoreGraphicsState];
     }
-    else if (floor(NSAppKitVersionNumber) >= NSAppKitVersionNumber10_14 && [[[NSAppearance currentAppearance] name] containsString:@"Dark"]) {
+    else if (floor(NSAppKitVersionNumber) >= NSAppKitVersionNumber10_14) {
         [NSGraphicsContext saveGraphicsState];
-        // picked with DigitalColorMeter on Mojave
-        [[NSColor colorWithRed:45.0/255 green:45.0/255 blue:45.0/255 alpha:1.0] setFill];
+        // magic color for dark mode; I like the bluish color better, especially for activation status, but…sigh
+        [[NSColor controlBackgroundColor] setFill];
         NSRectClip(rect);
         NSRectFillUsingOperation(rect, NSCompositeCopy);
         [NSGraphicsContext restoreGraphicsState];
@@ -2043,7 +2047,6 @@ static NSArray * _wordsFromAttributedString(NSAttributedString *attributedString
         FVAPIAssert(floor(NSAppKitVersionNumber) > NSAppKitVersionNumber10_6, @"gradient background is only available on 10.7 and later");
         
         // otherwise we see a blocky transition, which fades on the redraw when scrolling stops
-#warning fixme: Mojave seems to need copy on scroll
         if ([[[self enclosingScrollView] contentView] copiesOnScroll])
             [[[self enclosingScrollView] contentView] setCopiesOnScroll:NO];
         
