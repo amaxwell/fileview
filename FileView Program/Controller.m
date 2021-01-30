@@ -254,13 +254,13 @@
 
 @implementation NSSplitView (FileViewFixes)
 
-static IMP originalMouseDown = NULL;
+static void (*originalMouseDown)(id, SEL, id) = NULL;
 
 + (void)load
 {
     Method m = class_getInstanceMethod(self, @selector(mouseDown:));
     IMP replacementMouseDown = class_getMethodImplementation(self, @selector(_fv_replacementMouseDown:));
-    originalMouseDown = method_setImplementation(m, replacementMouseDown);
+    originalMouseDown = (void (*)(id, SEL, id))method_setImplementation(m, replacementMouseDown);
 }
 
 - (void)_fv_replacementMouseDown:(NSEvent *)theEvent;
