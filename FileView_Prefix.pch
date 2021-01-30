@@ -102,16 +102,24 @@ do { if(!(condition)) { [NSException raise:NSInvalidArgumentException format:(de
     #define USE_DISPATCH_QUEUE 1
 #endif
 
+#import <signal.h>
+#include <unistd.h>
+
 #if defined(__ppc__) || defined(__ppc64__)
-    #define HALT __asm__ __volatile__("trap")
+    #define HALT do {asm __volatile__("trap"); kill(getpid(), 9); } while (0)
 #elif defined(__i386__) || defined(__x86_64__)
     #if defined(__GNUC__)
-        #define HALT __asm__ __volatile__("int3")
+        #define HALT do {asm __volatile__("int3"); kill(getpid(), 9); } while (0)
     #elif defined(_MSC_VER)
-        #define HALT __asm int 3;
+        #define HALT do { DebugBreak(); abort(); } while (0)
     #else
         #error Compiler not supported
     #endif
+#endif
+#if defined(__arm__)
+    #define HALT do { __asm__ volatile ("bkpt 0"); kill(getpid(), 9); } while (0)
+#elif defined(__aarch64__)
+    #define HALT do { __asm__ volatile ("brk 0"); kill(getpid(), 9); } while (0)
 #endif
 
 #ifdef __cplusplus
