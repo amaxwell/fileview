@@ -65,7 +65,7 @@
 		F94692840CA5777300AC2772 /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = F946927E0CA5777300AC2772 /* InfoPlist.strings */; };
 		F94692850CA5777300AC2772 /* MainMenu.nib in Resources */ = {isa = PBXBuildFile; fileRef = F94692800CA5777300AC2772 /* MainMenu.nib */; };
 		F946928F0CA5784700AC2772 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = F946928E0CA5784700AC2772 /* main.m */; };
-		F94693FF0CA583A300AC2772 /* FileView.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 8DC2EF5B0486A6940098B216 /* FileView.framework */; };
+		F94693FF0CA583A300AC2772 /* FileView.framework in CopyFiles */ = {isa = PBXBuildFile; fileRef = 8DC2EF5B0486A6940098B216 /* FileView.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		F94694500CA59AF100AC2772 /* FVScaledImageView.h in Headers */ = {isa = PBXBuildFile; fileRef = F946944E0CA59AF100AC2772 /* FVScaledImageView.h */; };
 		F94694510CA59AF100AC2772 /* FVScaledImageView.m in Sources */ = {isa = PBXBuildFile; fileRef = F946944F0CA59AF100AC2772 /* FVScaledImageView.m */; };
 		F94F1EB40DA2F0BB007B5ABD /* FVAliasBadge.h in Headers */ = {isa = PBXBuildFile; fileRef = F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */; };
@@ -220,7 +220,6 @@
 /* Begin PBXFileReference section */
 		0867D69BFE84028FC02AAC07 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = /System/Library/Frameworks/Foundation.framework; sourceTree = "<absolute>"; };
 		0867D6A5FE840307C02AAC07 /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = /System/Library/Frameworks/AppKit.framework; sourceTree = "<absolute>"; };
-		089C1667FE841158C02AAC07 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		1058C7B1FEA5585E11CA2CBB /* Cocoa.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Cocoa.framework; path = /System/Library/Frameworks/Cocoa.framework; sourceTree = "<absolute>"; };
 		32DBCF5E0370ADEE00C91783 /* FileView_Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileView_Prefix.pch; sourceTree = "<group>"; };
 		8DC2EF5A0486A6940098B216 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -241,8 +240,6 @@
 		F931CBF90D97626900D90EDD /* FVCGColorSpaceDescription.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVCGColorSpaceDescription.m; sourceTree = "<group>"; };
 		F935F4830D5D654E00987D5E /* FVOperation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVOperation.h; sourceTree = "<group>"; };
 		F935F4840D5D654E00987D5E /* FVOperation.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVOperation.m; sourceTree = "<group>"; };
-		F93C351E0D35D214006EB558 /* French */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = French; path = French.lproj/FileView.strings; sourceTree = "<group>"; };
-		F93C351F0D35D221006EB558 /* French */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = French; path = French.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F93C3AE90D39473C006EB558 /* FVFinderLabel.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVFinderLabel.h; sourceTree = "<group>"; };
 		F93C3AEA0D39473C006EB558 /* FVFinderLabel.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVFinderLabel.m; sourceTree = "<group>"; };
 		F94691F70CA56EC500AC2772 /* FileView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileView.h; sourceTree = "<group>"; };
@@ -264,12 +261,18 @@
 		F94692510CA575F000AC2772 /* FileView Program.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "FileView Program.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		F946927C0CA5777300AC2772 /* Controller.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Controller.h; sourceTree = "<group>"; };
 		F946927D0CA5777300AC2772 /* Controller.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = Controller.m; sourceTree = "<group>"; };
-		F946927F0CA5777300AC2772 /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/InfoPlist.strings; sourceTree = "<group>"; };
-		F94692810CA5777300AC2772 /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/MainMenu.nib; sourceTree = "<group>"; };
 		F94692820CA5777300AC2772 /* FileView Program-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "FileView Program-Info.plist"; sourceTree = "<group>"; };
 		F946928E0CA5784700AC2772 /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		F946944E0CA59AF100AC2772 /* FVScaledImageView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVScaledImageView.h; sourceTree = "<group>"; };
 		F946944F0CA59AF100AC2772 /* FVScaledImageView.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVScaledImageView.m; sourceTree = "<group>"; };
+		F94C242525C52E5800F06A14 /* Base */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = Base; path = Base.lproj/MainMenu.nib; sourceTree = "<group>"; };
+		F94C242625C52E5800F06A14 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/FileViewIBPluginInspector.xib; sourceTree = "<group>"; };
+		F94C242725C52E5800F06A14 /* Base */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = Base; path = Base.lproj/FileViewIBPluginLibrary.nib; sourceTree = "<group>"; };
+		F94C242825C52E5F00F06A14 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		F94C242925C52E5F00F06A14 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/FileView.strings; sourceTree = "<group>"; };
+		F94C242A25C52E5F00F06A14 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		F94C242B25C52E6700F06A14 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/FileView.strings; sourceTree = "<group>"; };
+		F94C242C25C52E6700F06A14 /* fr */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = fr; path = fr.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		F94F1EB20DA2F0BB007B5ABD /* FVAliasBadge.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVAliasBadge.h; sourceTree = "<group>"; };
 		F94F1EB30DA2F0BB007B5ABD /* FVAliasBadge.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVAliasBadge.m; sourceTree = "<group>"; };
 		F95133810ECDEA6E00723208 /* fv_zone.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = fv_zone.h; sourceTree = "<group>"; };
@@ -345,7 +348,6 @@
 		F9D514BD0E20357B005E4C58 /* doxygen.config */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = doxygen.config; sourceTree = "<group>"; };
 		F9D5A9390D8C9AE80005C75C /* FVImageBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVImageBuffer.h; sourceTree = "<group>"; };
 		F9D5A93A0D8C9AE80005C75C /* FVImageBuffer.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVImageBuffer.m; sourceTree = "<group>"; };
-		F9E469360CFF6D12003E6C0A /* English */ = {isa = PBXFileReference; fileEncoding = 10; lastKnownFileType = text.plist.strings; name = English; path = English.lproj/FileView.strings; sourceTree = "<group>"; };
 		F9E5CEDF0D7511C200940EB6 /* FVIcon_Private.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVIcon_Private.m; sourceTree = "<group>"; };
 		F9E5CEE10D7511EE00940EB6 /* FVPlaceholderImage.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FVPlaceholderImage.h; sourceTree = "<group>"; };
 		F9E5CEE20D7511EE00940EB6 /* FVPlaceholderImage.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FVPlaceholderImage.m; sourceTree = "<group>"; };
@@ -357,8 +359,6 @@
 		F9F22E180CDAD9B900A9D449 /* Notes */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; path = Notes; sourceTree = "<group>"; };
 		F9F255FE0E14A3430059A21A /* FileViewIBPlugin.ibplugin */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = FileViewIBPlugin.ibplugin; sourceTree = BUILT_PRODUCTS_DIR; };
 		F9F256270E14A4CE0059A21A /* InterfaceBuilderKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = InterfaceBuilderKit.framework; path = Library/Frameworks/InterfaceBuilderKit.framework; sourceTree = DEVELOPER_DIR; };
-		F9F256310E14A6710059A21A /* English */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = English; path = English.lproj/FileViewIBPluginInspector.xib; sourceTree = "<group>"; };
-		F9F256330E14A6710059A21A /* English */ = {isa = PBXFileReference; lastKnownFileType = wrapper.nib; name = English; path = English.lproj/FileViewIBPluginLibrary.nib; sourceTree = "<group>"; };
 		F9F256340E14A6710059A21A /* FileViewIBPlugin-Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = "FileViewIBPlugin-Info.plist"; sourceTree = "<group>"; };
 		F9F256350E14A6710059A21A /* FileViewIBPlugin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileViewIBPlugin.h; sourceTree = "<group>"; };
 		F9F256360E14A6710059A21A /* FileViewIBPlugin.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = FileViewIBPlugin.m; sourceTree = "<group>"; };
@@ -839,17 +839,18 @@
 		0867D690FE84028FC02AAC07 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1130;
+				LastUpgradeCheck = 1240;
 			};
 			buildConfigurationList = 1DEB91B108733DA50010E9CD /* Build configuration list for PBXProject "FileView" */;
 			compatibilityVersion = "Xcode 3.2";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 1;
 			knownRegions = (
-				English,
-				Japanese,
-				French,
-				German,
+				Base,
+				en,
+				ja,
+				fr,
+				de,
 			);
 			mainGroup = 0867D691FE84028FC02AAC07 /* FileView */;
 			productRefGroup = 034768DFFF38A50411DB9C8B /* Products */;
@@ -1051,8 +1052,8 @@
 		089C1666FE841158C02AAC07 /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
-				089C1667FE841158C02AAC07 /* English */,
-				F93C351F0D35D221006EB558 /* French */,
+				F94C242A25C52E5F00F06A14 /* en */,
+				F94C242C25C52E6700F06A14 /* fr */,
 			);
 			name = InfoPlist.strings;
 			sourceTree = "<group>";
@@ -1060,7 +1061,7 @@
 		F946927E0CA5777300AC2772 /* InfoPlist.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
-				F946927F0CA5777300AC2772 /* English */,
+				F94C242825C52E5F00F06A14 /* en */,
 			);
 			name = InfoPlist.strings;
 			sourceTree = "<group>";
@@ -1068,7 +1069,7 @@
 		F94692800CA5777300AC2772 /* MainMenu.nib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				F94692810CA5777300AC2772 /* English */,
+				F94C242525C52E5800F06A14 /* Base */,
 			);
 			name = MainMenu.nib;
 			sourceTree = "<group>";
@@ -1076,7 +1077,7 @@
 		F963C3940E180FCB0066B20F /* FileViewIBPluginLibrary.nib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				F9F256330E14A6710059A21A /* English */,
+				F94C242725C52E5800F06A14 /* Base */,
 			);
 			name = FileViewIBPluginLibrary.nib;
 			sourceTree = "<group>";
@@ -1084,7 +1085,7 @@
 		F963C3960E180FD70066B20F /* FileViewIBPluginInspector.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				F9F256310E14A6710059A21A /* English */,
+				F94C242625C52E5800F06A14 /* Base */,
 			);
 			name = FileViewIBPluginInspector.xib;
 			sourceTree = "<group>";
@@ -1092,8 +1093,8 @@
 		F9E469350CFF6D12003E6C0A /* FileView.strings */ = {
 			isa = PBXVariantGroup;
 			children = (
-				F9E469360CFF6D12003E6C0A /* English */,
-				F93C351E0D35D214006EB558 /* French */,
+				F94C242925C52E5F00F06A14 /* en */,
+				F94C242B25C52E6700F06A14 /* fr */,
 			);
 			name = FileView.strings;
 			sourceTree = "<group>";
@@ -1168,6 +1169,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143260E1C069000BA315D /* Debug.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				COPY_PHASE_STRIP = NO;
 				INFOPLIST_FILE = "${SOURCE_ROOT}/FileView Program/FileView Program-Info.plist";
@@ -1187,6 +1189,7 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = F9B143290E1C06CE00BA315D /* Release.xcconfig */;
 			buildSettings = {
+				CODE_SIGN_IDENTITY = "-";
 				COMBINE_HIDPI_IMAGES = YES;
 				INFOPLIST_FILE = "${SOURCE_ROOT}/FileView Program/FileView Program-Info.plist";
 				INSTALL_PATH = "$(HOME)/Applications";
