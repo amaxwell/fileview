@@ -7,6 +7,11 @@
 ARCHS = $(NATIVE_ARCH_ACTUAL)
 SDKROOT = macosx
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
+
+LD_RUNPATH_SEARCH_PATHS = @executable_path/../Frameworks @loader_path/Frameworks
+DYLIB_INSTALL_NAME_BASE = @rpath
+LD_DYLIB_INSTALL_NAME = @rpath/FileView.framework/Versions/A/FileView
+
 // still okay to use 10.4, but requires changing to use 32-bit arch
 MACOSX_DEPLOYMENT_TARGET = 10.7
 PREBINDING = NO

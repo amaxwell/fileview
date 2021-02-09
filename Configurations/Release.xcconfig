@@ -6,6 +6,11 @@
 
 ARCHS = x86_64 arm64
 SDKROOT = macosx
+
+LD_RUNPATH_SEARCH_PATHS = @executable_path/../Frameworks @loader_path/Frameworks
+DYLIB_INSTALL_NAME_BASE = @rpath
+LD_DYLIB_INSTALL_NAME = @rpath/FileView.framework/Versions/A/FileView
+
 DEBUG_INFORMATION_FORMAT = dwarf-with-dsym
 MACOSX_DEPLOYMENT_TARGET = 10.7
 PREBINDING = NO
